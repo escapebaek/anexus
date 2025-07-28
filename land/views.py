@@ -18,6 +18,6 @@ def home(request):
         {"title": "OrphanAnesthesia", "text": "Anesthesia care for rare diseases.", "url": "https://www.orphananesthesia.eu/en/rare-diseases/published-guidelines.html", "icon": "fas fa-dna"},
         {"title": "Virtual TEE", "text": "Virtual TEE for education.", "url": "https://pie.med.utoronto.ca/TEE/TEE_content/TEE_standardViews_intro.html", "icon": "fas fa-heartbeat"},
         {"title": "Virtual FOB", "text": "Virtual FOB for education.", "url": "https://pie.med.utoronto.ca/VB/VB_content/simulation.html", "icon": "fas fa-lungs"},
-        {"title": "ACCRAC", "text": "Podcast for board examination.", "url": "https://accrac.com/", "icon": "fas fa-podcast"}
+        {"title": "ACCRAC", "text": "Podcast for board examination.", "url": "https://accrac.com/", "icon": "fas fa-podcast"},
     ]
     return render(request, 'land/home.html', {'cards': cards})
