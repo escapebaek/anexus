@@ -55,45 +55,90 @@ def question_list(request, exam_id):
         'page_obj': page_obj,
     })
 
+# Updated save_exam_results view
 @login_required
 @user_is_specially_approved
 def save_exam_results(request):
     if request.method == 'POST':
         data = json.loads(request.body)
 
-        # exam_id는 question_list.html(Exam 기반)에서 사용
         exam_id = data.get('exam_id', None)
-
-        # category_name은 category_questions.html(카테고리 기반)에서 사용
         category_name = data.get('category_name', None)
-
         num_correct = data.get('num_correct', 0)
         num_incorrect = data.get('num_incorrect', 0)
         num_unanswered = data.get('num_unanswered', 0)
         num_noanswer = data.get('num_noanswer', 0)
         detailed_results = data.get('detailed_results', [])
         
-        # detailed_results에 question_id 추가
+        # Create a lookup dictionary for questions
+        questions_lookup = {}
+        all_questions = Question.objects.select_related('category').all()
+        
+        for q in all_questions:
+            question_text = str(q.question_text).strip()
+            
+            # Store question info under multiple keys for better matching
+            keys_to_try = [
+                question_text,
+                question_text[:50],
+                question_text[:100],
+                question_text.replace('\n', ' ').replace('\r', ''),
+                question_text.replace('\n', ' ').replace('\r', '')[:50]
+            ]
+            
+            question_info = {
+                'id': q.id,
+                'category_name': q.category.name if q.category else 'N/A'
+            }
+            
+            for key in keys_to_try:
+                if key and key not in questions_lookup:
+                    questions_lookup[key] = question_info
+        
+        # Process detailed_results to add question_id and category info
         for detail in detailed_results:
-            try:
-                question = Question.objects.filter(text=detail['question']).first()
-                if question:
-                    detail['question_id'] = question.id
-            except Exception:
-                continue
+            question_text = str(detail.get('question', '')).strip()
+            question_info = None
+            
+            # Try different matching strategies
+            matching_strategies = [
+                question_text,  # Exact match
+                question_text[:100],  # Truncated to 100 chars
+                question_text[:50],   # Truncated to 50 chars
+                question_text.replace('\n', ' ').replace('\r', '').strip(),  # Cleaned text
+                question_text.replace('\n', ' ').replace('\r', '').strip()[:50]  # Cleaned and truncated
+            ]
+            
+            for strategy in matching_strategies:
+                if strategy in questions_lookup:
+                    question_info = questions_lookup[strategy]
+                    break
+            
+            # Fallback: try partial matching
+            if not question_info and len(question_text) > 20:
+                for key, info in questions_lookup.items():
+                    if question_text[:20] in key or key[:20] in question_text:
+                        question_info = info
+                        break
+            
+            # Set the results
+            if question_info:
+                detail['question_id'] = question_info['id']
+                detail['category'] = question_info['category_name']
+            else:
+                detail['question_id'] = None
+                detail['category'] = 'N/A'
 
         user = request.user
         exam_instance = None
 
-        # exam_id가 넘어온 경우 → Exam 기반 결과
         if exam_id is not None:
             exam_instance = get_object_or_404(Exam, id=exam_id)
 
-        # ExamResult 생성 (exam이 없으면 None으로 저장됨)
         result = ExamResult.objects.create(
             user=user,
-            exam=exam_instance,          # nullable
-            category_name=category_name, # 카테고리명 저장
+            exam=exam_instance,
+            category_name=category_name,
             num_correct=num_correct,
             num_incorrect=num_incorrect,
             num_unanswered=num_unanswered,
@@ -105,6 +150,8 @@ def save_exam_results(request):
     else:
         return JsonResponse({'status': 'error'}, status=400)
 
+
+# Updated exam_results view
 @login_required
 @user_is_specially_approved
 def exam_results(request):
@@ -116,21 +163,85 @@ def exam_results(request):
         Bookmark.objects.filter(user=request.user).values_list('question_id', flat=True)
     )
 
-    # Create a lookup dictionary using values() to get dictionary objects
-    questions_lookup = {
-        str(q['question_text'])[:50]: q['id']  # Convert to string to ensure consistency
-        for q in Question.objects.values('id', 'question_text')
-    }
+    # Create a more comprehensive lookup dictionary for questions
+    questions_lookup = {}
+    
+    # Get all questions with their category information
+    all_questions = Question.objects.select_related('category').all()
+    
+    for q in all_questions:
+        # Use multiple keys to match questions more reliably
+        question_text = str(q.question_text).strip()
+        
+        # Create multiple possible keys for matching
+        keys_to_try = [
+            question_text,
+            question_text[:50],
+            question_text[:100],
+            question_text.replace('\n', ' ').replace('\r', ''),
+            question_text.replace('\n', ' ').replace('\r', '')[:50]
+        ]
+        
+        question_info = {
+            'id': q.id,
+            'category_name': q.category.name if q.category else 'N/A'
+        }
+        
+        # Store under all possible keys
+        for key in keys_to_try:
+            if key and key not in questions_lookup:
+                questions_lookup[key] = question_info
 
     # Process the detailed results
     updated_results = []
     for detail in result.detailed_results:
-        question_text = str(detail.get('question', ''))[:50]  # Convert to string and limit length
-        question_id = questions_lookup.get(question_text)
+        question_text = str(detail.get('question', '')).strip()
+        
+        # Try to find question info using various matching strategies
+        question_info = None
+        
+        # Strategy 1: Exact match
+        if question_text in questions_lookup:
+            question_info = questions_lookup[question_text]
+        
+        # Strategy 2: Try truncated versions
+        if not question_info:
+            for length in [100, 50]:
+                truncated = question_text[:length]
+                if truncated in questions_lookup:
+                    question_info = questions_lookup[truncated]
+                    break
+        
+        # Strategy 3: Try with cleaned text (no line breaks)
+        if not question_info:
+            cleaned_text = question_text.replace('\n', ' ').replace('\r', '').strip()
+            if cleaned_text in questions_lookup:
+                question_info = questions_lookup[cleaned_text]
+            elif cleaned_text[:50] in questions_lookup:
+                question_info = questions_lookup[cleaned_text[:50]]
+        
+        # Strategy 4: Fuzzy matching as last resort
+        if not question_info:
+            # Try to find a question that starts with the same text
+            for key, info in questions_lookup.items():
+                if len(question_text) > 20 and question_text[:20] in key:
+                    question_info = info
+                    break
+        
+        # Default if still not found
+        if not question_info:
+            question_info = {'id': None, 'category_name': 'N/A'}
         
         updated_detail = detail.copy()
-        updated_detail['question_id'] = question_id
-        updated_detail['is_bookmarked'] = question_id in bookmarked_questions if question_id else False
+        updated_detail['question_id'] = question_info['id']
+        updated_detail['is_bookmarked'] = question_info['id'] in bookmarked_questions if question_info['id'] else False
+        
+        # Use category from detail first, then from database lookup
+        if detail.get('category') and detail.get('category') != 'N/A':
+            updated_detail['category'] = detail.get('category')
+        else:
+            updated_detail['category'] = question_info['category_name']
+        
         updated_results.append(updated_detail)
 
     result.detailed_results = updated_results

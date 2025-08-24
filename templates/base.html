@@ -9,553 +9,33 @@
     <link rel="icon" href="{% static 'favicon.ico' %}?v=2" />
 
     <!-- Bootstrap 5.3.x CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Font Awesome 5 -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
 
     <!-- Project CSS -->
-    <link href="{% static 'css/app.css' %}" rel="stylesheet" />
+    <link href="{% static 'css/components.css' %}" rel="stylesheet" />
 
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6734760373013716" crossorigin="anonymous"></script>
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6734760373013716"
+      crossorigin="anonymous"
+    ></script>
 
     {% block custom_css %}{% endblock %}
-    <style>
-      :root {
-        --primary-gradient: linear-gradient(135deg, #2b5876, #4e4376);
-        --primary-dark: #2b5876;
-        --primary-light: #4e4376;
-        --text-light: #ffffff;
-        --glass-bg: rgba(255, 255, 255, 0.1);
-        --glass-border: rgba(255, 255, 255, 0.2);
-        --shadow-light: rgba(0, 0, 0, 0.1);
-        --shadow-medium: rgba(0, 0, 0, 0.15);
-        --shadow-heavy: rgba(0, 0, 0, 0.25);
-        --navbar-height: 70px;
-      }
-      
-      * {
-        box-sizing: border-box;
-      }
-      
-      body {
-        font-family: "Poppins", sans-serif;
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        line-height: 1.6;
-        font-weight: 400;
-        margin: 0;
-        padding: 0;
-        padding-top: var(--navbar-height);
-      }
-
-      /* Optimized Navbar - Fixed positioning */
-      .navbar {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        padding: 0.8rem 0;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 2px 20px var(--shadow-light);
-        transition: all 0.2s ease;
-        height: var(--navbar-height);
-        display: flex;
-        align-items: center;
-      }
-      
-      .navbar.scrolled {
-        background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(25px);
-        box-shadow: 0 4px 30px var(--shadow-medium);
-      }
-      
-      .navbar-brand {
-        font-weight: 900;
-        font-size: 1.6rem;
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        transition: all 0.2s ease;
-        text-decoration: none;
-        margin: 0;
-      }
-      
-      .navbar-brand:hover {
-        transform: scale(1.02);
-        text-decoration: none;
-      }
-      
-      .nav-link, .navbar-text {
-        font-weight: 500;
-        color: var(--primary-dark) !important;
-        padding: 0.4rem 0.8rem !important;
-        transition: all 0.2s ease;
-        border-radius: 8px;
-        white-space: nowrap;
-      }
-      
-      .nav-link:hover {
-        color: var(--primary-light) !important;
-        background: var(--glass-bg);
-        transform: translateY(-1px);
-      }
-      
-      .navbar-text {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border-radius: 15px;
-        border: 1px solid var(--glass-border);
-        font-weight: 600;
-        font-size: 0.9rem;
-        margin-right: 0.5rem;
-      }
-      
-      .navbar .btn {
-        padding: 0.5rem 1.2rem;
-        border-radius: 25px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
-        margin-left: 0.3rem;
-        position: relative;
-        overflow: hidden;
-        will-change: transform;
-      }
-      
-      .btn-gradient {
-        background: var(--primary-gradient);
-        border: none;
-        color: var(--text-light);
-        box-shadow: 0 3px 12px rgba(43, 88, 118, 0.3);
-      }
-      
-      .btn-gradient:hover {
-        transform: translateY(-2px) scale(1.02);
-        box-shadow: 0 5px 20px rgba(43, 88, 118, 0.4);
-        color: var(--text-light);
-      }
-      
-      .btn-outline-gradient {
-        background: transparent;
-        border: 2px solid var(--primary-dark);
-        color: var(--primary-dark);
-      }
-      
-      .btn-outline-gradient:hover {
-        background: var(--primary-gradient);
-        color: var(--text-light);
-        border-color: transparent;
-        transform: translateY(-2px) scale(1.02);
-      }
-
-      /* Optimized Layout - Full width utilization */
-      .flex-1 { 
-        flex: 1; 
-      }
-      
-      .container-fluid {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 0 20px;
-      }
-
-      .container {
-        max-width: 1200px;
-        padding: 0 20px;
-      }
-
-      /* Enhanced Feature Cards - Optimized for density */
-      .feature-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 16px;
-        padding: 1.8rem;
-        height: 100%;
-        transition: all 0.2s ease;
-        border: 1px solid rgba(0,0,0,0.08);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-        will-change: transform;
-      }
-      
-      .feature-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: var(--primary-gradient);
-        transform: scaleX(0);
-        transition: transform 0.3s ease;
-      }
-      
-      .feature-card:hover::before {
-        transform: scaleX(1);
-      }
-      
-      .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-        background: rgba(255,255,255,1);
-      }
-      
-      .feature-icon {
-        width: 70px;
-        height: 70px;
-        background: var(--primary-gradient);
-        border-radius: 16px;
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        margin-bottom: 1.2rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(43, 88, 118, 0.2);
-        will-change: transform;
-      }
-      
-      .feature-icon i { 
-        font-size: 1.8rem; 
-        color: white; 
-      }
-      
-      .feature-card:hover .feature-icon { 
-        transform: rotate(5deg) scale(1.05);
-        box-shadow: 0 6px 20px rgba(43, 88, 118, 0.3);
-      }
-
-      .feature-title {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: var(--primary-dark);
-        margin-bottom: 0.8rem;
-        transition: color 0.3s ease;
-      }
-
-      .feature-card:hover .feature-title {
-        color: var(--primary-light);
-      }
-
-      .feature-text {
-        color: #666;
-        margin-bottom: 1.5rem;
-        flex-grow: 1;
-        font-size: 0.95rem;
-        line-height: 1.5;
-      }
-
-      /* Optimized Footer - Compact design */
-      footer {
-        background: var(--primary-gradient);
-        padding: 2.5rem 0 1.5rem;
-        color: var(--text-light);
-        position: relative;
-        overflow: hidden;
-        margin-top: auto;
-      }
-      
-      footer::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+CjxyZWN0IHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgZmlsbD0iIzRlNDM3NiI+PC9yZWN0Pgo8Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMiI+PC9jaXJjbGU+CjxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjEwIiBmaWxsPSJub25lIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiIHN0cm9rZS13aWR0aD0iMSI+PC9jaXJjbGU+Cjwvc3ZnPg==');
-        opacity: 0.03;
-      }
-      
-      footer .container-fluid {
-        position: relative;
-        z-index: 2;
-        text-align: center;
-      }
-      
-      footer p { 
-        margin: 0.5rem 0; 
-        opacity: 0.9; 
-        font-weight: 500;
-      }
-      
-      .social-icons { 
-        margin-top: 1rem; 
-      }
-      
-      .social-icons a { 
-        color: var(--text-light); 
-        margin: 0 10px; 
-        font-size: 1.3rem; 
-        transition: all 0.3s ease;
-        display: inline-block;
-        padding: 8px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        text-decoration: none;
-      }
-      
-      .social-icons a:hover { 
-        transform: translateY(-3px) scale(1.05); 
-        background: rgba(255, 255, 255, 0.2);
-        box-shadow: 0 4px 15px var(--shadow-light);
-        color: var(--text-light);
-        text-decoration: none;
-      }
-
-      /* Optimized Alerts - Faster animations */
-      .alert {
-        border: none;
-        border-radius: 12px;
-        padding: 1rem 1.5rem;
-        font-weight: 500;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 4px 20px var(--shadow-light);
-        transition: all 0.2s ease;
-        margin-bottom: 0.5rem;
-      }
-      
-      .alert-success {
-        background: rgba(40, 167, 69, 0.1);
-        color: #155724;
-        border-color: rgba(40, 167, 69, 0.2);
-      }
-      
-      .alert-danger {
-        background: rgba(220, 53, 69, 0.1);
-        color: #721c24;
-        border-color: rgba(220, 53, 69, 0.2);
-      }
-      
-      .alert-warning {
-        background: rgba(255, 193, 7, 0.1);
-        color: #856404;
-        border-color: rgba(255, 193, 7, 0.2);
-      }
-      
-      .alert-info {
-        background: rgba(23, 162, 184, 0.1);
-        color: #0c5460;
-        border-color: rgba(23, 162, 184, 0.2);
-      }
-
-      /* Optimized Loading Animation */
-      .loading {
-        display: inline-block;
-        width: 16px;
-        height: 16px;
-        border: 2px solid rgba(255,255,255,0.3);
-        border-radius: 50%;
-        border-top-color: white;
-        animation: spin 0.8s linear infinite;
-      }
-
-      /* Utility Classes */
-      .glass-effect {
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-      }
-      
-      .gradient-text {
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-      
-      .hover-lift {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        will-change: transform;
-      }
-      
-      .hover-lift:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px var(--shadow-light);
-      }
-
-      /* Optimized Animations - Performance focused */
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-      
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(15px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      /* Responsive Design - Optimized breakpoints */
-      @media (max-width: 1400px) {
-        .container-fluid {
-          max-width: 1200px;
-          padding: 0 15px;
-        }
-      }
-
-      @media (max-width: 1200px) {
-        .container-fluid {
-          max-width: 100%;
-          padding: 0 15px;
-        }
-        
-        .feature-card {
-          padding: 1.5rem;
-        }
-        
-        .navbar-text {
-          font-size: 0.8rem;
-        }
-      }
-
-      @media (max-width: 992px) {
-        :root {
-          --navbar-height: 65px;
-        }
-        
-        body {
-          padding-top: var(--navbar-height);
-        }
-        
-        .navbar {
-          height: var(--navbar-height);
-          padding: 0.6rem 0;
-        }
-        
-        .navbar-brand {
-          font-size: 1.4rem;
-        }
-      }
-      
-      @media (max-width: 768px) {
-        :root {
-          --navbar-height: 60px;
-        }
-        
-        body {
-          padding-top: var(--navbar-height);
-        }
-        
-        .navbar {
-          height: var(--navbar-height);
-          padding: 0.5rem 0;
-        }
-        
-        .navbar-brand {
-          font-size: 1.3rem;
-        }
-        
-        .container-fluid, .container {
-          padding: 0 10px;
-        }
-        
-        .feature-card {
-          padding: 1.3rem;
-        }
-        
-        .feature-icon {
-          width: 60px;
-          height: 60px;
-        }
-        
-        .feature-icon i {
-          font-size: 1.5rem;
-        }
-        
-        .social-icons a {
-          margin: 0 8px;
-          font-size: 1.2rem;
-          padding: 6px;
-        }
-      }
-      
-      @media (max-width: 576px) {
-        .navbar .btn {
-          display: block;
-          width: 100%;
-          margin: 0.2rem 0;
-          font-size: 0.85rem;
-        }
-        
-        .navbar-text {
-          margin-bottom: 0.5rem;
-          display: block;
-          text-align: center;
-          font-size: 0.8rem;
-        }
-        
-        .container-fluid, .container {
-          padding: 0 8px;
-        }
-      }
-
-      /* Performance Optimizations */
-      .feature-card,
-      .btn,
-      .feature-icon,
-      .navbar-brand {
-        will-change: transform;
-      }
-
-      /* Dark mode support preparation */
-      @media (prefers-color-scheme: dark) {
-        /* Future dark mode styles */
-      }
-
-      /* High contrast mode support */
-      @media (prefers-contrast: high) {
-        .feature-card {
-          border: 2px solid var(--primary-dark);
-        }
-        
-        .btn-outline-gradient {
-          border-width: 3px;
-        }
-      }
-
-      /* Reduced motion support */
-      @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after {
-          animation-duration: 0.01ms !important;
-          animation-iteration-count: 1 !important;
-          transition-duration: 0.01ms !important;
-        }
-      }
-
-      /* Print styles */
-      @media print {
-        .navbar, .social-icons, .btn {
-          display: none !important;
-        }
-        
-        body {
-          background: white !important;
-          color: black !important;
-          padding-top: 0 !important;
-        }
-      }
-    </style>
   </head>
 
   <body>
@@ -578,25 +58,31 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto align-items-center">
             {% if user.is_authenticated %}
-              <li class="nav-item">
-                <span class="navbar-text">Welcome, Dr. {{ user.username }}</span>
-              </li>
-              <li class="nav-item">
-                <a href="{% url 'mypage' %}" class="btn btn-gradient">My Page</a>
-              </li>
-              <li class="nav-item">
-                <form action="{% url 'logout' %}" method="post" class="d-inline">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-outline-gradient">Logout</button>
-                </form>
-              </li>
+            <li class="nav-item">
+              <span class="navbar-text">Welcome, Dr. {{ user.username }}</span>
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'mypage' %}" class="btn btn-gradient">My Page</a>
+            </li>
+            <li class="nav-item">
+              <form action="{% url 'logout' %}" method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-gradient">
+                  Logout
+                </button>
+              </form>
+            </li>
             {% else %}
-              <li class="nav-item">
-                <a href="{% url 'login' %}" class="btn btn-outline-gradient">Login</a>
-              </li>
-              <li class="nav-item">
-                <a href="{% url 'register' %}" class="btn btn-gradient">Register</a>
-              </li>
+            <li class="nav-item">
+              <a href="{% url 'login' %}" class="btn btn-outline-gradient"
+                >Login</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'register' %}" class="btn btn-gradient"
+                >Register</a
+              >
+            </li>
             {% endif %}
           </ul>
         </div>
@@ -604,29 +90,37 @@
     </nav>
 
     <!-- Optimized Messages -->
-    <div class="container-fluid" style="margin-top: 1rem;">
-      {% if messages %}
-        {% for message in messages %}
-          <div class="alert alert-{{ message.tags|default:'secondary' }}" role="alert">
-            <i class="fas fa-info-circle me-2"></i>
-            {{ message }}
-          </div>
-        {% endfor %}
-      {% endif %}
+    <div class="container-fluid" style="margin-top: 1rem">
+      {% if messages %} {% for message in messages %}
+      <div
+        class="alert alert-{{ message.tags|default:'secondary' }}"
+        role="alert"
+      >
+        <i class="fas fa-info-circle me-2"></i>
+        {{ message }}
+      </div>
+      {% endfor %} {% endif %}
     </div>
 
     <!-- Main Content -->
-    <div class="container-fluid flex-1">{% block page_content %}{% endblock %}</div>
+    <div class="container-fluid flex-1">
+      {% block page_content %}{% endblock %}
+    </div>
 
     <!-- Optimized Footer -->
     <footer>
       <div class="container-fluid">
         <p>&copy; 2024-2025 ANExuS. All rights reserved.</p>
-        <p style="font-size: 0.9rem; opacity: 0.8;">
+        <p style="font-size: 0.9rem; opacity: 0.8">
           Empowering healthcare professionals with advanced anesthesia solutions
         </p>
         <div class="social-icons">
-          <a href="https://www.youtube.com/@UpToD8-med" target="_blank" rel="noopener" title="YouTube Channel">
+          <a
+            href="https://www.youtube.com/@UpToD8-med"
+            target="_blank"
+            rel="noopener"
+            title="YouTube Channel"
+          >
             <i class="fab fa-youtube"></i>
           </a>
         </div>
@@ -638,21 +132,21 @@
 
     <!-- Optimized Global JavaScript -->
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
+      document.addEventListener("DOMContentLoaded", function () {
         // Optimized navbar scroll effect with throttling
-        const navbar = document.getElementById('mainNavbar');
+        const navbar = document.getElementById("mainNavbar");
         let ticking = false;
-        
+
         function updateNavbar() {
           if (window.scrollY > 30) {
-            navbar.classList.add('scrolled');
+            navbar.classList.add("scrolled");
           } else {
-            navbar.classList.remove('scrolled');
+            navbar.classList.remove("scrolled");
           }
           ticking = false;
         }
 
-        window.addEventListener('scroll', function() {
+        window.addEventListener("scroll", function () {
           if (!ticking) {
             requestAnimationFrame(updateNavbar);
             ticking = true;
@@ -660,40 +154,43 @@
         });
 
         // Optimized button hover effects - only for desktop
-        if (!('ontouchstart' in window)) {
-          document.querySelectorAll('.btn:not(.disabled)').forEach(btn => {
-            btn.addEventListener('mouseenter', function() {
-              this.style.transform = 'translateY(-2px) scale(1.02)';
+        if (!("ontouchstart" in window)) {
+          document.querySelectorAll(".btn:not(.disabled)").forEach((btn) => {
+            btn.addEventListener("mouseenter", function () {
+              this.style.transform = "translateY(-2px) scale(1.02)";
             });
-            
-            btn.addEventListener('mouseleave', function() {
-              this.style.transform = '';
+
+            btn.addEventListener("mouseleave", function () {
+              this.style.transform = "";
             });
           });
         }
 
         // Optimized auto-hide alerts
-        document.querySelectorAll('.alert').forEach((alert, index) => {
+        document.querySelectorAll(".alert").forEach((alert, index) => {
           setTimeout(() => {
-            alert.style.opacity = '0';
-            alert.style.transform = 'translateY(-10px)';
+            alert.style.opacity = "0";
+            alert.style.transform = "translateY(-10px)";
             setTimeout(() => {
               if (alert.parentNode) {
                 alert.remove();
               }
             }, 200);
-          }, 4000 + (index * 500)); // Stagger multiple alerts
+          }, 4000 + index * 500); // Stagger multiple alerts
         });
 
         // Optimized form loading state
-        document.querySelectorAll('form').forEach(form => {
-          form.addEventListener('submit', function() {
-            const submitBtn = this.querySelector('button[type="submit"]:not([disabled])');
+        document.querySelectorAll("form").forEach((form) => {
+          form.addEventListener("submit", function () {
+            const submitBtn = this.querySelector(
+              'button[type="submit"]:not([disabled])'
+            );
             if (submitBtn && !submitBtn.disabled) {
               const originalText = submitBtn.innerHTML;
-              submitBtn.innerHTML = '<span class="loading me-2"></span>Loading...';
+              submitBtn.innerHTML =
+                '<span class="loading me-2"></span>Loading...';
               submitBtn.disabled = true;
-              
+
               // Re-enable after 10 seconds as fallback
               setTimeout(() => {
                 if (submitBtn.disabled) {
@@ -707,32 +204,32 @@
 
         // Enhanced accessibility - keyboard navigation
         let isKeyboardUser = false;
-        
-        document.addEventListener('keydown', function(e) {
-          if (e.key === 'Tab') {
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Tab") {
             isKeyboardUser = true;
-            document.body.classList.add('keyboard-navigation');
+            document.body.classList.add("keyboard-navigation");
           }
         });
 
-        document.addEventListener('mousedown', function() {
+        document.addEventListener("mousedown", function () {
           if (isKeyboardUser) {
             isKeyboardUser = false;
-            document.body.classList.remove('keyboard-navigation');
+            document.body.classList.remove("keyboard-navigation");
           }
         });
 
         // Smooth scroll for hash links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-          anchor.addEventListener('click', function (e) {
+        document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+          anchor.addEventListener("click", function (e) {
             e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
+            const target = document.querySelector(this.getAttribute("href"));
             if (target) {
               const navHeight = navbar.offsetHeight;
               const targetPosition = target.offsetTop - navHeight - 20;
               window.scrollTo({
                 top: targetPosition,
-                behavior: 'smooth'
+                behavior: "smooth",
               });
             }
           });
@@ -741,20 +238,20 @@
 
       // Global utility functions
       window.ANExuS = {
-        showNotification: function(message, type = 'info', duration = 4000) {
-          const alertDiv = document.createElement('div');
+        showNotification: function (message, type = "info", duration = 4000) {
+          const alertDiv = document.createElement("div");
           alertDiv.className = `alert alert-${type}`;
-          alertDiv.setAttribute('role', 'alert');
+          alertDiv.setAttribute("role", "alert");
           alertDiv.innerHTML = `<i class="fas fa-info-circle me-2"></i>${message}`;
-          
-          const container = document.querySelector('.container-fluid');
+
+          const container = document.querySelector(".container-fluid");
           if (container) {
             container.insertBefore(alertDiv, container.firstChild);
-            
+
             // Auto-remove
             setTimeout(() => {
-              alertDiv.style.opacity = '0';
-              alertDiv.style.transform = 'translateY(-10px)';
+              alertDiv.style.opacity = "0";
+              alertDiv.style.transform = "translateY(-10px)";
               setTimeout(() => {
                 if (alertDiv.parentNode) {
                   alertDiv.remove();
@@ -763,21 +260,22 @@
             }, duration);
           }
         },
-        
+
         // Loading state helper
-        setLoading: function(element, loading = true) {
+        setLoading: function (element, loading = true) {
           if (!element) return;
-          
+
           if (loading) {
             element.dataset.originalText = element.innerHTML;
             element.innerHTML = '<span class="loading me-2"></span>Loading...';
             element.disabled = true;
           } else {
-            element.innerHTML = element.dataset.originalText || element.innerHTML;
+            element.innerHTML =
+              element.dataset.originalText || element.innerHTML;
             element.disabled = false;
             delete element.dataset.originalText;
           }
-        }
+        },
       };
     </script>
 

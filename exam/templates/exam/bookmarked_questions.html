@@ -6,9 +6,9 @@
 >
   <div class="hero-overlay"></div>
   <div class="hero-content text-center">
-    <h1 class="hero-title animate-fade-in">Bookmarked Questions</h1>
+    <h1 class="hero-title animate-fade-in">북마크된 문제</h1>
     <p class="hero-subtitle animate-fade-in-delayed">
-      Review your saved questions
+      저장된 문제들을 다시 복습해보세요.
     </p>
   </div>
   <div class="hero-wave">
@@ -22,35 +22,16 @@
 </div>
 
 <!-- Questions Section -->
-<div class="questions-section">
+<div class="questions-section questions-left-align">
   <div class="container">
     <div class="row g-4">
       {% for question in questions %}
       <div class="col-12">
         <div
           class="question-card animate-fade-in"
-          data-option1="{{ question.option1 }}"
-          data-option2="{{ question.option2 }}"
-          data-option3="{{ question.option3 }}"
-          data-option4="{{ question.option4 }}"
-          {%
-          if
-          question.option5
-          %}data-option5="{{ question.option5 }}"
-          {%
-          endif
-          %}
           data-correct-option="{{ question.correct_option }}"
         >
-          {% if question.category %}
-          <div class="category-badge">{{ question.category.name }}</div>
-          {% endif %}
-
-          <!-- Exam Title Badge -->
-          {% if question.exam %}
-          <div class="exam-badge">{{ question.exam.title }}</div>
-          {% endif %}
-
+          <!-- 북마크 버튼 -->
           <div
             class="bookmark-button bookmarked"
             data-question-id="{{ question.id }}"
@@ -60,7 +41,23 @@
           </div>
 
           <div class="question-content">
-            <div class="question-text">{{ question.question_text }}</div>
+            <!-- 카테고리 표시 -->
+            {% if question.category %}
+            <div class="question-category-box">
+              <i class="fas fa-tags"></i>
+              <span>{{ question.category.name }}</span>
+            </div>
+            {% endif %}
+
+            <!-- 시험 제목 표시 -->
+            {% if question.exam %}
+            <div class="question-exam-box">
+              <i class="fas fa-file-alt"></i>
+              <span>{{ question.exam.title }}</span>
+            </div>
+            {% endif %}
+
+            <div class="question-text">{{ question.question_text|safe }}</div>
 
             {% if question.image %}
             <div class="question-image">
@@ -81,7 +78,9 @@
                   value="{{ question.option1 }}"
                   class="form-check-input"
                 />
-                <label for="option1_{{ question.id }}" class="form-check-label"
+                <label
+                  for="option1_{{ question.id }}"
+                  class="form-check-label"
                   >{{ question.option1 }}</label
                 >
               </div>
@@ -93,7 +92,9 @@
                   value="{{ question.option2 }}"
                   class="form-check-input"
                 />
-                <label for="option2_{{ question.id }}" class="form-check-label"
+                <label
+                  for="option2_{{ question.id }}"
+                  class="form-check-label"
                   >{{ question.option2 }}</label
                 >
               </div>
@@ -105,7 +106,9 @@
                   value="{{ question.option3 }}"
                   class="form-check-input"
                 />
-                <label for="option3_{{ question.id }}" class="form-check-label"
+                <label
+                  for="option3_{{ question.id }}"
+                  class="form-check-label"
                   >{{ question.option3 }}</label
                 >
               </div>
@@ -117,7 +120,9 @@
                   value="{{ question.option4 }}"
                   class="form-check-input"
                 />
-                <label for="option4_{{ question.id }}" class="form-check-label"
+                <label
+                  for="option4_{{ question.id }}"
+                  class="form-check-label"
                   >{{ question.option4 }}</label
                 >
               </div>
@@ -130,58 +135,81 @@
                   value="{{ question.option5 }}"
                   class="form-check-input"
                 />
-                <label for="option5_{{ question.id }}" class="form-check-label"
+                <label
+                  for="option5_{{ question.id }}"
+                  class="form-check-label"
                   >{{ question.option5 }}</label
                 >
               </div>
               {% endif %}
             </div>
 
+            <!-- Action Buttons (새로운 스타일 적용) -->
             <div class="action-buttons">
               <button
                 type="button"
-                class="btn-feature"
-                onclick="toggleAnswer('answer_{{ question.id }}')"
+                class="btn-action-glass"
+                onclick="toggleDisplay('answer_{{ question.id }}')"
               >
-                <i class="fas fa-check-circle"></i> Show Answer
+                <i class="fas fa-check-circle"></i> 정답 보기
               </button>
               <button
                 type="button"
-                class="btn-feature"
-                onclick="toggleVisibility('comment_{{ question.id }}')"
+                class="btn-action-glass"
+                onclick="toggleDisplay('explanation_{{ question.id }}')"
               >
-                <i class="fas fa-info-circle"></i> Show Explanation
+                <i class="fas fa-info-circle"></i> 해설 보기
               </button>
               {% if question.comment_image %}
               <button
                 type="button"
-                class="btn-feature"
-                onclick="toggleVisibility('comment_image_{{ question.id }}')"
+                class="btn-action-glass"
+                onclick="toggleDisplay('image_{{ question.id }}')"
               >
-                <i class="fas fa-image"></i> Show Image
+                <i class="fas fa-image"></i> 이미지 보기
               </button>
               {% endif %}
             </div>
 
-            <div id="answer_{{ question.id }}" class="answer-section hidden">
-              <div class="answer-badge">
-                Correct Answer: {{ question.correct_option }}
+            <!-- 정답 표시 박스 -->
+            <div
+              id="answer_{{ question.id }}"
+              class="answer-display-box hidden"
+            >
+              <div class="answer-display-title">
+                <i class="fas fa-check-circle"></i> 정답
+              </div>
+              <div class="answer-display-content">
+                {{ question.correct_option }}
               </div>
             </div>
 
-            <div id="comment_{{ question.id }}" class="comment-section hidden">
-              {{ question.comment|safe }}
+            <!-- 해설 표시 박스 -->
+            <div
+              id="explanation_{{ question.id }}"
+              class="explanation-display-box hidden"
+            >
+              <div class="explanation-display-title">
+                <i class="fas fa-info-circle"></i> 해설
+              </div>
+              <div class="explanation-display-content">
+                {{ question.comment|safe }}
+              </div>
             </div>
 
+            <!-- 이미지 표시 박스 -->
             {% if question.comment_image %}
             <div
-              id="comment_image_{{ question.id }}"
-              class="comment-image hidden"
+              id="image_{{ question.id }}"
+              class="image-display-box hidden"
             >
+              <div class="image-display-title">
+                <i class="fas fa-image"></i> 관련 이미지
+              </div>
               <img
                 src="{{ question.comment_image.url }}"
                 alt="Explanation Image"
-                class="img-fluid"
+                class="img-fluid rounded"
               />
             </div>
             {% endif %}
@@ -191,11 +219,13 @@
       {% empty %}
       <div class="col-12">
         <div class="no-bookmarks-message text-center py-5">
-          <i class="fas fa-bookmark fa-3x mb-3" style="color: #2b5876"></i>
-          <h3>No bookmarked questions yet</h3>
-          <p class="text-muted">
-            Start bookmarking questions during your exams to review them later.
-          </p>
+          <div class="empty-state">
+            <i class="fas fa-bookmark fa-4x mb-4 empty-state-icon"></i>
+            <h3 class="empty-state-title">아직 북마크된 문제가 없습니다</h3>
+            <p class="empty-state-description">
+              시험을 보면서 문제를 북마크하여 나중에 다시 복습해보세요.
+            </p>
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -203,60 +233,18 @@
   </div>
 </div>
 
-<!-- Modal -->
-<div id="commentModal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <div id="modalBodyContent"></div>
-  </div>
-</div>
-
 {% csrf_token %}
 
 <script>
-  const modal = document.getElementById("commentModal");
-  const modalContent = document.getElementById("modalBodyContent");
-  const spanClose = document.querySelector(".close");
-
-  function showModal(content) {
-    modalContent.innerHTML = content;
-    modal.style.display = "block";
-    document.body.style.overflow = "hidden";
-  }
-
-  function closeModal() {
-    modal.style.display = "none";
-    document.body.style.overflow = "auto";
-  }
-
-  spanClose.onclick = closeModal;
-  window.onclick = (event) => {
-    if (event.target === modal) {
-      closeModal();
-    }
-  };
-
-  function toggleAnswer(id) {
-    const element = document.getElementById(id);
-    if (element.classList.contains("hidden")) {
-      element.classList.remove("hidden");
-      element.style.animation = "fadeIn 0.3s ease-out";
-    } else {
-      element.classList.add("hidden");
-    }
-  }
-
-  function toggleVisibility(id) {
+  function toggleDisplay(id) {
     const element = document.getElementById(id);
     if (element) {
-      showModal(element.innerHTML);
+      element.classList.toggle("hidden");
     }
   }
 
   function toggleBookmark(questionId, button) {
-    const csrfToken = document.querySelector(
-      'input[name="csrfmiddlewaretoken"]'
-    ).value;
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
     fetch(`/exam/bookmark/${questionId}/`, {
       method: "POST",
@@ -272,11 +260,13 @@
             button.classList.add("bookmarked");
           } else {
             button.classList.remove("bookmarked");
+            // 북마크가 해제되면 카드를 부드럽게 제거
             const questionCard = button.closest(".col-12");
             if (questionCard) {
               questionCard.style.animation = "fadeOut 0.3s ease-out";
               setTimeout(() => {
                 questionCard.remove();
+                // 모든 문제가 제거되면 페이지 새로고침
                 if (document.querySelectorAll(".question-card").length === 0) {
                   location.reload();
                 }
@@ -284,651 +274,13 @@
             }
           }
         } else {
-          showNotification("Error toggling bookmark", "error");
+          alert("북마크 처리 중 오류가 발생했습니다.");
         }
       })
       .catch((error) => {
         console.error("Error:", error);
-        showNotification("Network error occurred", "error");
+        alert("북마크 처리 중 오류가 발생했습니다.");
       });
   }
-
-  document.addEventListener("DOMContentLoaded", function () {
-    const csrfToken = document.querySelector(
-      'input[name="csrfmiddlewaretoken"]'
-    ).value;
-  });
 </script>
-<style>
-  /* Hero Section Styles */
-  .hero-section {
-    position: relative;
-    min-height: 60vh;
-    background: linear-gradient(135deg, #1a4569, #3d3561);
-    color: white;
-    overflow: hidden;
-    padding: 5rem 0;
-  }
-
-  .hero-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1NiIgaGVpZ2h0PSIxMDAiPgo8cmVjdCB3aWR0aD0iNTYiIGhlaWdodD0iMTAwIiBmaWxsPSIjMjIyIj48L3JlY3Q+CjxwYXRoIGQ9Ik0yOCA2NkwwIDUwTDAgMTZMMjggMEw1NiAxNkw1NiA1MEwyOCA2NkwyOCAxMDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIiBzdHJva2Utd2lkdGg9IjIiPjwvcGF0aD4KPHBhdGggZD0iTTI4IDBMMjggMzRMMCA1MEwwIDg0TDI4IDEwMEw1NiA4NEw1NiA1MEwyOCAzNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMiI+PC9wYXRoPgo8L3N2Zz4=");
-    opacity: 0.08;
-    background-size: 60px;
-  }
-
-  .hero-content {
-    position: relative;
-    z-index: 2;
-    padding: 0 20px;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .hero-title {
-    font-size: 4rem;
-    font-weight: 900;
-    margin-bottom: 1.5rem;
-    text-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    letter-spacing: -0.5px;
-  }
-
-  .hero-subtitle {
-    font-size: 1.35rem;
-    opacity: 0.95;
-    margin-bottom: 2.5rem;
-    font-weight: 400;
-    line-height: 1.6;
-  }
-
-  /* Timer Controls */
-  .timer-controls {
-    background: rgba(255, 255, 255, 0.12);
-    padding: 2.5rem;
-    border-radius: 1.25rem;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  }
-
-  .timer-input-group {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #set-timer-input {
-    width: 120px;
-    padding: 0.75rem 1rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 1.1rem;
-    text-align: center;
-  }
-
-  .timer-display {
-    font-size: 2.2rem;
-    font-weight: 700;
-    text-align: center;
-    margin-top: 1rem;
-    color: #fff;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    font-family: "Roboto Mono", monospace;
-  }
-
-  /* Questions Section */
-  .questions-section {
-    background: #f5f7fa;
-    padding: 5rem 0;
-    position: relative;
-  }
-
-  .question-card {
-    background: white;
-    border-radius: 1.25rem;
-    padding: 2.5rem;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-    border: 1px solid rgba(43, 88, 118, 0.08);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .question-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
-  }
-
-  .category-badge {
-    position: absolute;
-    top: 1.25rem;
-    left: 1.25rem;
-    background: linear-gradient(135deg, #2b5876, #4e4376);
-    color: white;
-    padding: 0.6rem 1.2rem;
-    border-radius: 2rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 12px rgba(43, 88, 118, 0.2);
-  }
-
-  .question-text {
-    font-size: 1.2rem;
-    color: #2c3e50;
-    font-weight: 500;
-    line-height: 1.7;
-    margin-bottom: 2rem;
-    padding: 1.75rem;
-    background: rgba(43, 88, 118, 0.04);
-    border-radius: 1rem;
-    border: 1px solid rgba(43, 88, 118, 0.06);
-  }
-
-  .question-image {
-    margin: 1.5rem 0;
-    border-radius: 1rem;
-    overflow: hidden;
-  }
-
-  .question-image img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-
-  /* 옵션 그리드 수정 */
-  .options-grid {
-    display: grid;
-    gap: 0.5rem; /* 보기 간 간격 조정 */
-    margin: 1.5rem 0; /* 옵션 섹션 위아래 여백 조정 */
-  }
-
-  .form-check {
-    padding: 0.75rem; /* 보기 박스 크기 더 줄이기 */
-    border: 1px solid rgba(43, 88, 118, 0.1); /* 박스 테두리 색 조정 */
-    border-radius: 0.5rem; /* 박스 둥글기 조정 */
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    background: #ffffff; /* 박스 배경 */
-    margin-bottom: 0.4rem; /* 보기 간 간격 줄이기 */
-  }
-
-  .form-check:hover {
-    background: rgba(43, 88, 118, 0.05); /* hover 시 색상 조정 */
-    transform: translateX(3px); /* hover 시 이동량 줄이기 */
-    border-color: rgba(43, 88, 118, 0.2);
-  }
-
-  .form-check-input {
-    margin-right: 0.8rem; /* 라디오 버튼과 텍스트 사이 간격 */
-    flex-shrink: 0;
-    width: 1rem; /* 라디오 버튼 크기 조정 */
-    height: 1rem;
-  }
-
-  .form-check-label {
-    margin-left: 0.5rem; /* 텍스트 왼쪽 여백 */
-    color: #2c3e50; /* 텍스트 색상 */
-    font-weight: 400; /* 글자 굵기 */
-    font-size: 1rem; /* 글자 크기 */
-    line-height: 1.4; /* 행 간격 */
-  }
-
-  /* Buttons */
-  .action-buttons {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 1.5rem;
-  }
-
-  .btn-feature {
-    background: linear-gradient(135deg, #2b5876, #4e4376);
-    color: white;
-    border: none;
-    padding: 0.9rem 1.8rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    font-size: 1rem;
-    letter-spacing: 0.3px;
-    box-shadow: 0 4px 15px rgba(43, 88, 118, 0.15);
-  }
-
-  .btn-feature:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(43, 88, 118, 0.25);
-  }
-
-  .btn-hero {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 0.9rem 1.8rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-  }
-
-  .btn-hero:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: translateY(-3px);
-  }
-
-  .btn-hero-danger {
-    background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-    color: white;
-    border: none;
-    padding: 0.9rem 1.8rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.2);
-  }
-
-  .btn-hero-danger:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.3);
-  }
-
-  /* Answer and Comment Sections */
-  .answer-section,
-  .comment-section {
-    margin-top: 2rem;
-    padding: 1.75rem;
-    border-radius: 1rem;
-    background: rgba(43, 88, 118, 0.04);
-    border: 1px solid rgba(43, 88, 118, 0.08);
-  }
-
-  .answer-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, #00b09b, #96c93d);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0, 176, 155, 0.2);
-  }
-
-  /* Bookmark Button */
-  .bookmark-button {
-    position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-    font-size: 1.6rem;
-    cursor: pointer;
-    color: #ddd;
-    transition: all 0.3s ease;
-    z-index: 2;
-  }
-
-  .bookmark-button.bookmarked {
-    color: #ffd700;
-    transform: scale(1.1);
-    text-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
-  }
-
-  /* Fixed Timer */
-  .fixed-timer {
-    position: fixed;
-    top: 25px;
-    right: 25px;
-    background: linear-gradient(135deg, #2b5876, #4e4376);
-    color: white;
-    padding: 1.25rem 2rem;
-    border-radius: 1.25rem;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    transition: all 0.4s ease;
-    backdrop-filter: blur(8px);
-  }
-
-  /* Modal Styles */
-  .modal {
-    display: none;
-    position: fixed;
-    z-index: 1050;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(43, 88, 118, 0.5);
-    backdrop-filter: blur(3px);
-  }
-
-  .modal-content {
-    background: white;
-    margin: 5% auto;
-    padding: 2.5rem;
-    width: 90%;
-    max-width: 800px;
-    border-radius: 1.25rem;
-    position: relative;
-    animation: modalSlide 0.3s ease-out;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  }
-
-  @keyframes modalSlide {
-    from {
-      opacity: 0;
-      transform: translateY(-30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .close {
-    position: absolute;
-    right: 1.5rem;
-    top: 1rem;
-    font-size: 2rem;
-    color: #2b5876;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-
-  .close:hover {
-    color: #4e4376;
-    transform: rotate(90deg);
-  }
-
-  /* Animation Keyframes */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.8s ease-out forwards;
-  }
-
-  .animate-fade-in-delayed {
-    animation: fadeIn 0.8s ease-out 0.3s both;
-  }
-
-  /* Utility Classes */
-  .hidden {
-    display: none;
-  }
-
-  /* Responsive Styles */
-  @media (max-width: 768px) {
-    .hero-title {
-      font-size: 2.5rem;
-    }
-
-    .hero-subtitle {
-      font-size: 1.1rem;
-    }
-
-    .timer-controls {
-      margin: 2rem 1rem 0;
-      padding: 1.5rem;
-    }
-
-    .question-card {
-      padding: 1.5rem;
-      margin: 1rem;
-    }
-
-    .action-buttons {
-      flex-direction: column;
-    }
-
-    .btn-feature {
-      width: 100%;
-      text-align: center;
-    }
-
-    .modal-content {
-      margin: 10% 5%;
-      padding: 1.5rem;
-    }
-
-    .fixed-timer {
-      top: 10px;
-      right: 10px;
-      padding: 0.75rem 1rem;
-    }
-
-    .timer-display {
-      font-size: 1.5rem;
-    }
-
-    .category-badge {
-      font-size: 0.8rem;
-      padding: 0.5rem 1rem;
-    }
-
-    .bookmark-button {
-      right: 4rem;
-      font-size: 1.4rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .hero-title {
-      font-size: 2rem;
-    }
-
-    .timer-input-group {
-      flex-direction: column;
-    }
-
-    #set-timer-input {
-      width: 100%;
-    }
-
-    .question-text {
-      font-size: 1.1rem;
-      padding: 1.25rem;
-    }
-
-    .options-grid {
-      gap: 0.4rem; /* 모바일에서 간격 더 줄이기 */
-    }
-
-    .form-check {
-      padding: 0.5rem; /* 모바일에서 보기 크기 줄이기 */
-    }
-
-    .form-check-label {
-      font-size: 0.9rem; /* 모바일에서 텍스트 크기 더 줄이기 */
-    }
-
-    .btn-feature,
-    .btn-hero,
-    .btn-hero-danger {
-      padding: 0.75rem 1.5rem;
-      font-size: 0.95rem;
-    }
-
-    .answer-badge {
-      padding: 0.6rem 1.2rem;
-      font-size: 0.9rem;
-    }
-
-    .answer-section,
-    .comment-section {
-      padding: 1.25rem;
-      margin-top: 1.5rem;
-    }
-  }
-
-  /* Print Styles */
-  @media print {
-    .hero-section,
-    .timer-controls,
-    .action-buttons,
-    .fixed-timer,
-    .bookmark-button {
-      display: none !important;
-    }
-
-    .question-card {
-      break-inside: avoid;
-      border: 1px solid #ddd;
-      box-shadow: none;
-      margin: 1rem 0;
-      padding: 1.5rem;
-    }
-
-    .category-badge {
-      border: 1px solid #2b5876;
-      background: none;
-      color: #2b5876;
-    }
-  }
-
-  /* Pulse Animation for Timer Warning */
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.05);
-      box-shadow: 0 8px 30px rgba(255, 107, 107, 0.3);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-
-  /* Additional Helper Classes */
-  .text-center {
-    text-align: center;
-  }
-
-  .mt-2 {
-    margin-top: 2rem;
-  }
-
-  .mb-2 {
-    margin-bottom: 2rem;
-  }
-
-  .w-100 {
-    width: 100%;
-  }
-
-  /* Focus States for Accessibility */
-  .form-check-input:focus,
-  .btn-feature:focus,
-  .btn-hero:focus,
-  .btn-hero-danger:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.2);
-  }
-
-  #set-timer-input:focus {
-    outline: none;
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
-  }
-
-  /* Disabled States */
-  .btn-feature:disabled,
-  .btn-hero:disabled,
-  .btn-hero-danger:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  #set-timer-input:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-
-  /* Exam Badge Styles */
-  .exam-badge {
-    position: absolute;
-    top: 1.25rem;
-    right: 4rem; /* Positioned before the bookmark button */
-    background: linear-gradient(135deg, #4e4376, #2b5876);
-    color: white;
-    padding: 0.6rem 1.2rem;
-    border-radius: 2rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 12px rgba(78, 67, 118, 0.2);
-  }
-
-  /* Adjust bookmark button position */
-  .bookmark-button {
-    position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-    font-size: 1.6rem;
-    cursor: pointer;
-    color: #ddd;
-    transition: all 0.3s ease;
-    z-index: 2;
-  }
-
-  /* Responsive adjustments for exam badge */
-  @media (max-width: 768px) {
-    .exam-badge {
-      font-size: 0.8rem;
-      padding: 0.5rem 1rem;
-      right: 3.5rem;
-    }
-
-    .bookmark-button {
-      right: 1rem;
-      font-size: 1.4rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .exam-badge {
-      position: static;
-      display: inline-block;
-      margin: 0.5rem 0;
-      font-size: 0.75rem;
-      padding: 0.4rem 0.8rem;
-    }
-
-    .category-badge {
-      position: static;
-      display: inline-block;
-      margin: 0.5rem 0.5rem 0.5rem 0;
-    }
-
-    .bookmark-button {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-    }
-  }
-
-  /* Print styles for exam badge */
-  @media print {
-    .exam-badge {
-      border: 1px solid #4e4376;
-      background: none;
-      color: #4e4376;
-    }
-  }
-</style>
 {% endblock %}

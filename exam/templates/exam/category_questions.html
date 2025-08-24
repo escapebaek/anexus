@@ -1,4 +1,38 @@
 {% extends 'base.html' %} {% block page_content %}
+<!-- 로딩 오버레이 -->
+<div
+  id="loadingOverlay"
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+  style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none; /* 초기에는 숨김 */
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+  "
+>
+  <div class="bg-white p-6 rounded-lg shadow-xl text-center">
+    <div
+      class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"
+      style="
+        animation: spin 1s linear infinite;
+        border-radius: 50%;
+        width: 3rem;
+        height: 3rem;
+        border-width: 4px;
+        border-color: #3b82f6;
+        border-top-color: transparent;
+        margin: auto;
+      "
+    ></div>
+    <p class="mt-4 text-gray-700 font-medium">결과를 불러오는 중입니다...</p>
+  </div>
+</div>
 
 <!-- Hero Section -->
 <div
@@ -8,8 +42,26 @@
   <div class="hero-content text-center">
     <h1 class="hero-title animate-fade-in">{{ category_name }}</h1>
     <p class="hero-subtitle animate-fade-in-delayed">
-      Practice questions specific to your area of study
+      엄선된 문제들로 당신의 실력을 확인해보세요.
     </p>
+    <div class="timer-controls animate-fade-in-delayed">
+      <div class="timer-input-group">
+        <input
+          type="number"
+          id="set-timer-input"
+          class="form-control"
+          min="1"
+          value="60"
+          placeholder="분"
+        />
+        <button id="start-exam-btn" class="btn-hero">시험 시작</button>
+        <!-- 시험 종료 버튼에 새로운 glass 스타일 적용 -->
+        <button id="end-exam-btn" class="btn-action-glass danger" style="display: none">
+          <i class="fas fa-stop-circle"></i> 시험 종료
+        </button>
+      </div>
+      <div id="timer-display" class="timer-display">00:00</div>
+    </div>
   </div>
   <div class="hero-wave">
     <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
@@ -22,55 +74,51 @@
 </div>
 
 <!-- Questions Section -->
-<div class="questions-section">
+<div class="questions-section questions-left-align">
   <div class="container">
-    <form id="exam-form">
+    <form id="exam-form" method="POST">
       {% csrf_token %}
       <div class="row g-4">
         {% for question in questions %}
         <div class="col-12">
           <div
             class="question-card animate-fade-in"
-            data-option1="{{ question.option1 }}"
-            data-option2="{{ question.option2 }}"
-            data-option3="{{ question.option3 }}"
-            data-option4="{{ question.option4 }}"
-            {%
-            if
-            question.option5
-            %}data-option5="{{ question.option5 }}"
-            {%
-            endif
-            %}
             data-correct-option="{{ question.correct_option }}"
           >
-            <!-- Category Badge -->
-            {% if question.category %}
-            <div class="category-badge">{{ question.category.name }}</div>
-            {% endif %}
-
-              <!-- Exam Title Badge -->
-            {% if question.exam %}
-            <div class="exam-badge">{{ question.exam.title }}</div>
-            {% endif %}
-
-            <!-- Bookmark Button -->
-            <div class="bookmark-button {% if question.is_bookmarked %}bookmarked{% endif %}" 
+            <!-- 북마크 버튼 -->
+            <div
+              class="bookmark-button {% if question.is_bookmarked %}bookmarked{% endif %}"
               data-question-id="{{ question.id }}"
-              onclick="toggleBookmark({{ question.id }}, this)">
+              onclick="toggleBookmark({{ question.id }}, this)"
+            >
               <i class="fas fa-star"></i>
             </div>
 
-            
             <div class="question-content">
-              <div class="question-text">{{ question.question_text }}</div>
+              <!-- 카테고리 표시 -->
+              {% if question.category %}
+              <div class="question-category-box">
+                <i class="fas fa-tags"></i>
+                <span>{{ question.category.name }}</span>
+              </div>
+              {% endif %}
+
+              <!-- 시험 제목 표시 -->
+              {% if question.exam %}
+              <div class="question-exam-box">
+                <i class="fas fa-file-alt"></i>
+                <span>{{ question.exam.title }}</span>
+              </div>
+              {% endif %}
+
+              <div class="question-text">{{ question.question_text|safe }}</div>
 
               {% if question.image %}
               <div class="question-image">
                 <img
                   src="{{ question.image.url }}"
                   alt="Question Image"
-                  class="img-fluid rounded"
+                  class="img-fluid"
                 />
               </div>
               {% endif %}
@@ -150,44 +198,72 @@
                 {% endif %}
               </div>
 
+              <!-- Action Buttons (새로운 스타일 적용) -->
               <div class="action-buttons">
                 <button
                   type="button"
-                  class="btn-feature"
-                  onclick="toggleAnswer('answer_{{ question.id }}')"
+                  class="btn-action-glass"
+                  onclick="toggleDisplay('answer_{{ question.id }}')"
                 >
-                  <i class="fas fa-check-circle"></i> Show Answer
+                  <i class="fas fa-check-circle"></i> 정답 보기
                 </button>
                 <button
                   type="button"
-                  class="btn-feature"
-                  onclick="toggleVisibility('comment_{{ question.id }}')"
+                  class="btn-action-glass"
+                  onclick="toggleDisplay('explanation_{{ question.id }}')"
                 >
-                  <i class="fas fa-info-circle"></i> Show Explanation
+                  <i class="fas fa-info-circle"></i> 해설 보기
                 </button>
+                {% if question.comment_image %}
+                <button
+                  type="button"
+                  class="btn-action-glass"
+                  onclick="toggleDisplay('image_{{ question.id }}')"
+                >
+                  <i class="fas fa-image"></i> 이미지 보기
+                </button>
+                {% endif %}
               </div>
 
-              <div id="answer_{{ question.id }}" class="answer-section hidden">
-                <div class="answer-badge">
-                  Correct Answer: {{ question.correct_option }}
+              <!-- 정답 표시 박스 -->
+              <div
+                id="answer_{{ question.id }}"
+                class="answer-display-box hidden"
+              >
+                <div class="answer-display-title">
+                  <i class="fas fa-check-circle"></i> 정답
+                </div>
+                <div class="answer-display-content">
+                  {{ question.correct_option }}
                 </div>
               </div>
 
+              <!-- 해설 표시 박스 -->
               <div
-                id="comment_{{ question.id }}"
-                class="comment-section hidden"
+                id="explanation_{{ question.id }}"
+                class="explanation-display-box hidden"
               >
-                {{ question.comment|safe }}
+                <div class="explanation-display-title">
+                  <i class="fas fa-info-circle"></i> 해설
+                </div>
+                <div class="explanation-display-content">
+                  {{ question.comment|safe }}
+                </div>
               </div>
+
+              <!-- 이미지 표시 박스 -->
               {% if question.comment_image %}
               <div
-                id="comment_image_{{ question.id }}"
-                class="comment-image hidden"
+                id="image_{{ question.id }}"
+                class="image-display-box hidden"
               >
+                <div class="image-display-title">
+                  <i class="fas fa-image"></i> 관련 이미지
+                </div>
                 <img
                   src="{{ question.comment_image.url }}"
                   alt="Explanation Image"
-                  class="img-fluid"
+                  class="img-fluid rounded"
                 />
               </div>
               {% endif %}
@@ -197,840 +273,202 @@
         {% endfor %}
       </div>
     </form>
-
-    <div class="text-center mt-5">
-      <button id="end-exam-btn" class="btn-hero">
-        Complete Practice
-        <i class="fas fa-flag-checkered ml-2"></i>
-      </button>
-    </div>
   </div>
 </div>
-
-<!-- Modal -->
-<div id="commentModal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <div id="modalBodyContent"></div>
-  </div>
-</div>
-
-<style>
-  /* Hero Section Styles */
-  .hero-section {
-    position: relative;
-    min-height: 60vh;
-    background: linear-gradient(135deg, #1a4569, #3d3561);
-    color: white;
-    overflow: hidden;
-    padding: 5rem 0;
-  }
-
-  .hero-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1NiIgaGVpZ2h0PSIxMDAiPgo8cmVjdCB3aWR0aD0iNTYiIGhlaWdodD0iMTAwIiBmaWxsPSIjMjIyIj48L3JlY3Q+CjxwYXRoIGQ9Ik0yOCA2NkwwIDUwTDAgMTZMMjggMEw1NiAxNkw1NiA1MEwyOCA2NkwyOCAxMDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIiBzdHJva2Utd2lkdGg9IjIiPjwvcGF0aD4KPHBhdGggZD0iTTI4IDBMMjggMzRMMCA1MEwwIDg0TDI4IDEwMEw1NiA4NEw1NiA1MEwyOCAzNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMiI+PC9wYXRoPgo8L3N2Zz4=");
-    opacity: 0.08;
-    background-size: 60px;
-  }
-
-  .hero-content {
-    position: relative;
-    z-index: 2;
-    padding: 0 20px;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .hero-title {
-    font-size: 4rem;
-    font-weight: 900;
-    margin-bottom: 1.5rem;
-    text-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    letter-spacing: -0.5px;
-  }
-
-  .hero-subtitle {
-    font-size: 1.35rem;
-    opacity: 0.95;
-    margin-bottom: 2.5rem;
-    font-weight: 400;
-    line-height: 1.6;
-  }
-
-  /* Timer Controls */
-  .timer-controls {
-    background: rgba(255, 255, 255, 0.12);
-    padding: 2.5rem;
-    border-radius: 1.25rem;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  }
-
-  .timer-input-group {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #set-timer-input {
-    width: 120px;
-    padding: 0.75rem 1rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 1.1rem;
-    text-align: center;
-  }
-
-  .timer-display {
-    font-size: 2.2rem;
-    font-weight: 700;
-    text-align: center;
-    margin-top: 1rem;
-    color: #fff;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    font-family: "Roboto Mono", monospace;
-  }
-
-  /* Questions Section */
-  .questions-section {
-    background: #f5f7fa;
-    padding: 5rem 0;
-    position: relative;
-  }
-
-  .question-card {
-    background: white;
-    border-radius: 1.25rem;
-    padding: 2.5rem;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-    border: 1px solid rgba(43, 88, 118, 0.08);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .question-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
-  }
-
-  .category-badge {
-    position: absolute;
-    top: 1.25rem;
-    left: 1.25rem;
-    background: linear-gradient(135deg, #2b5876, #4e4376);
-    color: white;
-    padding: 0.6rem 1.2rem;
-    border-radius: 2rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 12px rgba(43, 88, 118, 0.2);
-  }
-
-  .question-text {
-    font-size: 1.2rem;
-    color: #2c3e50;
-    font-weight: 500;
-    line-height: 1.7;
-    margin-bottom: 2rem;
-    padding: 1.75rem;
-    background: rgba(43, 88, 118, 0.04);
-    border-radius: 1rem;
-    border: 1px solid rgba(43, 88, 118, 0.06);
-  }
-
-  .question-image {
-    margin: 1.5rem 0;
-    border-radius: 1rem;
-    overflow: hidden;
-  }
-
-  .question-image img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-
-  /* 옵션 그리드 수정 */
-  .options-grid {
-    display: grid;
-    gap: 0.5rem; /* 보기 간 간격 조정 */
-    margin: 1.5rem 0; /* 옵션 섹션 위아래 여백 조정 */
-  }
-
-  .form-check {
-    padding: 0.75rem; /* 보기 박스 크기 더 줄이기 */
-    border: 1px solid rgba(43, 88, 118, 0.1); /* 박스 테두리 색 조정 */
-    border-radius: 0.5rem; /* 박스 둥글기 조정 */
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    background: #ffffff; /* 박스 배경 */
-    margin-bottom: 0.4rem; /* 보기 간 간격 줄이기 */
-  }
-
-  .form-check:hover {
-    background: rgba(43, 88, 118, 0.05); /* hover 시 색상 조정 */
-    transform: translateX(3px); /* hover 시 이동량 줄이기 */
-    border-color: rgba(43, 88, 118, 0.2);
-  }
-
-  .form-check-input {
-    margin-right: 0.8rem; /* 라디오 버튼과 텍스트 사이 간격 */
-    flex-shrink: 0;
-    width: 1rem; /* 라디오 버튼 크기 조정 */
-    height: 1rem;
-  }
-
-  .form-check-label {
-    margin-left: 0.5rem; /* 텍스트 왼쪽 여백 */
-    color: #2c3e50; /* 텍스트 색상 */
-    font-weight: 400; /* 글자 굵기 */
-    font-size: 1rem; /* 글자 크기 */
-    line-height: 1.4; /* 행 간격 */
-  }
-
-  /* Buttons */
-  .action-buttons {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 1.5rem;
-  }
-
-  .btn-feature {
-    background: linear-gradient(135deg, #2b5876, #4e4376);
-    color: white;
-    border: none;
-    padding: 0.9rem 1.8rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    font-size: 1rem;
-    letter-spacing: 0.3px;
-    box-shadow: 0 4px 15px rgba(43, 88, 118, 0.15);
-  }
-
-  .btn-feature:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(43, 88, 118, 0.25);
-  }
-
-  .btn-hero {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 0.9rem 1.8rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-  }
-
-  .btn-hero:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: translateY(-3px);
-  }
-
-  .btn-hero-danger {
-    background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-    color: white;
-    border: none;
-    padding: 0.9rem 1.8rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.2);
-  }
-
-  .btn-hero-danger:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.3);
-  }
-
-  /* Answer and Comment Sections */
-  .answer-section,
-  .comment-section {
-    margin-top: 2rem;
-    padding: 1.75rem;
-    border-radius: 1rem;
-    background: rgba(43, 88, 118, 0.04);
-    border: 1px solid rgba(43, 88, 118, 0.08);
-  }
-
-  .answer-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, #00b09b, #96c93d);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 2rem;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0, 176, 155, 0.2);
-  }
-
-  /* Bookmark Button */
-  .bookmark-button {
-    position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-    font-size: 1.6rem;
-    cursor: pointer;
-    color: #ddd;
-    transition: all 0.3s ease;
-    z-index: 2;
-  }
-
-  .bookmark-button.bookmarked {
-    color: #ffd700;
-    transform: scale(1.1);
-    text-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
-  }
-
-  /* Fixed Timer */
-  .fixed-timer {
-    position: fixed;
-    top: 25px;
-    right: 25px;
-    background: linear-gradient(135deg, #2b5876, #4e4376);
-    color: white;
-    padding: 1.25rem 2rem;
-    border-radius: 1.25rem;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    transition: all 0.4s ease;
-    backdrop-filter: blur(8px);
-  }
-
-  /* Modal Styles */
-  .modal {
-    display: none;
-    position: fixed;
-    z-index: 1050;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(43, 88, 118, 0.5);
-    backdrop-filter: blur(3px);
-  }
-
-  .modal-content {
-    background: white;
-    margin: 5% auto;
-    padding: 2.5rem;
-    width: 90%;
-    max-width: 800px;
-    border-radius: 1.25rem;
-    position: relative;
-    animation: modalSlide 0.3s ease-out;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  }
-
-  @keyframes modalSlide {
-    from {
-      opacity: 0;
-      transform: translateY(-30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .close {
-    position: absolute;
-    right: 1.5rem;
-    top: 1rem;
-    font-size: 2rem;
-    color: #2b5876;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-
-  .close:hover {
-    color: #4e4376;
-    transform: rotate(90deg);
-  }
-
-  /* Animation Keyframes */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.8s ease-out forwards;
-  }
-
-  .animate-fade-in-delayed {
-    animation: fadeIn 0.8s ease-out 0.3s both;
-  }
-
-  /* Utility Classes */
-  .hidden {
-    display: none;
-  }
-
-  /* Responsive Styles */
-  @media (max-width: 768px) {
-    .hero-title {
-      font-size: 2.5rem;
-    }
-
-    .hero-subtitle {
-      font-size: 1.1rem;
-    }
-
-    .timer-controls {
-      margin: 2rem 1rem 0;
-      padding: 1.5rem;
-    }
-
-    .question-card {
-      padding: 1.5rem;
-      margin: 1rem;
-    }
-
-    .action-buttons {
-      flex-direction: column;
-    }
-
-    .btn-feature {
-      width: 100%;
-      text-align: center;
-    }
-
-    .modal-content {
-      margin: 10% 5%;
-      padding: 1.5rem;
-    }
-
-    .fixed-timer {
-      top: 10px;
-      right: 10px;
-      padding: 0.75rem 1rem;
-    }
-
-    .timer-display {
-      font-size: 1.5rem;
-    }
-
-    .category-badge {
-      font-size: 0.8rem;
-      padding: 0.5rem 1rem;
-    }
-
-    .bookmark-button {
-      right: 4rem;
-      font-size: 1.4rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .hero-title {
-      font-size: 2rem;
-    }
-
-    .timer-input-group {
-      flex-direction: column;
-    }
-
-    #set-timer-input {
-      width: 100%;
-    }
-
-    .question-text {
-      font-size: 1.1rem;
-      padding: 1.25rem;
-    }
-
-    .options-grid {
-      gap: 0.4rem; /* 모바일에서 간격 더 줄이기 */
-    }
-
-    .form-check {
-      padding: 0.5rem; /* 모바일에서 보기 크기 줄이기 */
-    }
-
-    .form-check-label {
-      font-size: 0.9rem; /* 모바일에서 텍스트 크기 더 줄이기 */
-    }
-
-    .btn-feature,
-    .btn-hero,
-    .btn-hero-danger {
-      padding: 0.75rem 1.5rem;
-      font-size: 0.95rem;
-    }
-
-    .answer-badge {
-      padding: 0.6rem 1.2rem;
-      font-size: 0.9rem;
-    }
-
-    .answer-section,
-    .comment-section {
-      padding: 1.25rem;
-      margin-top: 1.5rem;
-    }
-  }
-
-  /* Print Styles */
-  @media print {
-    .hero-section,
-    .timer-controls,
-    .action-buttons,
-    .fixed-timer,
-    .bookmark-button {
-      display: none !important;
-    }
-
-    .question-card {
-      break-inside: avoid;
-      border: 1px solid #ddd;
-      box-shadow: none;
-      margin: 1rem 0;
-      padding: 1.5rem;
-    }
-
-    .category-badge {
-      border: 1px solid #2b5876;
-      background: none;
-      color: #2b5876;
-    }
-  }
-
-  /* Pulse Animation for Timer Warning */
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.05);
-      box-shadow: 0 8px 30px rgba(255, 107, 107, 0.3);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-
-  /* Additional Helper Classes */
-  .text-center {
-    text-align: center;
-  }
-
-  .mt-2 {
-    margin-top: 2rem;
-  }
-
-  .mb-2 {
-    margin-bottom: 2rem;
-  }
-
-  .w-100 {
-    width: 100%;
-  }
-
-  /* Focus States for Accessibility */
-  .form-check-input:focus,
-  .btn-feature:focus,
-  .btn-hero:focus,
-  .btn-hero-danger:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.2);
-  }
-
-  #set-timer-input:focus {
-    outline: none;
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
-  }
-
-  /* Disabled States */
-  .btn-feature:disabled,
-  .btn-hero:disabled,
-  .btn-hero-danger:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  #set-timer-input:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-
-  .exam-badge {
-    position: absolute;
-    top: 1.25rem;
-    right: 4rem;  /* bookmark 버튼 왼쪽에 위치하도록 조정 */
-    background: linear-gradient(135deg, #4e4376, #2b5876);  /* category-badge와 다른 그라데이션 */
-    color: white;
-    padding: 0.6rem 1.2rem;
-    border-radius: 2rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 12px rgba(78, 67, 118, 0.2);
-}
-
-/* 반응형 스타일 추가 */
-@media (max-width: 768px) {
-    .exam-badge {
-        font-size: 0.8rem;
-        padding: 0.5rem 1rem;
-        right: 3.5rem;  /* 모바일에서 위치 조정 */
-    }
-}
-
-/* 기존 bookmark-button 스타일 조정 */
-.bookmark-button {
-    right: 1.25rem;  /* 위치 유지 */
-}
-
-.exam-badge {
-  position: absolute;
-  top: 1.25rem;
-  right: 4rem;  /* bookmark 버튼 왼쪽에 위치하도록 조정 */
-  background: linear-gradient(135deg, #4e4376, #2b5876);  /* category-badge와 다른 그라데이션 */
-  color: white;
-  padding: 0.6rem 1.2rem;
-  border-radius: 2rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(78, 67, 118, 0.2);
-}
-
-/* 반응형 스타일 추가 */
-@media (max-width: 768px) {
-  .exam-badge {
-      font-size: 0.8rem;
-      padding: 0.5rem 1rem;
-      right: 3.5rem;  /* 모바일에서 위치 조정 */
-  }
-}
-
-/* 기존 bookmark-button 스타일 조정 */
-.bookmark-button {
-  right: 1.25rem;  /* 위치 유지 */
-}
-</style>
 
 <script>
-  // Modal 관련 요소 초기화
-  const modal = document.getElementById("commentModal");
-  const modalContent = document.getElementById("modalBodyContent");
-  const spanClose = document.querySelector(".close");
+  let timerInterval;
+  let timeRemaining;
 
-  // Modal 함수들
-  function showModal(content) {
-    modalContent.innerHTML = content;
-    modal.style.display = "block";
-    document.body.style.overflow = "hidden";
-  }
+  // --- 타이머 드래그 기능 함수 (새로 추가) ---
+  function makeDraggable(element) {
+    let offsetX, offsetY;
 
-  function closeModal() {
-    modal.style.display = "none";
-    document.body.style.overflow = "auto";
-  }
-
-  // Modal 이벤트 리스너
-  spanClose.onclick = closeModal;
-  window.onclick = (event) => {
-    if (event.target === modal) {
-      closeModal();
-    }
-  };
-
-  // 정답 및 설명 토글 함수
-  function toggleAnswer(id) {
-    const element = document.getElementById(id);
-    if (element.classList.contains("hidden")) {
-      element.classList.remove("hidden");
-      element.style.animation = "fadeIn 0.3s ease-out";
-    } else {
-      element.classList.add("hidden");
-    }
-  }
-
-  function toggleVisibility(id) {
-    const element = document.getElementById(id);
-    if (element) {
-      showModal(element.innerHTML);
-    }
-  }
-
-  // 시험 종료 처리
-  document
-    .getElementById("end-exam-btn")
-    .addEventListener("click", function () {
-      if (!confirm("Are you sure you want to end the exam?")) {
+    function onMouseDown(e) {
+      // 종료 버튼을 클릭한 경우에는 드래그를 시작하지 않음
+      if (e.target.closest('.fixed-timer-end-btn')) {
         return;
       }
+      e.preventDefault();
+      element.classList.add('dragging');
 
-      const questionBlocks = document.querySelectorAll(".question-card");
-      const csrfToken = document.querySelector(
-        'input[name="csrfmiddlewaretoken"]'
-      ).value;
+      offsetX = e.clientX - element.offsetLeft;
+      offsetY = e.clientY - element.offsetTop;
+      
+      // left 속성을 사용하기 위해 right 속성을 비활성화
+      element.style.right = 'auto';
 
-      let numCorrect = 0,
-        numIncorrect = 0,
-        numUnanswered = 0,
-        numNoanswer = 0;
-      let detailedResults = [];
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp, { once: true });
+    }
 
-      questionBlocks.forEach((block) => {
-        const questionText = block
-          .querySelector(".question-text")
-          .textContent.trim();
-        const correctOptionKey = block.dataset.correctOption || "default";
+    function onMouseMove(e) {
+      const newLeft = e.clientX - offsetX;
+      const newTop = e.clientY - offsetY;
+      element.style.left = `${newLeft}px`;
+      element.style.top = `${newTop}px`;
+    }
 
-        // Get all option texts from data attributes
-        const optionTexts = {};
-        for (let i = 1; i <= 5; i++) {
-          const key = `option${i}`;
-          if (block.dataset[key]) {
-            optionTexts[key] = block.dataset[key];
-          }
-        }
+    function onMouseUp() {
+      element.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMouseMove);
+    }
 
-        // Determine correct answer text
-        let correctAnswerText =
-          optionTexts[correctOptionKey] || correctOptionKey;
+    element.addEventListener('mousedown', onMouseDown);
+  }
 
-        // Get selected answer
-        const selectedRadio = block.querySelector(
-          'input[type="radio"]:checked'
-        );
-        const selectedAnswerText = selectedRadio ? selectedRadio.value : "";
+  function startTimer(duration) {
+    if (timerInterval) clearInterval(timerInterval);
 
-        // Determine result type
-        let resultType;
-        if (correctOptionKey === "default") {
-          numNoanswer++;
-          resultType = "noanswer";
-        } else if (!selectedAnswerText) {
-          numUnanswered++;
-          resultType = "unanswered";
-        } else if (selectedAnswerText === correctAnswerText) {
-          numCorrect++;
-          resultType = "correct";
-        } else {
-          numIncorrect++;
-          resultType = "incorrect";
-        }
+    timeRemaining = duration * 60;
+    document.getElementById("start-exam-btn").style.display = "none";
+    document.getElementById("end-exam-btn").style.display = "inline-block";
+    document.getElementById("set-timer-input").disabled = true;
 
-        detailedResults.push({
-          question: questionText,
-          selected_answer: selectedAnswerText,
-          correct_answer: correctAnswerText,
-          result: resultType,
-        });
+    let fixedTimer = document.querySelector(".fixed-timer");
+    if (!fixedTimer) {
+      fixedTimer = document.createElement("div");
+      fixedTimer.className = "fixed-timer";
+      fixedTimer.innerHTML = `
+        <div id="fixed-timer-display" class="timer-display">00:00</div>
+        <button class="fixed-timer-end-btn" onclick="endExamWithConfirmation()" title="시험 종료">
+          <i class="fas fa-power-off"></i>
+        </button>
+      `;
+      document.body.appendChild(fixedTimer);
+      makeDraggable(fixedTimer); // 타이머 생성 후 드래그 기능 활성화
+    }
+
+    timerInterval = setInterval(() => {
+      if (timeRemaining <= 0) {
+        clearInterval(timerInterval);
+        endExam();
+        return;
+      }
+      timeRemaining--;
+      const minutes = Math.floor(timeRemaining / 60);
+      const seconds = timeRemaining % 60;
+      const displayTime = `${minutes.toString().padStart(2, "0")}:${seconds
+        .toString()
+        .padStart(2, "0")}`;
+
+      document.getElementById("timer-display").textContent = displayTime;
+      const fixedTimerDisplay = document.getElementById("fixed-timer-display");
+      if (fixedTimerDisplay) {
+        fixedTimerDisplay.textContent = displayTime;
+      }
+
+      const currentFixedTimer = document.querySelector(".fixed-timer");
+      if (timeRemaining <= 300 && currentFixedTimer) {
+        currentFixedTimer.style.background = "linear-gradient(135deg, #ff6b6b, #ff4757)";
+      }
+    }, 1000);
+  }
+
+  function endExamWithConfirmation() {
+    if (confirm("정말로 시험을 종료하시겠습니까?")) {
+      endExam();
+    }
+  }
+
+  function endExam() {
+    clearInterval(timerInterval);
+    const fixedTimer = document.querySelector(".fixed-timer");
+    if (fixedTimer) fixedTimer.remove();
+
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    loadingOverlay.classList.remove("hidden");
+    loadingOverlay.style.display = "flex";
+
+    const questionBlocks = document.querySelectorAll(".question-card");
+    let numCorrect = 0, numIncorrect = 0, numUnanswered = 0, numNoanswer = 0;
+    let detailedResults = [];
+
+    questionBlocks.forEach((block) => {
+      const questionText = block.querySelector(".question-text").textContent.trim();
+      const correctOption = block.dataset.correctOption;
+      const selectedRadio = block.querySelector('input[type="radio"]:checked');
+      let resultType;
+
+      if (!correctOption || correctOption.trim() === "" || correctOption === "default") {
+        numNoanswer++;
+        resultType = "noanswer";
+      } else if (!selectedRadio) {
+        numUnanswered++;
+        resultType = "unanswered";
+      } else if (selectedRadio.value === correctOption) {
+        numCorrect++;
+        resultType = "correct";
+      } else {
+        numIncorrect++;
+        resultType = "incorrect";
+      }
+      detailedResults.push({
+        question: questionText,
+        selected_answer: selectedRadio ? selectedRadio.value : "",
+        correct_answer: correctOption || "",
+        result: resultType,
       });
-
-      // Submit results to backend
-      fetch("{% url 'save_exam_results' %}", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
-        },
-        body: JSON.stringify({
-          category_name: "{{ category_name }}",
-          num_correct: numCorrect,
-          num_incorrect: numIncorrect,
-          num_unanswered: numUnanswered,
-          num_noanswer: numNoanswer,
-          detailed_results: detailedResults,
-        }),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.status === "ok") {
-            window.location.href = `{% url 'exam_results' %}?result_id=${data.result_id}`;
-          } else {
-            showNotification("Error saving results", "error");
-          }
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-          showNotification("Network error occurred", "error");
-        });
     });
 
-  // 알림 표시 함수
-  function showNotification(message, type) {
-    const notification = document.createElement("div");
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
+    const resultData = {
+      category_name: "{{ category_name }}",
+      num_correct: numCorrect,
+      num_incorrect: numIncorrect,
+      num_unanswered: numUnanswered,
+      num_noanswer: numNoanswer,
+      detailed_results: detailedResults,
+    };
 
-    document.body.appendChild(notification);
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
-    // Animation
-    setTimeout(() => {
-      notification.style.opacity = "1";
-      notification.style.transform = "translateY(0)";
-    }, 10);
-
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-      notification.style.opacity = "0";
-      notification.style.transform = "translateY(-20px)";
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    fetch("/exam/save_exam_results/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
+      },
+      body: JSON.stringify(resultData),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "ok") {
+          window.location.href = `/exam/exam_results/?result_id=${data.result_id}`;
+        } else {
+          loadingOverlay.classList.add("hidden");
+          loadingOverlay.style.display = "none";
+          alert("결과 저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+        }
+      })
+      .catch((error) => {
+        loadingOverlay.classList.add("hidden");
+        loadingOverlay.style.display = "none";
+        console.error("Error:", error);
+        alert("결과 저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      });
   }
 
-  // Notification styles
-  const style = document.createElement("style");
-  style.textContent = `
-  .notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 15px 25px;
-    border-radius: 10px;
-    color: white;
-    opacity: 0;
-    transform: translateY(-20px);
-    transition: all 0.3s ease;
-    z-index: 1000;
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("start-exam-btn").addEventListener("click", () => {
+      const duration = parseInt(document.getElementById("set-timer-input").value, 10);
+      if (!isNaN(duration) && duration > 0) {
+        startTimer(duration);
+      } else {
+        alert("유효한 시간을 분 단위로 입력해주세요.");
+      }
+    });
+    document.getElementById("end-exam-btn").addEventListener("click", endExamWithConfirmation);
+  });
+
+  function toggleDisplay(id) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.classList.toggle("hidden");
+    }
   }
-  
-  .notification.error {
-    background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-  }
-  
-  .notification.warning {
-    background: linear-gradient(135deg, #ffd93d, #ff8f00);
-  }
-  
-  .notification.success {
-    background: linear-gradient(135deg, #00b09b, #96c93d);
-  }
-`;
-  document.head.appendChild(style);
 
   function toggleBookmark(questionId, button) {
-    const csrfToken = document.querySelector(
-      'input[name="csrfmiddlewaretoken"]'
-    ).value;
-
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
     fetch(`/exam/bookmark/${questionId}/`, {
       method: "POST",
       headers: {
@@ -1041,47 +479,15 @@
       .then((response) => response.json())
       .then((data) => {
         if (data.status === "ok") {
-          if (data.is_bookmarked) {
-            button.classList.add("bookmarked");
-          } else {
-            button.classList.remove("bookmarked");
-          }
+          button.classList.toggle("bookmarked", data.is_bookmarked);
         } else {
-          alert("Error toggling bookmark.");
+          alert("북마크 처리 중 오류가 발생했습니다.");
         }
       })
       .catch((error) => {
         console.error("Error:", error);
-        alert("Error toggling bookmark.");
+        alert("북마크 처리 중 오류가 발생했습니다.");
       });
   }
-
-  // 페이지 로드 시 CSRF 토큰 설정
-  document.addEventListener('DOMContentLoaded', function() {
-    window.toggleBookmark = function(questionId, button) {
-        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
-
-        fetch(`/exam/bookmark/${questionId}/`, {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": csrfToken,
-                "Content-Type": "application/json"
-            },
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === "ok") {
-                button.classList.toggle("bookmarked", data.is_bookmarked);
-            } else {
-                console.error("Bookmark toggle failed");
-            }
-        })
-        .catch(error => {
-            console.error("Error:", error);
-        });
-    };
-});
 </script>
-
 {% endblock %}
