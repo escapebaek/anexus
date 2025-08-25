@@ -1,0 +1,86 @@
+/* ==========================================
+   📊 TABLE SYSTEM - ELEGANT DATA DISPLAY
+   ========================================== */
+.table-responsive {
+  border-radius: 1rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  background: var(--white);
+  backdrop-filter: blur(20px);
+}
+
+.table {
+  margin-bottom: 0;
+  background: transparent;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.table th {
+  border-top: none;
+  font-weight: 700;
+  background: rgba(43, 88, 118, 0.05);
+  padding: 1.5rem;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+}
+
+.thead-dark {
+  background: var(--primary-gradient);
+  border: none;
+}
+
+.thead-dark th {
+  color: var(--text-light) !important;
+  border: none;
+  padding: 1.5rem;
+  font-weight: 600;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.table td {
+  vertical-align: middle;
+  padding: 1.2rem 1.5rem;
+  border-color: rgba(43, 88, 118, 0.08);
+  transition: var(--transition);
+}
+
+.table-hover tbody tr {
+  transition: var(--transition);
+}
+
+.table-hover tbody tr:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(43, 88, 118, 0.03),
+    rgba(78, 67, 118, 0.02)
+  );
+  transform: scale(1.01);
+}
+
+/* 테이블 셀 스타일링 (Exam results specific) */
+.question-cell {
+  max-width: 300px;
+  word-wrap: break-word;
+  font-size: 0.9rem;
+}
+
+.category-cell {
+  width: 120px;
+  max-width: 120px;
+  min-width: 100px;
+}
+
+.answer-cell {
+  max-width: 130px;
+  word-wrap: break-word;
+  font-size: 0.85rem;
+}
+
+.bookmark-cell {
+  width: 80px;
+  max-width: 80px;
+  min-width: 80px;
+  text-align: center;
+}

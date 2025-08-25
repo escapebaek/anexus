@@ -1,0 +1,66 @@
+/* ==========================================
+   ♿ ACCESSIBILITY & PREFERENCES
+   ========================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .gradient-orb,
+  .hero-title,
+  .hero-subtitle,
+  .btn-hero {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .scroll-reveal {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  :root {
+    --primary-gradient: linear-gradient(135deg, #1a365d, #2d3748);
+    --shadow-light: rgba(0, 0, 0, 0.3);
+    --shadow-medium: rgba(0, 0, 0, 0.4);
+    --shadow-heavy: rgba(0, 0, 0, 0.5);
+  }
+
+  .feature-card,
+  .category-card,
+  .exam-card,
+  .info-card,
+  .calculator-card,
+  .question-card,
+  .guideline-card {
+    border: 2px solid var(--primary-dark);
+  }
+
+  .btn-outline-gradient {
+    border-width: 3px;
+  }
+
+  .btn-hero {
+    border: 2px solid rgba(255, 255, 255, 0.8);
+  }
+
+  /* High contrast for question display boxes */
+  .question-category-box,
+  .category-display,
+  .answer-display-box,
+  .show-answer-box,
+  .explanation-display-box,
+  .show-explanation-box,
+  .image-display-box,
+  .show-image-box {
+    border-width: 3px;
+  }
+}

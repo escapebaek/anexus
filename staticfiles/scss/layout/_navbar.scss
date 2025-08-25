@@ -1,0 +1,94 @@
+/* ==========================================
+   🧭 NAVIGATION SYSTEM
+   ========================================== */
+.navbar {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 0.8rem 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 20px var(--shadow-light);
+  transition: var(--transition-fast);
+  height: var(--navbar-height);
+  display: flex;
+  align-items: center;
+  transform: translateZ(0);
+}
+
+.navbar.scrolled {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(25px);
+  box-shadow: 0 4px 30px var(--shadow-medium);
+}
+
+.navbar-brand {
+  font-weight: 900;
+  font-size: 1.6rem;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  transition: var(--transition-fast);
+  text-decoration: none;
+  margin: 0;
+  will-change: transform;
+}
+
+.navbar-brand:hover {
+  transform: scale(1.02);
+  text-decoration: none;
+}
+
+.nav-link,
+.navbar-text {
+  font-weight: 500;
+  color: var(--primary-dark) !important;
+  padding: 0.4rem 0.8rem !important;
+  transition: var(--transition-fast);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: var(--primary-light) !important;
+  background: var(--glass-bg);
+  transform: translateY(-1px);
+}
+
+.navbar-text {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  border: 1px solid var(--glass-border);
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-right: 0.5rem;
+}
+
+/* Enhanced Dropdowns */
+.dropdown-menu {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  animation: fadeInUp 0.3s ease;
+}
+
+.dropdown-item {
+  padding: 0.8rem 1.5rem;
+  transition: var(--transition);
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.dropdown-item:hover {
+  background: var(--primary-alpha);
+  color: var(--primary-dark);
+  transform: translateX(5px);
+}

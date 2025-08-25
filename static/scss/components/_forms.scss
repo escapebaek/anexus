@@ -1,0 +1,80 @@
+/* ==========================================
+   📋 FORM SYSTEM - ELEGANT INPUTS
+   ========================================== */
+.form-control {
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  transition: var(--transition);
+  background-color: var(--bg-light);
+  font-size: 1rem;
+  position: relative;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary-dark);
+  box-shadow: 0 0 0 3px var(--primary-alpha);
+  background-color: var(--white);
+  transform: translateY(-1px);
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.form-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+/* Floating Labels */
+.form-floating {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.form-floating label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  padding: 1rem;
+  pointer-events: none;
+  border: 1px solid transparent;
+  transform-origin: 0 0;
+  transition: var(--transition);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.form-control:focus ~ label,
+.form-control:not(:placeholder-shown) ~ label {
+  transform: scale(0.85) translateY(-0.5rem);
+  opacity: 0.8;
+  color: var(--primary-dark);
+}
+
+/* Input Groups */
+.input-group {
+  border-radius: 50px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: var(--white);
+}
+
+.input-group-text {
+  background: var(--white);
+  border: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+}
+
+.name-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
