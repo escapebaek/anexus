@@ -80,7 +80,7 @@
                 name="nep_conc"
                 id="nep_conc"
                 class="form-control"
-                value="20"
+                value="{% if request.GET.nep_conc %}{{ request.GET.nep_conc }}{% else %}20{% endif %}"
                 placeholder="Concentration"
               />
               <label for="nep_conc">NEP Concentration (mcg/ml)</label>
@@ -91,7 +91,7 @@
                 name="nep_dr"
                 id="nep_dr"
                 class="form-control"
-                value="0.01"
+                value="{% if request.GET.nep_dr %}{{ request.GET.nep_dr }}{% else %}0.01{% endif %}"
                 placeholder="Dose Rate"
               />
               <label for="nep_dr">NEP Dose Rate (mcg/kg/min)</label>
@@ -101,7 +101,7 @@
                 {%
                 if
                 nep_result
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -135,7 +135,7 @@
                 name="epi_conc"
                 id="epi_conc"
                 class="form-control"
-                value="20"
+                value="{% if request.GET.epi_conc %}{{ request.GET.epi_conc }}{% else %}20{% endif %}"
                 placeholder="Concentration"
               />
               <label for="epi_conc">EPI Concentration (mcg/ml)</label>
@@ -146,7 +146,7 @@
                 name="epi_dr"
                 id="epi_dr"
                 class="form-control"
-                value="0.01"
+                value="{% if request.GET.epi_dr %}{{ request.GET.epi_dr }}{% else %}0.01{% endif %}"
                 placeholder="Dose Rate"
               />
               <label for="epi_dr">EPI Dose Rate (mcg/kg/ml)</label>
@@ -156,7 +156,7 @@
                 {%
                 if
                 epi_result
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -190,7 +190,7 @@
                 name="dopa_conc"
                 id="dopa_conc"
                 class="form-control"
-                value="1"
+                value="{% if request.GET.dopa_conc %}{{ request.GET.dopa_conc }}{% else %}1{% endif %}"
                 placeholder="Concentration"
               />
               <label for="dopa_conc">DOPA Concentration (mg/ml)</label>
@@ -201,7 +201,7 @@
                 name="dopa_dr"
                 id="dopa_dr"
                 class="form-control"
-                value="5"
+                value="{% if request.GET.dopa_dr %}{{ request.GET.dopa_dr }}{% else %}5{% endif %}"
                 placeholder="Dose Rate"
               />
               <label for="dopa_dr">DOPA Dose Rate (mcg/kg/min)</label>
@@ -211,7 +211,7 @@
                 {%
                 if
                 dopa_result
-                !="test"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -245,7 +245,7 @@
                 name="dobu_conc"
                 id="dobu_conc"
                 class="form-control"
-                value="1"
+                value="{% if request.GET.dobu_conc %}{{ request.GET.dobu_conc }}{% else %}1{% endif %}"
                 placeholder="Concentration"
               />
               <label for="dobu_conc">DOBU Concentration (mg/ml)</label>
@@ -256,7 +256,7 @@
                 name="dobu_dr"
                 id="dobu_dr"
                 class="form-control"
-                value="5"
+                value="{% if request.GET.dobu_dr %}{{ request.GET.dobu_dr }}{% else %}5{% endif %}"
                 placeholder="Dose Rate"
               />
               <label for="dobu_dr">DOBU Dose Rate (mcg/kg/ml)</label>
@@ -266,7 +266,7 @@
                 {%
                 if
                 dobu_result
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -300,7 +300,7 @@
                 name="ntg_conc"
                 id="ntg_conc"
                 class="form-control"
-                value="1"
+                value="{% if request.GET.ntg_conc %}{{ request.GET.ntg_conc }}{% else %}1{% endif %}"
                 placeholder="Concentration"
               />
               <label for="ntg_conc">NTG Concentration (mg/ml)</label>
@@ -311,7 +311,7 @@
                 name="ntg_dr"
                 id="ntg_dr"
                 class="form-control"
-                value="0.5"
+                value="{% if request.GET.ntg_dr %}{{ request.GET.ntg_dr }}{% else %}0.5{% endif %}"
                 placeholder="Dose Rate"
               />
               <label for="ntg_dr">NTG Dose Rate (mcg/kg/min)</label>
@@ -321,7 +321,7 @@
                 {%
                 if
                 ntg_result
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -355,7 +355,7 @@
                 name="snp_conc"
                 id="snp_conc"
                 class="form-control"
-                value="1"
+                value="{% if request.GET.snp_conc %}{{ request.GET.snp_conc }}{% else %}1{% endif %}"
                 placeholder="Concentration"
               />
               <label for="snp_conc">SNP Concentration (mg/ml)</label>
@@ -366,7 +366,7 @@
                 name="snp_dr"
                 id="snp_dr"
                 class="form-control"
-                value="0.5"
+                value="{% if request.GET.snp_dr %}{{ request.GET.snp_dr }}{% else %}0.5{% endif %}"
                 placeholder="Dose Rate"
               />
               <label for="snp_dr">SNP Dose Rate (mcg/kg/ml)</label>
@@ -376,7 +376,7 @@
                 {%
                 if
                 snp_result
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -410,7 +410,7 @@
                 name="vaso_conc"
                 id="vaso_conc"
                 class="form-control"
-                value="1"
+                value="{% if request.GET.vaso_conc %}{{ request.GET.vaso_conc }}{% else %}1{% endif %}"
                 placeholder="Concentration"
               />
               <label for="vaso_conc">VASO Concentration (mg/ml)</label>
@@ -421,7 +421,7 @@
                 name="vaso_dr1"
                 id="vaso_dr1"
                 class="form-control"
-                value="0.04"
+                value="{% if request.GET.vaso_dr1 %}{{ request.GET.vaso_dr1 }}{% else %}0.04{% endif %}"
                 placeholder="Dose Rate 1"
               />
               <label for="vaso_dr1">VASO Dose Rate (unit/min)</label>
@@ -432,7 +432,7 @@
                 name="vaso_dr2"
                 id="vaso_dr2"
                 class="form-control"
-                value="0.04"
+                value="{% if request.GET.vaso_dr2 %}{{ request.GET.vaso_dr2 }}{% else %}0.04{% endif %}"
                 placeholder="Dose Rate 2"
               />
               <label for="vaso_dr2">VASO Dose Rate (unit/kg/hr)</label>
@@ -442,7 +442,7 @@
                 {%
                 if
                 vaso_result1
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -461,7 +461,7 @@
                 {%
                 if
                 vaso_result2
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -495,7 +495,7 @@
                 name="ppf_conc"
                 id="ppf_conc"
                 class="form-control"
-                value="20"
+                value="{% if request.GET.ppf_conc %}{{ request.GET.ppf_conc }}{% else %}20{% endif %}"
                 placeholder="Concentration"
               />
               <label for="ppf_conc">PPF Concentration (mg/ml)</label>
@@ -505,7 +505,7 @@
                 {%
                 if
                 ppf_result1
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -524,7 +524,7 @@
                 {%
                 if
                 ppf_result2
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -558,7 +558,7 @@
                 name="rftn_conc"
                 id="rftn_conc"
                 class="form-control"
-                value="20"
+                value="{% if request.GET.rftn_conc %}{{ request.GET.rftn_conc }}{% else %}20{% endif %}"
                 placeholder="Concentration"
               />
               <label for="rftn_conc">RFTN Concentration (mcg/ml)</label>
@@ -568,7 +568,7 @@
                 {%
                 if
                 rftn_result1
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -587,7 +587,7 @@
                 {%
                 if
                 rftn_result2
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -621,7 +621,7 @@
                 name="suftn_conc"
                 id="suftn_conc"
                 class="form-control"
-                value="5"
+                value="{% if request.GET.suftn_conc %}{{ request.GET.suftn_conc }}{% else %}5{% endif %}"
                 placeholder="Concentration"
               />
               <label for="suftn_conc">SuFTN Concentration (mcg/ml)</label>
@@ -631,7 +631,7 @@
                 {%
                 if
                 suftn_result1
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -650,7 +650,7 @@
                 {%
                 if
                 suftn_result2
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -684,7 +684,7 @@
                 name="txa_conc"
                 id="txa_conc"
                 class="form-control"
-                value="100"
+                value="{% if request.GET.txa_conc %}{{ request.GET.txa_conc }}{% else %}100{% endif %}"
                 placeholder="Concentration"
               />
               <label for="txa_conc">TXA Concentration (mg/ml)</label>
@@ -694,7 +694,7 @@
                 {%
                 if
                 txa_result1
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -713,7 +713,7 @@
                 {%
                 if
                 txa_result2
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -731,9 +731,7 @@
             </div>
           </div>
         </div>
-        
-        <!-- 기존 카드들: NEP, EPI, DOPA, ... (생략) -->
-        <!-- ========================================= -->
+
         <!-- Calcium Gluconate Card -->
         <div class="calculator-card animate-fade-in">
           <div class="calculator-card-header">
@@ -750,10 +748,12 @@
                 name="ca_conc"
                 id="ca_conc"
                 class="form-control"
-                value="100"
+                value="{% if request.GET.ca_conc %}{{ request.GET.ca_conc }}{% else %}100{% endif %}"
                 placeholder="Concentration (mg/ml)"
               />
-              <label for="ca_conc">Calcium Gluconate Concentration (mg/ml)</label>
+              <label for="ca_conc"
+                >Calcium Gluconate Concentration (mg/ml)</label
+              >
             </div>
 
             <!-- Bolus (g) -->
@@ -764,10 +764,10 @@
                 name="ca_bolus"
                 id="ca_bolus"
                 class="form-control"
-                value="1.0"
+                value="{% if request.GET.ca_bolus %}{{ request.GET.ca_bolus }}{% else %}1.0{% endif %}"
                 placeholder="Bolus Dose (g)"
               />
-              <label for="ca_bolus">Bolus Dose (g) [1–2 g]</label>
+              <label for="ca_bolus">Bolus Dose (g) [1—2 g]</label>
             </div>
 
             <!-- Continuous Infusion (mg/kg/hr) -->
@@ -777,10 +777,10 @@
                 name="ca_dr"
                 id="ca_dr"
                 class="form-control"
-                value="5"
+                value="{% if request.GET.ca_dr %}{{ request.GET.ca_dr }}{% else %}5{% endif %}"
                 placeholder="Dose Rate (mg/kg/hr)"
               />
-              <label for="ca_dr">Dose Rate (mg/kg/hr) [5–10]</label>
+              <label for="ca_dr">Dose Rate (mg/kg/hr) [5—10]</label>
             </div>
 
             <!-- 결과 -->
@@ -790,7 +790,7 @@
                 {%
                 if
                 ca_bolus_result
-                !="입력 후 계산하세요"
+                !="Please fill all fields for bolus"
                 %}class="result-item has-result"
                 {%
                 else
@@ -810,7 +810,7 @@
                 {%
                 if
                 ca_cont_result
-                !="입력 후 계산하세요"
+                !="Please fill all fields for continuous infusion"
                 %}class="result-item has-result"
                 {%
                 else
@@ -829,8 +829,6 @@
           </div>
         </div>
 
-
-
         <!-- Magnesium Sulfate Card -->
         <div class="calculator-card animate-fade-in">
           <div class="calculator-card-header">
@@ -847,10 +845,12 @@
                 name="mg_conc"
                 id="mg_conc"
                 class="form-control"
-                value="200"
+                value="{% if request.GET.mg_conc %}{{ request.GET.mg_conc }}{% else %}200{% endif %}"
                 placeholder="Concentration"
               />
-              <label for="mg_conc">Magnesium Sulfate Concentration (mg/ml)</label>
+              <label for="mg_conc"
+                >Magnesium Sulfate Concentration (mg/ml)</label
+              >
             </div>
             <!-- Bolus 용량 입력 (g) -->
             <div class="form-floating">
@@ -860,10 +860,12 @@
                 name="mg_bolus"
                 id="mg_bolus"
                 class="form-control"
-                value="1.0"
+                value="{% if request.GET.mg_bolus %}{{ request.GET.mg_bolus }}{% else %}1.0{% endif %}"
                 placeholder="Bolus Dose (g)"
               />
-              <label for="mg_bolus">Bolus Dose (g) [1–2 g, IV slow (30분 이상)]</label>
+              <label for="mg_bolus"
+                >Bolus Dose (g) [1—2 g, IV slow (30분 이상)]</label
+              >
             </div>
             <!-- Continuous Infusion 용량 입력 (g/hr) -->
             <div class="form-floating">
@@ -873,17 +875,19 @@
                 name="mg_infusion"
                 id="mg_infusion"
                 class="form-control"
-                value="1.0"
+                value="{% if request.GET.mg_infusion %}{{ request.GET.mg_infusion }}{% else %}1.0{% endif %}"
                 placeholder="Infusion Dose (g/hr)"
               />
-              <label for="mg_infusion">Infusion Dose (g/hr) [1–2 g/hr]</label>
+              <label for="mg_infusion">Infusion Dose (g/hr) [1—2 g/hr]</label>
             </div>
-            <!-- 결과 표시 영역 (TXA 등 다른 약들과 동일한 스타일) -->
+            <!-- 결과 표시 영역 -->
             <div class="result-box">
               <!-- Bolus 결과 -->
               <div
                 {%
-                if mg_bolus_result != "Please fill all fields for bolus"
+                if
+                mg_bolus_result
+                !="Please fill all fields for bolus"
                 %}class="result-item has-result"
                 {%
                 else
@@ -901,7 +905,9 @@
               <!-- Continuous Infusion 결과 -->
               <div
                 {%
-                if mg_infusion_result != "Please fill all fields for continuous infusion"
+                if
+                mg_infusion_result
+                !="Please fill all fields for continuous infusion"
                 %}class="result-item has-result"
                 {%
                 else
@@ -935,10 +941,12 @@
                 name="sbic_conc"
                 id="sbic_conc"
                 class="form-control"
-                value="1"
+                value="{% if request.GET.sbic_conc %}{{ request.GET.sbic_conc }}{% else %}1{% endif %}"
                 placeholder="Concentration"
               />
-              <label for="sbic_conc">Sodium Bicarbonate Concentration (mEq/ml)</label>
+              <label for="sbic_conc"
+                >Sodium Bicarbonate Concentration (mEq/ml)</label
+              >
             </div>
             <div class="form-floating">
               <input
@@ -946,17 +954,19 @@
                 name="sbic_dr"
                 id="sbic_dr"
                 class="form-control"
-                value="1"
+                value="{% if request.GET.sbic_dr %}{{ request.GET.sbic_dr }}{% else %}1{% endif %}"
                 placeholder="Dose Rate"
               />
-              <label for="sbic_dr">Sodium Bicarbonate Bolus (mEq/kg) [1 mEq/kg]</label>
+              <label for="sbic_dr"
+                >Sodium Bicarbonate Bolus (mEq/kg) [1 mEq/kg]</label
+              >
             </div>
             <div class="result-box">
               <div
                 {%
                 if
                 sbic_result
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -991,10 +1001,12 @@
                 name="phen_conc"
                 id="phen_conc"
                 class="form-control"
-                value="100"
+                value="{% if request.GET.phen_conc %}{{ request.GET.phen_conc }}{% else %}100{% endif %}"
                 placeholder="Concentration (mcg/ml)"
               />
-              <label for="phen_conc">Phenylephrine Concentration (mcg/ml)</label>
+              <label for="phen_conc"
+                >Phenylephrine Concentration (mcg/ml)</label
+              >
             </div>
             <!-- Bolus 용량 입력 (mcg) -->
             <div class="form-floating">
@@ -1003,10 +1015,12 @@
                 name="phen_bolus"
                 id="phen_bolus"
                 class="form-control"
-                value="50"
+                value="{% if request.GET.phen_bolus %}{{ request.GET.phen_bolus }}{% else %}50{% endif %}"
                 placeholder="Bolus Dose (mcg)"
               />
-              <label for="phen_bolus">Bolus Dose (mcg) [50–100 mcg IV push]</label>
+              <label for="phen_bolus"
+                >Bolus Dose (mcg) [50—100 mcg IV push]</label
+              >
             </div>
             <!-- Continuous infusion 용량 입력 (mcg/kg/min) -->
             <div class="form-floating">
@@ -1015,23 +1029,25 @@
                 name="phen_dr"
                 id="phen_dr"
                 class="form-control"
-                value="0.1"
+                value="{% if request.GET.phen_dr %}{{ request.GET.phen_dr }}{% else %}0.1{% endif %}"
                 placeholder="Dose Rate (mcg/kg/min)"
               />
-              <label for="phen_dr">Dose Rate (mcg/kg/min) [0.1–0.5]</label>
+              <label for="phen_dr">Dose Rate (mcg/kg/min) [0.1—0.5]</label>
             </div>
             <!-- 결과 표시 영역 -->
             <div class="result-box">
               <!-- Bolus 결과 -->
               <div
                 {%
-                  if phen_bolus_result != "입력 후 계산하세요"
+                if
+                phen_bolus_result
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
-                  else
+                else
                 %}class="result-item"
                 {%
-                  endif
+                endif
                 %}
               >
                 <div class="result-label">
@@ -1043,13 +1059,15 @@
               <!-- Continuous infusion 결과 -->
               <div
                 {%
-                  if phen_cont_result != "입력 후 계산하세요"
+                if
+                phen_cont_result
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
-                  else
+                else
                 %}class="result-item"
                 {%
-                  endif
+                endif
                 %}
               >
                 <div class="result-label">
@@ -1078,13 +1096,14 @@
                 name="dant_conc"
                 id="dant_conc"
                 class="form-control"
-                value="20"
+                value="{% if request.GET.dant_conc %}{{ request.GET.dant_conc }}{% else %}20{% endif %}"
                 placeholder="Concentration (mg/ml)"
               />
               <label for="dant_conc">Dantrolene Concentration (mg/ml)</label>
             </div>
-            <p style="margin-top: 10px; font-size: 0.9em; color: #555;">
-              Bolus: 2.5 mg/kg IV slow push. Repeat every 5–10 min up to a total of 10 mg/kg.
+            <p style="margin-top: 10px; font-size: 0.9em; color: #555">
+              Bolus: 2.5 mg/kg IV slow push. Repeat every 5—10 min up to a total
+              of 10 mg/kg.
             </p>
 
             <!-- Continuous Infusion (mg/kg/hr) -->
@@ -1095,10 +1114,12 @@
                 name="dant_infusion"
                 id="dant_infusion"
                 class="form-control"
-                value="0.25"
+                value="{% if request.GET.dant_infusion %}{{ request.GET.dant_infusion }}{% else %}0.25{% endif %}"
                 placeholder="Infusion Dose (mg/kg/hr)"
               />
-              <label for="dant_infusion">Continuous Infusion (mg/kg/hr) [0.25–0.5]</label>
+              <label for="dant_infusion"
+                >Continuous Infusion (mg/kg/hr) [0.25—0.5]</label
+              >
             </div>
 
             <!-- 결과 -->
@@ -1108,7 +1129,7 @@
                 {%
                 if
                 dant_bolus_result
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -1129,7 +1150,7 @@
                 {%
                 if
                 dant_max_result
-                !="입력 후 계산하세요"
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -1150,7 +1171,7 @@
                 {%
                 if
                 dant_infusion_result
-                !="입력 후 계산하세요"
+                !="Please fill all fields for continuous infusion"
                 %}class="result-item has-result"
                 {%
                 else
@@ -1169,7 +1190,6 @@
           </div>
         </div>
 
-
         <!-- Lidocaine Card -->
         <div class="calculator-card animate-fade-in">
           <div class="calculator-card-header">
@@ -1186,7 +1206,7 @@
                 name="lido_conc"
                 id="lido_conc"
                 class="form-control"
-                value="20"
+                value="{% if request.GET.lido_conc %}{{ request.GET.lido_conc }}{% else %}20{% endif %}"
                 placeholder="Concentration (mg/ml)"
               />
               <label for="lido_conc">2% Lidocaine Concentration (mg/ml)</label>
@@ -1198,10 +1218,12 @@
                 name="lido_bolus"
                 id="lido_bolus"
                 class="form-control"
-                value="1.0"
+                value="{% if request.GET.lido_bolus %}{{ request.GET.lido_bolus }}{% else %}1.0{% endif %}"
                 placeholder="Bolus Dose (mg/kg)"
               />
-              <label for="lido_bolus">Bolus Dose (mg/kg) [1–1.5 mg/kg over 2–3 min]</label>
+              <label for="lido_bolus"
+                >Bolus Dose (mg/kg) [1—1.5 mg/kg over 2—3 min]</label
+              >
             </div>
             <!-- Continuous infusion 용량 입력 (mg/min) -->
             <div class="form-floating">
@@ -1210,23 +1232,30 @@
                 name="lido_infusion"
                 id="lido_infusion"
                 class="form-control"
-                value="1"
+                value="{% if request.GET.lido_infusion %}{{ request.GET.lido_infusion }}{% else %}1{% endif %}"
                 placeholder="Infusion Dose (mg/min)"
               />
-              <label for="lido_infusion">Continuous Infusion (mg/min) [1–4 mg/min]</label>
+              <label for="lido_infusion"
+                >Continuous Infusion (mg/min) [1—4 mg/min]</label
+              >
             </div>
             <!-- 결과 표시 영역 -->
             <div class="result-box">
               <!-- Bolus 결과 -->
               <div
                 {%
-                  if lido_bolus_result != "Please fill all fields!!" and lido_bolus_result != "Please fill bolus fields!"
+                if
+                lido_bolus_result
+                !="Please fill all fields!!"
+                and
+                lido_bolus_result
+                !="Please fill bolus fields!"
                 %}class="result-item has-result"
                 {%
-                  else
+                else
                 %}class="result-item"
                 {%
-                  endif
+                endif
                 %}
               >
                 <div class="result-label">
@@ -1238,13 +1267,18 @@
               <!-- Continuous infusion 결과 -->
               <div
                 {%
-                  if lido_infusion_result != "Please fill all fields!!" and lido_infusion_result != "Please fill infusion fields!"
+                if
+                lido_infusion_result
+                !="Please fill all fields!!"
+                and
+                lido_infusion_result
+                !="Please fill infusion fields!"
                 %}class="result-item has-result"
                 {%
-                  else
+                else
                 %}class="result-item"
                 {%
-                  endif
+                endif
                 %}
               >
                 <div class="result-label">
@@ -1273,7 +1307,7 @@
                 name="atropine_conc"
                 id="atropine_conc"
                 class="form-control"
-                value="0.5"
+                value="{% if request.GET.atropine_conc %}{{ request.GET.atropine_conc }}{% else %}0.5{% endif %}"
                 placeholder="Concentration (mg/ml)"
               />
               <label for="atropine_conc">Atropine Concentration (mg/ml)</label>
@@ -1286,13 +1320,16 @@
                 name="atropine_bolus"
                 id="atropine_bolus"
                 class="form-control"
-                value="0.5"
+                value="{% if request.GET.atropine_bolus %}{{ request.GET.atropine_bolus }}{% else %}0.5{% endif %}"
                 placeholder="Bolus Dose (mg)"
               />
-              <label for="atropine_bolus">Bolus Dose (mg) [0.5 mg per dose]</label>
+              <label for="atropine_bolus"
+                >Bolus Dose (mg) [0.5 mg per dose]</label
+              >
             </div>
-            <p style="margin-top: 10px; font-size: 0.9em; color: #555;">
-              Bolus: 0.5 mg IV bolus. Repeat every 3–5 min up to a total of 3 mg.
+            <p style="margin-top: 10px; font-size: 0.9em; color: #555">
+              Bolus: 0.5 mg IV bolus. Repeat every 3—5 min up to a total of 3
+              mg.
             </p>
 
             <!-- 결과 -->
@@ -1301,7 +1338,7 @@
                 {%
                 if
                 atropine_bolus_result
-                !="입력 후 계산하세요"
+                !="Invalid input!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -1320,7 +1357,7 @@
                 {%
                 if
                 atropine_max_result
-                !="입력 후 계산하세요"
+                !="Invalid input!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -1339,7 +1376,7 @@
                 {%
                 if
                 atropine_cont_result
-                !="입력 후 계산하세요"
+                !="Invalid input!"
                 %}class="result-item has-result"
                 {%
                 else
@@ -1358,7 +1395,6 @@
           </div>
         </div>
 
-
         <!-- Amiodarone Card -->
         <div class="calculator-card animate-fade-in">
           <div class="calculator-card-header">
@@ -1372,16 +1408,28 @@
             <div class="form-floating">
               <input
                 type="number"
+                name="amio_conc"
+                id="amio_conc"
+                class="form-control"
+                value="{% if request.GET.amio_conc %}{{ request.GET.amio_conc }}{% else %}1.5{% endif %}"
+                placeholder="Concentration (mg/ml)"
+              />
+              <label for="amio_conc">Amiodarone Concentration (mg/ml)</label>
+            </div>
+            <div class="form-floating">
+              <input
+                type="number"
                 name="amio_bolus"
                 id="amio_bolus"
                 class="form-control"
-                value="5"
+                value="{% if request.GET.amio_bolus %}{{ request.GET.amio_bolus }}{% else %}5{% endif %}"
                 placeholder="Bolus Dose (mg/kg)"
               />
               <label for="amio_bolus">Amiodarone Bolus Dose (mg/kg)</label>
             </div>
-            <p style="margin-top: 10px; font-size: 0.9em; color: #555;">
-              Bolus: 5 mg/kg IV bolus. (실제 임상에서는 300 mg 또는 150 mg씩 여러 번 투여)
+            <p style="margin-top: 10px; font-size: 0.9em; color: #555">
+              Bolus: 5 mg/kg IV bolus. (실제 임상에서는 300 mg 또는 150 mg씩
+              여러 번 투여)
             </p>
             <!-- Infusion용 농도는 희석 후 1.5 mg/mL 사용 -->
             <div class="form-floating">
@@ -1391,22 +1439,26 @@
                 name="amio_infusion"
                 id="amio_infusion"
                 class="form-control"
-                value="5"
+                value="{% if request.GET.amio_infusion %}{{ request.GET.amio_infusion }}{% else %}5{% endif %}"
                 placeholder="Infusion Dose (mg/min)"
               />
-              <label for="amio_infusion">Amiodarone Infusion Dose (mg/min) [예: 5 mg/min]</label>
+              <label for="amio_infusion"
+                >Amiodarone Infusion Dose (mg/min) [예: 5 mg/min]</label
+              >
             </div>
             <div class="result-box">
               <!-- Bolus 결과 -->
               <div
                 {%
-                  if amio_result_bolus != "입력 후 계산하세요"
+                if
+                amio_result_bolus
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
-                  else
+                else
                 %}class="result-item"
                 {%
-                  endif
+                endif
                 %}
               >
                 <div class="result-label">
@@ -1418,13 +1470,15 @@
               <!-- Continuous Infusion 결과 -->
               <div
                 {%
-                  if amio_result_infusion != "입력 후 계산하세요"
+                if
+                amio_result_infusion
+                !="Please fill all the fields!!"
                 %}class="result-item has-result"
                 {%
-                  else
+                else
                 %}class="result-item"
                 {%
-                  endif
+                endif
                 %}
               >
                 <div class="result-label">
@@ -1436,8 +1490,9 @@
             </div>
           </div>
         </div>
-      <!-- End New Drugs Cards -->
-      <!-- ======================================= -->
+        <!-- End New Drugs Cards -->
+        <!-- ======================================= -->
+      </div>
     </form>
 
     <button
@@ -1451,4 +1506,3 @@
   </div>
 </div>
 {% endblock %}
-

@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['.vercel.app', 'www.anexus.site', 'anexus.site', '127.0.0.1']
 
@@ -122,9 +122,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # collectstatic 시 파일이 모일 곳
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'schedule', 'static'),
+    os.path.join(BASE_DIR, 'static'),  # 프로젝트 루트의 static 폴더 추가
+    os.path.join(BASE_DIR, 'schedule', 'static'),  # schedule 앱의 static 폴더
 ]
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 

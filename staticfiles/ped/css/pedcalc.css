@@ -1,0 +1,32 @@
+/* =========================================
+   Pediatric Calculator Minimal Overrides
+   - 공통 테마: calculator/css/calculator.css 를 반드시 먼저 로드
+   - "동일한 레이아웃/스타일" 유지 목적이므로 기본값은 무오버라이드
+   ========================================= */
+
+/* ── 필요시 선택 적용 (주석 해제) ─────────────────────────── */
+
+/* (선택) Pediatric만 톤을 바꾸고 싶다면
+:root {
+  --primary-gradient: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+*/
+
+/* (선택) 결과값이 길 때 줄바꿈 허용
+.result-value {
+  white-space: normal;
+  word-break: break-word;
+}
+*/
+
+/* (선택) 모바일에서 버튼을 화면 폭으로
+@media (max-width: 768px) {
+  .btn-calculate {
+    width: calc(100% - 2rem);
+    left: 1rem;
+    right: 1rem;
+    text-align: center;
+    justify-content: center;
+  }
+}
+*/

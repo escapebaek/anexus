@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings  # settings.AUTH_USER_MODEL을 사용하기 위해 추가
 from django.contrib.auth import get_user_model  # User 모델을 가져오기 위해 추가
+import re
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -24,6 +25,10 @@ class Question(models.Model):
     )
     question_text = models.TextField()
     image = models.ImageField(upload_to='question_images/', blank=True, null=True)
+    
+    # 새로 추가: 유튜브 동영상 URL 필드
+    youtube_url = models.URLField(blank=True, null=True, help_text="유튜브 동영상 URL을 입력하세요")
+    
     option1 = models.CharField(max_length=200, default='default')
     option2 = models.CharField(max_length=200, default='default')
     option3 = models.CharField(max_length=200, default='default')
@@ -32,6 +37,10 @@ class Question(models.Model):
     correct_option = models.CharField(max_length=200, default='default')
     comment = models.TextField(default='default')  # Supports multiline comments
     comment_image = models.ImageField(upload_to='question_images/', blank=True, null=True)
+    
+    # 해설용 유튜브 동영상 URL 필드 (중복 제거)
+    comment_youtube_url = models.URLField(blank=True, null=True, help_text="해설용 유튜브 동영상 URL을 입력하세요")
+    
     order = models.PositiveIntegerField(default=0)
     category = models.ForeignKey(
         Category, on_delete=models.SET_NULL, null=True, blank=True
@@ -42,6 +51,38 @@ class Question(models.Model):
 
     def __str__(self):
         return self.question_text
+    
+    def get_youtube_embed_id(self):
+        """유튜브 URL에서 동영상 ID를 추출하는 메서드"""
+        if not self.youtube_url:
+            return None
+        
+        patterns = [
+            r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
+            r'youtube\.com\/watch\?.*v=([^&\n?#]+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, self.youtube_url)
+            if match:
+                return match.group(1)
+        return None
+    
+    def get_comment_youtube_embed_id(self):
+        """해설용 유튜브 URL에서 동영상 ID를 추출하는 메서드"""
+        if not self.comment_youtube_url:
+            return None
+        
+        patterns = [
+            r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
+            r'youtube\.com\/watch\?.*v=([^&\n?#]+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, self.comment_youtube_url)
+            if match:
+                return match.group(1)
+        return None
 
 
 User = get_user_model()  # 현재 프로젝트에서 사용 중인 사용자 모델을 가져옴
