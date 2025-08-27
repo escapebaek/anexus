@@ -32,6 +32,7 @@
 @use "components/chat";
 @use "components/timer";
 @use "components/bookmark";
+@use "components/board";
 @use "components/etc"; // 나머지 스타일
 
 // 5. Media Queries & Special Modes (Should be loaded last)

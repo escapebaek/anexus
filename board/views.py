@@ -4,10 +4,25 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Board, Comment
 from .forms import BoardForm, CommentForm
+from django.core.paginator import Paginator # Paginator를 import 합니다.
 
 def board_index(request):
-    boards = Board.objects.all()
-    return render(request, 'board/board_index.html', {'boards': boards})
+    # 모든 게시글을 ID의 역순(최신순)으로 가져옵니다.
+    all_boards = Board.objects.all().order_by('-id')
+    
+    # Paginator 객체를 생성합니다. (페이지당 10개의 게시글을 보여주기)
+    paginator = Paginator(all_boards, 10) 
+    
+    # URL에서 'page' 파라미터를 가져옵니다. 없으면 1로 간주합니다.
+    page_number = request.GET.get('page')
+    
+    # 해당 페이지의 게시글 목록 객체(page_obj)를 생성합니다.
+    # page_obj는 현재 페이지의 게시물, 페이지 번호 등 모든 정보를 담고 있습니다.
+    page_obj = paginator.get_page(page_number)
+    
+    # 이제 'boards' 대신 'page_obj'를 템플릿으로 전달합니다.
+    context = {'page_obj': page_obj}
+    return render(request, 'board/board_index.html', context)
 
 @login_required
 def board_detail(request, pk):

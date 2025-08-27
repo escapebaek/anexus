@@ -1,50 +1,97 @@
-{% extends 'base.html' %} {% load static %} {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/board/common.css' %}" />
-<link rel="stylesheet" href="{% static 'css/board/board_index.css' %}" />
-{% endblock %} {% block page_content %}
-<div class="container mt-5">
-  <div class="card shadow-lg">
-    <div
-      class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center"
-    >
-      <h3 class="mb-0">ANExuS Board</h3>
-      <a href="{% url 'board_create' %}" class="btn btn-hero">
-        <i class="fas fa-plus mr-2"></i>Create Post
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_content %}
+<div class="board-container">
+  <div class="board-wrapper">
+
+    <!-- 페이지 헤더 -->
+    <div class="board-header">
+      <h2 class="section-title text-gradient" style="margin-bottom: 0;">ANExuS Board</h2>
+      <a href="{% url 'board_create' %}" class="btn btn-gradient">
+        <i class="fas fa-pen me-2"></i>새 글 작성
       </a>
     </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th class="text-center">ID</th>
-              <th>Title</th>
-              <th class="text-center">Author</th>
-              <th class="text-center">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for board in boards %}
-            <tr>
-              <td class="text-center">{{ board.id }}</td>
-              <td>
-                <a
-                  href="{% url 'board_detail' board.pk %}"
-                  class="text-decoration-none text-primary"
-                >
-                  {{ board.title }}
-                </a>
-              </td>
-              <td class="text-center">{{ board.author }}</td>
-              <td class="text-center">
-                {{ board.created_date | date:"Y-m-d H:i" }}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+
+    <!-- 게시글 목록 컨테이너 -->
+    <div class="board-list-container">
+      <!-- 목록 헤더 -->
+      <div class="board-list-header d-none d-md-flex"> {# 모바일에서는 숨김 #}
+        <div class="post-id">번호</div>
+        <div class="post-title-col">제목</div>
+        <div class="post-author">작성자</div>
+        <div class="post-date">작성일</div>
       </div>
+
+      <!-- 게시글 목록 -->
+      <ul class="post-list">
+        {% for board in page_obj %} {# 이전 'boards'에서 'page_obj'로 변경 #}
+        <li class="post-item">
+          <div class="post-id">{{ board.id }}</div>
+          <div class="post-title-col">
+            <a href="{% url 'board_detail' board.pk %}" class="post-title-link">
+              {{ board.title }}
+            </a>
+            {% if board.comments.count > 0 %}
+            <span class="comment-count ms-1">[{{ board.comments.count }}]</span>
+            {% endif %}
+          </div>
+          <div class="post-author">{{ board.author }}</div>
+          <div class="post-date">{{ board.created_date|date:"y.m.d" }}</div>
+        </li>
+        {% empty %}
+        <li class="empty-board">
+          <div class="empty-icon"><i class="fas fa-feather-alt"></i></div>
+          <p>아직 작성된 게시글이 없습니다.<br>첫 번째 글을 남겨주세요!</p>
+        </li>
+        {% endfor %}
+      </ul>
     </div>
+    
+    <!-- 페이지네이션 (Pagination) - 동적으로 생성되도록 수정 -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container">
+      <nav aria-label="Page navigation">
+        <ul class="pagination">
+          {# 이전 페이지 버튼 #}
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled">
+              <a class="page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a>
+            </li>
+          {% endif %}
+          
+          {# 페이지 번호들 #}
+          {% for page_number in page_obj.paginator.page_range %}
+            {% if page_number == page_obj.number %}
+              <li class="page-item active" aria-current="page">
+                <a class="page-link" href="#">{{ page_number }}</a>
+              </li>
+            {% else %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_number }}">{{ page_number }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+          
+          {# 다음 페이지 버튼 #}
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled">
+              <a class="page-link" href="#" tabindex="-1" aria-disabled="true">&raquo;</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+
   </div>
 </div>
-{% endblock %}
+{% endblock page_content %}
