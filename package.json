@@ -4,8 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build:css": "sass static/scss/main.scss static/css/components.css --style=compressed --watch"
+    "build": "sass static/scss/main.scss static/css/components.css --style=compressed"
   },
   "repository": {
     "type": "git",
