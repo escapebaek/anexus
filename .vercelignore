@@ -1,25 +1,27 @@
 # Vercel deployment ignore list
 
 # Ignore the virtual environment
+.git/
+node_modules/
+pycache/
+\*.pyc
+.venv/
 venv/
+env/
 
-# Ignore collected static files (Vercel handles this)
 staticfiles/
 
-# Ignore Git directory
-.git/
-
-# Ignore Python cache
-__pycache__/
-*.pyc
-
-# Ignore local development files
-.env
-*.log
+.env*
+.log
 *~
+db.sqlite3
 
-# Ignore node modules if any
-node_modules/
-
-# Ignore media files (should be served from a storage service like S3)
 media/
+
+.gitignore
+README.md
+docs/
+tests/
+_.ipynb
+_.sql
+\*.dump

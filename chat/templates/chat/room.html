@@ -1,82 +1,368 @@
-{% extends 'base.html' %}
-{% load static %}
+{% extends 'base.html' %} {% load static %} {% block page_content %}
 
-{% block custom_css %}
-<link rel="stylesheet" href="{% static 'chat/css/room.css' %}">
-{% endblock %}
+<!-- 페이지 상단 헤더 -->
+<div class="header-section compact">
+  <div class="header-overlay"></div>
+  <div class="container text-center">
+    <h1 class="page-title text-glow">Real-time Chat</h1>
+    <p class="page-subtitle">실시간으로 대화를 나눠보세요.</p>
+  </div>
+</div>
 
-{% block page_content %}
-<div class="chat-container">
-  <div class="chat-header">
-    <div class="header-left">
-      <a href="{% url 'lobby' %}" class="back-btn">
-        <i class="fas fa-arrow-left"></i>
-      </a>
-      <h2 class="room-title">{{ room.name }}</h2>
+<!-- 채팅 UI 컨테이너 -->
+<div class="chat-page-container">
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="header-left">
+        <a href="{% url 'lobby' %}" class="back-btn" aria-label="Back to Lobby">
+          <i class="fas fa-arrow-left"></i>
+        </a>
+        <h2 class="room-title">{{ room.name }}</h2>
+      </div>
+      {% if room.owner == user %}
+      <div class="header-actions">
+        <form
+          method="POST"
+          action="{% url 'delete_room' room_name=room.name %}"
+        >
+          {% csrf_token %}
+          <button
+            type="submit"
+            class="btn delete-btn"
+            aria-label="Delete Room"
+            onclick="return confirm('정말로 이 채팅방을 삭제하시겠습니까?')"
+          >
+            <i class="fas fa-trash"></i>
+          </button>
+        </form>
+      </div>
+      {% endif %}
     </div>
-    {% if room.owner == user %}
-    <div class="header-actions">
-      <form
-        method="POST"
-        action="{% url 'delete_room' room_name=room.name %}"
-        class="delete-form"
-      >
+
+    {% if requires_password %}
+    <div class="password-form-container">
+      <div class="password-form-card">
+        <h4><i class="fas fa-lock me-2"></i>비밀번호 입력</h4>
+        <form id="passwordForm">
+          {% csrf_token %}
+          <div class="form-floating mb-3">
+            <input
+              type="password"
+              class="form-control"
+              id="password"
+              name="password"
+              placeholder="Password"
+              required
+            />
+            <label for="password">Password</label>
+          </div>
+          <button type="submit" class="btn btn-gradient w-100">입장하기</button>
+          <div
+            id="passwordError"
+            class="text-danger mt-2"
+            style="display: none"
+          >
+            비밀번호가 올바르지 않습니다.
+          </div>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="chat-messages" id="chat-log">
+      {% for message in messages %} {% if message.user == user %}
+      <!-- 내 메시지 -->
+      <div class="message message-own">
+        <div class="message-bubble">
+          <p class="message-content">{{ message.content|linebreaksbr }}</p>
+          <span class="message-timestamp">{{ message.formatted_time }}</span>
+        </div>
+      </div>
+      {% else %}
+      <!-- 다른 사람 메시지 -->
+      <div class="message message-other">
+        <span class="message-author">{{ message.user.username }}</span>
+        <div class="message-bubble">
+          <p class="message-content">{{ message.content|linebreaksbr }}</p>
+          <span class="message-timestamp">{{ message.formatted_time }}</span>
+        </div>
+      </div>
+      {% endif %} {% endfor %}
+    </div>
+
+    <div class="chat-input-area">
+      <form id="chat-message-form" class="d-flex w-100">
         {% csrf_token %}
-        <button type="submit" class="delete-btn">
-          <i class="fas fa-trash"></i>
+        <textarea
+          id="chat-message-input"
+          class="message-input"
+          placeholder="메시지를 입력하세요..."
+          autocomplete="off"
+          rows="1"
+        ></textarea>
+        <button
+          type="submit"
+          id="chat-message-submit"
+          class="send-btn"
+          aria-label="Send Message"
+        >
+          <i class="fas fa-paper-plane"></i>
         </button>
       </form>
     </div>
     {% endif %}
   </div>
-
-  {% if requires_password %}
-  <div class="password-form">
-    <form id="passwordForm">
-      {% csrf_token %}
-      <div class="mb-3">
-        <label for="password" class="form-label">Password</label>
-        <input type="password" class="form-control" id="password" name="password" required>
-      </div>
-      <button type="submit" class="btn btn-primary">Submit</button>
-      <div id="passwordError" class="text-danger mt-2" style="display:none;">
-        Incorrect password. Please try again.
-      </div>
-    </form>
-  </div>
-  {% else %}
-  <div class="chat-messages" id="messages">
-    {% for message in messages %}
-    <div
-      class="message {% if message.user.username == user.username %}message-own{% else %}message-other{% endif %}"
-    >
-      {% if message.user.username != user.username %}
-      <span class="message-author">{{ message.user.username }}</span>
-      {% endif %}
-      <div class="message-bubble">{{ message.content }}</div>
-    </div>
-    {% endfor %}
-  </div>
-
-  <div class="chat-input-area">
-    <form method="POST" id="messageForm" class="d-flex w-100">
-      {% csrf_token %}
-      <input
-        type="text"
-        name="message"
-        class="message-input"
-        placeholder="Type a message"
-        required
-      />
-      <button type="submit" class="send-btn">
-        <i class="fas fa-paper-plane"></i>
-      </button>
-    </form>
-  </div>
-  {% endif %}
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="{% static 'chat/js/room.js' %}"></script>
-{% endblock %}
+<!-- JavaScript 변수들을 HTML 내에 안전하게 전달 -->
+<script id="json-data" type="application/json">
+  {
+    "roomName": "{{ room.name|escapejs }}",
+    "userName": "{{ user.username|escapejs }}",
+    "requiresPassword": {% if requires_password %}true{% else %}false{% endif %}
+  }
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const jsonData = JSON.parse(
+      document.getElementById("json-data").textContent
+    );
+
+    if (jsonData.requiresPassword) {
+      handlePasswordForm(jsonData);
+    } else {
+      initializeChat(jsonData);
+    }
+  });
+
+  function initializeChat(data) {
+    const { roomName, userName } = data;
+
+    const chatLog = document.getElementById("chat-log");
+    const messageForm = document.getElementById("chat-message-form");
+    const messageInput = document.getElementById("chat-message-input");
+    const submitButton = document.getElementById("chat-message-submit");
+
+    if (!chatLog || !messageForm || !messageInput || !submitButton) {
+      console.error("Essential chat elements not found!");
+      return;
+    }
+
+    // Auto-resize textarea
+    messageInput.addEventListener("input", () => {
+      messageInput.style.height = "auto";
+      messageInput.style.height = messageInput.scrollHeight + "px";
+    });
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws/chat/${roomName}/`;
+
+    let chatSocket = null;
+    let isConnected = false;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+
+    function connect() {
+      chatSocket = new WebSocket(wsUrl);
+
+      chatSocket.onopen = function (e) {
+        isConnected = true;
+        reconnectAttempts = 0;
+        showConnectionStatus("연결됨", true);
+      };
+
+      chatSocket.onmessage = function (e) {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.error) {
+            showErrorMessage(data.error);
+          } else {
+            addMessageToChat(data, userName);
+          }
+        } catch (error) {
+          console.error("Message parsing error:", error);
+        }
+      };
+
+      chatSocket.onclose = function (e) {
+        isConnected = false;
+        showConnectionStatus("연결 끊김", false);
+        if (e.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          setTimeout(connect, 2000 * reconnectAttempts);
+        }
+      };
+
+      chatSocket.onerror = function (e) {
+        showConnectionStatus("연결 오류", false);
+        console.error("WebSocket error:", e);
+      };
+    }
+
+    connect(); // 초기 연결 시도
+
+    let isSubmitting = false;
+    messageForm.onsubmit = function (e) {
+      e.preventDefault();
+      if (isSubmitting) return;
+
+      const message = messageInput.value.trim();
+      if (!message) return;
+
+      if (!isConnected || chatSocket.readyState !== WebSocket.OPEN) {
+        showErrorMessage("연결이 끊어져 있습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
+      isSubmitting = true;
+      const originalIcon = submitButton.innerHTML;
+      submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      submitButton.disabled = true;
+
+      try {
+        chatSocket.send(JSON.stringify({ message: message }));
+        messageInput.value = "";
+        messageInput.style.height = "auto"; // Reset height after sending
+        messageInput.focus();
+      } catch (error) {
+        console.error("Send error:", error);
+        showErrorMessage("메시지 전송에 실패했습니다.");
+      } finally {
+        setTimeout(() => {
+          isSubmitting = false;
+          submitButton.innerHTML = originalIcon;
+          submitButton.disabled = false;
+        }, 200);
+      }
+    };
+
+    messageInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (!isSubmitting) {
+          messageForm.dispatchEvent(new Event("submit", { cancelable: true }));
+        }
+      }
+    });
+  }
+
+  function addMessageToChat(data, currentUser) {
+    const chatLog = document.getElementById("chat-log");
+    if (!chatLog) return;
+
+    const messageDiv = document.createElement("div");
+    messageDiv.className =
+      data.username === currentUser
+        ? "message message-own"
+        : "message message-other";
+
+    const isScrolledToBottom =
+      chatLog.scrollHeight - chatLog.clientHeight <= chatLog.scrollTop + 1;
+
+    let messageHTML = "";
+    if (data.username !== currentUser) {
+      messageHTML += `<span class="message-author">${escapeHtml(
+        data.username
+      )}</span>`;
+    }
+
+    messageHTML += `
+    <div class="message-bubble">
+        <p class="message-content">${escapeHtml(data.message)}</p>
+        <span class="message-timestamp">${data.timestamp}</span>
+    </div>
+  `;
+
+    messageDiv.innerHTML = messageHTML;
+    chatLog.appendChild(messageDiv);
+
+    if (isScrolledToBottom || data.username === currentUser) {
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+  }
+
+  function showConnectionStatus(status, isConnected) {
+    const roomTitle = document.querySelector(".chat-header .room-title");
+    if (roomTitle) {
+      roomTitle.style.transition = "color 0.3s ease";
+      roomTitle.style.color = isConnected ? "" : "#ff6b6b";
+    }
+  }
+
+  function showErrorMessage(message) {
+    const chatLog = document.getElementById("chat-log");
+    if (chatLog) {
+      const errorDiv = document.createElement("div");
+      errorDiv.className = "error-message";
+      errorDiv.innerHTML = `
+        <div class="error-bubble">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>${escapeHtml(message)}</span>
+        </div>
+    `;
+      chatLog.appendChild(errorDiv);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      setTimeout(() => errorDiv.remove(), 5000);
+    }
+  }
+
+  function escapeHtml(text) {
+    const p = document.createElement("p");
+    p.textContent = text;
+    return p.innerHTML.replace(/\n/g, "<br>");
+  }
+
+  function handlePasswordForm(data) {
+    const passwordForm = document.getElementById("passwordForm");
+    if (!passwordForm) return;
+
+    passwordForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      const passwordInput = document.getElementById("password");
+      const csrfToken = this.querySelector("[name=csrfmiddlewaretoken]").value;
+      const submitButton = this.querySelector('button[type="submit"]');
+      const errorDiv = document.getElementById("passwordError");
+
+      const originalText = submitButton.innerHTML;
+      submitButton.innerHTML = "확인 중...";
+      submitButton.disabled = true;
+      errorDiv.style.display = "none";
+
+      fetch(`/chat/check_password/${data.roomName}/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRFToken": csrfToken,
+        },
+        body: `password=${encodeURIComponent(passwordInput.value)}`,
+      })
+        .then((res) => (res.ok ? res.json() : Promise.reject("Server error")))
+        .then((data) => {
+          if (data.success) {
+            submitButton.innerHTML = "입장 중...";
+            window.location.reload();
+          } else {
+            errorDiv.style.display = "block";
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+          }
+        })
+        .catch((error) => {
+          console.error("Password check error:", error);
+          errorDiv.textContent = "오류가 발생했습니다. 다시 시도해주세요.";
+          errorDiv.style.display = "block";
+          submitButton.innerHTML = originalText;
+          submitButton.disabled = false;
+        });
+    });
+  }
+
+  window.addEventListener("load", function () {
+    const chatLog = document.getElementById("chat-log");
+    if (chatLog) {
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+  });
+</script>
+
+{% endblock page_content %}
