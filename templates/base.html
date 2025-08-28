@@ -89,7 +89,8 @@
       </div>
     </nav>
 
-    <!-- Optimized Messages -->
+    <!-- Messages - 채팅 페이지에서는 숨김 -->
+    {% if not request.resolver_match.url_name == 'chat_room' %}
     <div class="container-fluid" style="margin-top: 1rem">
       {% if messages %} {% for message in messages %}
       <div
@@ -101,6 +102,7 @@
       </div>
       {% endfor %} {% endif %}
     </div>
+    {% endif %}
 
     <!-- Main Content -->
     <div class="container-fluid flex-1">

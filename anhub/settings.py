@@ -18,6 +18,8 @@ ALLOWED_HOSTS = ['.vercel.app', 'www.anexus.site', 'anexus.site', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     # my apps
     'land.apps.LandConfig',
     'coag.apps.CoagConfig',
@@ -42,8 +44,6 @@ INSTALLED_APPS = [
     # ckeditor
     'ckeditor',
     'ckeditor_uploader',
-    # chat setting for django
-    'channels',
 ]
 
 MIDDLEWARE = [
@@ -143,6 +143,7 @@ DEFAULT_FILE_STORAGE = 'anhub.storage_backends.SupabaseStorage'
 # Supabase 설정
 SUPABASE_URL = config('SUPABASE_URL')
 SUPABASE_KEY = config('SUPABASE_KEY')
+SUPABASE_ANON_KEY = config('SUPABASE_ANON_KEY')
 SUPABASE_JWT_SECRET = config('SUPABASE_JWT_SECRET')
 SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET')
 
@@ -181,3 +182,48 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # 로그인 페이지 설정
 LOGIN_URL = '/login/'
+
+ASGI_APPLICATION = 'anhub.asgi.application'
+
+# ASGI 설정
+ASGI_APPLICATION = 'anhub.asgi.application'
+
+# Channel layers 설정 (InMemory를 더 안정적으로)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        'CONFIG': {
+            'capacity': 300,
+            'expiry': 60,
+        },
+    }
+}
+
+# 개발환경에서 WebSocket 디버깅을 위한 로깅 설정
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'chat': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'daphne': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
