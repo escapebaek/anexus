@@ -1,46 +1,28 @@
-# 수정된 requirements.txt
-
-# 웹 프레임워크
 Django==5.0.3
 django-cors-headers==4.7.0
 django-mdeditor==0.1.20
 django-storages==1.14.4
-
-# ASGI/웹소켓 (버전 호환성 개선)
 daphne==4.1.2
-# websockets==9.1  # 제거 - daphne가 자체적으로 관리
 autobahn==24.4.2
 Twisted==25.5.0
-
-# 데이터베이스
 psycopg2-binary==2.9.10
 redis==6.4.0
-
-# Supabase
 supabase==2.18.1
 supabase_auth==2.12.3
 supabase_functions==0.10.1
 postgrest==1.1.1
 realtime==2.7.0
 storage3==0.12.1
-
-# 데이터 처리
 pandas==2.2.3
 numpy==2.2.2
 openpyxl==3.1.5
-
-# HTTP/네트워크
 httpx==0.28.1
 httpcore==1.0.9
 requests==2.32.3
-
-# 기타 핵심 라이브러리
 beautifulsoup4==4.13.5
 pillow==10.4.0
 python-decouple==3.8
 whitenoise==6.7.0
-
-# 의존성 (자동으로 설치되는 것들은 명시적 버전 제거)
 aiohappyeyeballs>=2.6.0
 aiosignal>=1.4.0
 annotated-types>=0.7.0
