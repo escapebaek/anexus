@@ -42,13 +42,14 @@ INSTALLED_APPS = [
     # ckeditor
     'ckeditor',
     'ckeditor_uploader',
-    # chat setting for django
-    'channels',
+    # CORS for API calls
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -62,7 +63,7 @@ ROOT_URLCONF = 'anhub.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],  # 프로젝트 템플릿 디렉토리 설정
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -107,7 +108,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Privelleges for accounts
+# Privileges for accounts
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 # Internationalization
@@ -122,21 +123,19 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # collectstatic 시 파일이 모일 곳
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),  # 프로젝트 루트의 static 폴더 추가
-    os.path.join(BASE_DIR, 'schedule', 'static'),  # schedule 앱의 static 폴더
+    os.path.join(BASE_DIR, 'static'),
+    os.path.join(BASE_DIR, 'schedule', 'static'),
 ]
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 ############################################################################
 # Media files, Media 설정
-# MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_FILE_STORAGE = 'anhub.storage_backends.SupabaseStorage'
 
@@ -181,3 +180,13 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # 로그인 페이지 설정
 LOGIN_URL = '/login/'
+
+# CORS settings for API calls
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://anexus.site",
+    "https://www.anexus.site",
+]
+
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True

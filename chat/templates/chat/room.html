@@ -1,11 +1,4 @@
-{% extends 'base.html' %}
-{% load static %}
-
-{% block custom_css %}
-<link rel="stylesheet" href="{% static 'chat/css/room.css' %}">
-{% endblock %}
-
-{% block page_content %}
+{% extends 'base.html' %} {% load static %} {% block page_content %}
 <div class="chat-container">
   <div class="chat-header">
     <div class="header-left">
@@ -14,6 +7,7 @@
       </a>
       <h2 class="room-title">{{ room.name }}</h2>
     </div>
+
     {% if room.owner == user %}
     <div class="header-actions">
       <form
@@ -36,19 +30,26 @@
       {% csrf_token %}
       <div class="mb-3">
         <label for="password" class="form-label">Password</label>
-        <input type="password" class="form-control" id="password" name="password" required>
+        <input
+          type="password"
+          class="form-control"
+          id="password"
+          name="password"
+          required
+        />
       </div>
       <button type="submit" class="btn btn-primary">Submit</button>
-      <div id="passwordError" class="text-danger mt-2" style="display:none;">
+      <div id="passwordError" class="text-danger mt-2" style="display: none">
         Incorrect password. Please try again.
       </div>
     </form>
   </div>
   {% else %}
   <div class="chat-messages" id="messages">
-    {% for message in messages %}
+    {% for message in chat_messages %}
     <div
       class="message {% if message.user.username == user.username %}message-own{% else %}message-other{% endif %}"
+      data-message-id="{{ message.id }}"
     >
       {% if message.user.username != user.username %}
       <span class="message-author">{{ message.user.username }}</span>
@@ -75,8 +76,197 @@
   </div>
   {% endif %}
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="{% static 'chat/js/room.js' %}"></script>
-{% endblock %}
+<script type="application/json" id="room-data">
+  {
+    "roomName": "{{ room.name|escapejs }}",
+    "roomId": {{ room.id }},
+    "userName": "{{ user.username|escapejs }}",
+    "supabaseUrl": "{{ supabase_url|escapejs }}",
+    "supabaseKey": "{{ supabase_anon_key|escapejs }}"
+  }
+</script>
+{% endblock page_content %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const messages = document.getElementById("messages");
+    const messageForm = document.getElementById("messageForm");
+    const messageInput = document.querySelector(".message-input");
+    const passwordForm = document.getElementById("passwordForm");
+
+    // JSON 데이터 가져오기
+    const roomData = JSON.parse(
+      document.getElementById("room-data").textContent
+    );
+    const { roomName, roomId, userName, supabaseUrl, supabaseKey } = roomData;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Supabase configuration missing");
+      return;
+    }
+
+    const { createClient } = supabase;
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    function scrollToBottom() {
+      if (messages) {
+        messages.scrollTop = messages.scrollHeight;
+      }
+    }
+
+    scrollToBottom();
+
+    function addMessageToUI(messageData, fromRealtime = false) {
+      if (document.querySelector(`[data-message-id="${messageData.id}"]`)) {
+        return;
+      }
+
+      const messageElement = document.createElement("div");
+      const isOwnMessage = messageData.username === userName;
+      messageElement.className = isOwnMessage
+        ? "message message-own"
+        : "message message-other";
+      messageElement.setAttribute("data-message-id", messageData.id);
+
+      let html = "";
+      if (!isOwnMessage) {
+        html += `<span class="message-author">${messageData.username}</span>`;
+      }
+      html += `<div class="message-bubble">${messageData.content}</div>`;
+      messageElement.innerHTML = html;
+
+      if (messages) {
+        messages.appendChild(messageElement);
+        scrollToBottom();
+      }
+    }
+
+    if (messageForm) {
+      const channel = supabaseClient
+        .channel(`room_${roomId}_messages`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "chat_message",
+            filter: `room_id=eq.${roomId}`,
+          },
+          (payload) => {
+            const newMessage = payload.new;
+            addMessageToUI(
+              {
+                id: newMessage.id,
+                content: newMessage.content,
+                username: newMessage.user_username,
+                timestamp: newMessage.timestamp,
+              },
+              true
+            );
+          }
+        )
+        .subscribe();
+
+      async function sendMessage(messageContent) {
+        try {
+          const response = await fetch(`/chat/api/send_message/${roomName}/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": document.querySelector(
+                "[name=csrfmiddlewaretoken]"
+              ).value,
+            },
+            body: JSON.stringify({ message: messageContent }),
+          });
+
+          const data = await response.json();
+          if (!data.success) {
+            console.error("Failed to send message:", data.error);
+            alert("Failed to send message. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error sending message:", error);
+          alert("Connection error. Please check your internet connection.");
+        }
+      }
+
+      messageForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        if (message) {
+          sendMessage(message);
+          messageInput.value = "";
+        }
+      });
+
+      let lastMessageId = 0;
+      if (messages) {
+        const existingMessages = messages.querySelectorAll("[data-message-id]");
+        if (existingMessages.length > 0) {
+          const lastMsg = existingMessages[existingMessages.length - 1];
+          lastMessageId =
+            parseInt(lastMsg.getAttribute("data-message-id")) || 0;
+        }
+      }
+
+      const syncInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/chat/api/get_messages/${roomName}/`);
+          const data = await response.json();
+
+          if (data.success && data.messages.length > 0) {
+            const newMessages = data.messages.filter(
+              (msg) => msg.id > lastMessageId
+            );
+            if (newMessages.length > 0) {
+              newMessages.forEach((msg) => {
+                addMessageToUI(msg);
+                lastMessageId = Math.max(lastMessageId, msg.id);
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Sync error:", error);
+        }
+      }, 3000);
+
+      window.addEventListener("beforeunload", () => {
+        supabaseClient.removeChannel(channel);
+        clearInterval(syncInterval);
+      });
+    }
+
+    if (passwordForm) {
+      const passwordError = document.getElementById("passwordError");
+
+      passwordForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        passwordError.style.display = "none";
+
+        const formData = new FormData(passwordForm);
+
+        fetch(`/chat/check_password/${roomName}/`, {
+          method: "POST",
+          headers: { "X-CSRFToken": formData.get("csrfmiddlewaretoken") },
+          body: formData,
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.success) {
+              window.location.href = `/chat/${roomName}/`;
+            } else {
+              passwordError.style.display = "block";
+            }
+          })
+          .catch((err) => {
+            console.error("Error:", err);
+            passwordError.textContent = "An error occurred. Please try again.";
+            passwordError.style.display = "block";
+          });
+      });
+    }
+  });
+</script>
+{% endblock extra_js %}

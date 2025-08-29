@@ -90,6 +90,7 @@
     </nav>
 
     <!-- Optimized Messages -->
+    {% if not is_chat_room %}
     <div class="container-fluid" style="margin-top: 1rem">
       {% if messages %} {% for message in messages %}
       <div
@@ -101,6 +102,7 @@
       </div>
       {% endfor %} {% endif %}
     </div>
+    {% endif %}
 
     <!-- Main Content -->
     <div class="container-fluid flex-1">
@@ -278,6 +280,6 @@
         },
       };
     </script>
-    {% block extra_js %}{% endblock extra_js %}
+    {% block extra_js %}{% endblock %}
   </body>
 </html>
