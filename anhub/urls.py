@@ -9,8 +9,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('land.urls')),
     path('coag/', include('coag.urls')),
-    path('calculator/', include('calculator.urls')),
-    path('ped/', include('ped.urls')),
     path('board/', include('board.urls')),
     path('accounts/', include('accounts.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
