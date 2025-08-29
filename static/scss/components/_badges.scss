@@ -1,0 +1,94 @@
+/* ==========================================
+🏷️ BADGES & LABELS - PREMIUM LOOK
+========================================== */
+.badge {
+  padding: 0.6rem 1.2rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.badge::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(-45deg);
+  transition: transform 0.6s ease;
+}
+.badge:hover::before {
+  transform: rotate(45deg);
+}
+.category-badge,
+.exam-badge {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  background: var(--primary-gradient);
+  color: var(--text-light);
+  box-shadow: 0 4px 15px rgba(43, 88, 118, 0.2);
+  z-index: 3;
+}
+.exam-badge {
+  left: auto;
+  right: 4rem;
+  background: linear-gradient(135deg, #4e4376, #2b5876);
+}
+.answer-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #00b09b, #96c93d);
+  color: var(--text-light);
+  padding: 0.8rem 1.8rem;
+  border-radius: 2rem;
+  font-weight: 700;
+  box-shadow: 0 6px 20px rgba(0, 176, 155, 0.3);
+  transform: scale(1.05);
+}
+.badge-success {
+  background: linear-gradient(135deg, #00b09b, #96c93d);
+  box-shadow: 0 4px 15px rgba(0, 176, 155, 0.2);
+}
+.badge-danger {
+  background: linear-gradient(135deg, #ff6b6b, #ff4757);
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.2);
+}
+.badge-warning {
+  background: linear-gradient(135deg, #f6d365, #fda085);
+  color: var(--text-light);
+  box-shadow: 0 4px 15px rgba(246, 211, 101, 0.2);
+}
+.badge-secondary {
+  background: linear-gradient(135deg, #8e9eab, #eef2f3);
+  color: #4a4a4a;
+  box-shadow: 0 4px 15px rgba(142, 158, 171, 0.2);
+}
+/* 카테고리 태그 (Exam results specific) */
+.category-tag {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.category-tag.unknown {
+  background: linear-gradient(135deg, #6c757d, #495057);
+}

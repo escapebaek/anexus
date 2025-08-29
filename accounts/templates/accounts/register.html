@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<link rel="stylesheet" href="{% static 'accounts/register.css' %}">
+{% endblock %}
+
+{% block page_content %}
+<div class="register-section position-relative d-flex align-items-center">
+  <div class="register-overlay"></div>
+  <div class="container my-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <div class="register-card animate-fade-in">
+          <div class="card-body p-5">
+            <div class="text-center mb-5">
+              <h2 class="register-title">Create Account</h2>
+              <div class="title-underline"></div>
+            </div>
+
+            <form method="POST">
+              {% csrf_token %}
+              
+              <div class="form-group mb-4">
+                <input type="text" name="{{ form.username.name }}" class="form-control" placeholder="Username" required>
+                {% if form.username.help_text %}
+                <small class="form-text">
+                  Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+                </small>
+                {% endif %}
+                {% if form.username.errors %}
+                <div class="error-message">
+                  {% for error in form.username.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+
+              <div class="form-group mb-4">
+                <input type="email" name="{{ form.email.name }}" class="form-control" placeholder="Email address" required>
+                {% if form.email.errors %}
+                <div class="error-message">
+                  {% for error in form.email.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+
+              <div class="name-group mb-4">
+                <div class="form-group">
+                  <input type="text" name="{{ form.first_name.name }}" class="form-control" placeholder="First name" required>
+                </div>
+                <div class="form-group">
+                  <input type="text" name="{{ form.last_name.name }}" class="form-control" placeholder="Last name" required>
+                </div>
+              </div>
+
+              <div class="form-group mb-4">
+                <select name="{{ form.training_hospital.name }}" class="form-control" required>
+                  <option value="" selected disabled>Select training hospital</option>
+                  {% for value, label in form.training_hospital.field.choices %}
+                  <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="form-group mb-4">
+                <input type="password" name="{{ form.password1.name }}" class="form-control" placeholder="Password" required>
+                <div class="password-requirements">
+                  <h6>Password Requirements:</h6>
+                  <ul>
+                    <li>At least 8 characters long</li>
+                    <li>Can't be entirely numeric</li>
+                    <li>Can't be too similar to personal info</li>
+                    <li>Can't be a commonly used password</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="form-group mb-5">
+                <input type="password" name="{{ form.password2.name }}" class="form-control" placeholder="Confirm password" required>
+              </div>
+
+              <button type="submit" class="btn btn-register w-100">
+                Create Account
+                <i class="fas fa-arrow-right ms-2"></i>
+              </button>
+            </form>
+
+            <div class="text-center mt-4">
+              <a href="{% url 'login' %}" class="login-link">
+                Already have an account? <span>Sign in</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends 'base.html' %} {% load static %} {% block title %}Drug Information
+Lookup{% endblock %} {% block page_content %}
+<header class="py-4" style="background: var(--primary-color)">
+  <div class="container">
+    <h1 class="text-black text-center mb-0">FDA Approved Drug Information</h1>
+  </div>
+</header>
+
+<div class="container my-5">
+  <!-- 검색 폼 -->
+  <div class="mb-4" style="max-width: 600px; margin: 0 auto">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="get" class="mb-3">
+          <div class="input-group">
+            <input
+              type="text"
+              name="q"
+              class="form-control search-input"
+              placeholder="Enter drug name"
+              value="{{ query|default:'' }}"
+            />
+            <button class="btn search-button" type="submit">
+              <i class="fas fa-search me-1"></i> Search
+            </button>
+          </div>
+          <small class="text-muted">Search by brand name or generic name</small>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 에러 메시지 -->
+  {% if error %}
+  <div style="max-width: 600px; margin: 0 auto">
+    <div class="alert alert-danger">
+      <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 검색 결과 -->
+  {% if results %}
+  <div class="drug-list">
+    {% for drug in results %}
+    <div class="drug-card" data-drug-id="{{ drug.id }}">
+      <div class="card shadow-sm h-100">
+        <div
+          class="card-header d-flex align-items-center"
+          style="background: var(--primary-dark); color: #fff"
+        >
+          <i class="fas fa-capsules me-2"></i>
+          <h3 class="h5 mb-0">{{ drug.display_title }}</h3>
+        </div>
+        <div class="card-body">
+          <!-- Manufacturer -->
+          <div class="mb-3">
+            <h5 class="mb-2" style="color: var(--primary-color)">
+              <i class="fas fa-industry me-1"></i> Manufacturer
+            </h5>
+            <p>{{ drug.manufacturer.0|default:"Information not available" }}</p>
+          </div>
+
+          <!-- 섹션 버튼 -->
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button
+              type="button"
+              class="btn btn-outline-primary section-btn"
+              data-section="indications"
+              data-drug-id="{{ drug.id }}"
+            >
+              <i class="fas fa-check-circle me-1"></i> Indications
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-primary section-btn"
+              data-section="dosage"
+              data-drug-id="{{ drug.id }}"
+            >
+              <i class="fas fa-prescription me-1"></i> Dosage
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-warning section-btn"
+              data-section="warnings"
+              data-drug-id="{{ drug.id }}"
+            >
+              <i class="fas fa-exclamation-triangle me-1"></i> Warnings
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-danger section-btn"
+              data-section="adverse_reactions"
+              data-drug-id="{{ drug.id }}"
+            >
+              <i class="fas fa-allergies me-1"></i> Adverse
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-dark section-btn"
+              data-section="contraindications"
+              data-drug-id="{{ drug.id }}"
+            >
+              <i class="fas fa-ban me-1"></i> Contraindications
+            </button>
+          </div>
+
+          <!-- 아코디언 영역 (초기 숨김) -->
+          <div class="section-content-area mt-3 rounded d-none">
+            <h5 class="section-title mb-3"></h5>
+            <div class="section-content">
+              <!-- AJAX 후 로딩 스피너 및 내용 삽입 -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif query %}
+  <div style="max-width: 600px; margin: 0 auto">
+    <div class="alert alert-warning">
+      <i class="fas fa-info-circle me-2"></i>No drug information found for "{{
+      query }}".
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const sectionButtons = document.querySelectorAll(".section-btn");
+
+    sectionButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        const clickedCard = this.closest(".drug-card");
+        const contentArea = clickedCard.querySelector(".section-content-area");
+        const sectionTitle = contentArea.querySelector(".section-title");
+        const sectionContent = contentArea.querySelector(".section-content");
+        const section = this.getAttribute("data-section");
+        const drugId = this.getAttribute("data-drug-id");
+
+        // Check if this card is already expanded
+        const isExpanded = clickedCard.classList.contains("expanded-card");
+
+        // Reset all cards first
+        document.querySelectorAll(".drug-card").forEach((card) => {
+          card.classList.remove("expanded-card");
+          const otherContent = card.querySelector(".section-content-area");
+          if (otherContent) {
+            otherContent.classList.remove("expanded");
+            otherContent.classList.add("d-none");
+          }
+          card
+            .querySelectorAll(".section-btn")
+            .forEach((btn) => btn.classList.remove("active"));
+        });
+
+        // If the card wasn't expanded before or a different section was clicked, expand it
+        if (!isExpanded || this.classList.contains("active") === false) {
+          // Expand the clicked card
+          clickedCard.classList.add("expanded-card");
+          this.classList.add("active");
+          contentArea.classList.remove("d-none");
+
+          // Use setTimeout to ensure the display change happens before adding the expanded class
+          setTimeout(() => {
+            contentArea.classList.add("expanded");
+          }, 10);
+
+          // 섹션 아이콘 & 제목
+          let iconClass = "fas fa-info-circle";
+          if (section === "indications") iconClass = "fas fa-check-circle";
+          else if (section === "dosage") iconClass = "fas fa-prescription";
+          else if (section === "warnings")
+            iconClass = "fas fa-exclamation-triangle";
+          else if (section === "adverse_reactions")
+            iconClass = "fas fa-allergies";
+          else if (section === "contraindications") iconClass = "fas fa-ban";
+          sectionTitle.innerHTML = `<i class="${iconClass} me-2"></i>${this.textContent.trim()}`;
+
+          // 로딩 스피너
+          sectionContent.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          `;
+
+          // Smooth scroll to the expanded card
+          setTimeout(() => {
+            clickedCard.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }, 100);
+
+          // Adjust grid layout for expanded card
+          const drugList = document.querySelector(".drug-list");
+          drugList.style.display = "block"; // Temporarily disable grid layout
+          setTimeout(() => {
+            drugList.style.display = ""; // Re-enable grid layout after expansion
+          }, 500);
+
+          // AJAX
+          fetch(
+            `/drugdictionary/get-section/?drug_id=${drugId}&section=${section}`
+          )
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.content) {
+                let contentHtml = "";
+                data.content.forEach((item) => {
+                  contentHtml += `<p>${item}</p>`;
+                });
+                sectionContent.innerHTML = contentHtml;
+              } else if (data.error) {
+                sectionContent.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+              } else {
+                sectionContent.innerHTML = "<p>No information available</p>";
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              sectionContent.innerHTML =
+                '<div class="alert alert-danger">Error loading content. Please try again.</div>';
+            });
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

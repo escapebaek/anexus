@@ -1,0 +1,40 @@
+/* ==========================================
+   📐 DESIGN TOKENS & CSS VARIABLES
+   ========================================== */
+:root {
+  /* 🌈 Primary Color System */
+  --primary-gradient: linear-gradient(135deg, #2b5876, #4e4376);
+  --primary-dark: #2b5876;
+  --primary-light: #4e4376;
+  --primary-alpha: rgba(43, 88, 118, 0.1);
+
+  /* ✨ Glass & Transparency Effects */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-blur: blur(20px);
+
+  /* 🔤 Typography */
+  --text-light: #ffffff;
+  --text-dark: #2c3e50;
+  --text-muted: #666;
+  --text-primary: #2b5876;
+
+  /* 🎨 Backgrounds */
+  --bg-light: #f8f9fa;
+  --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --white: #ffffff;
+
+  /* 🌟 Shadows & Effects */
+  --shadow-light: rgba(0, 0, 0, 0.1);
+  --shadow-medium: rgba(0, 0, 0, 0.15);
+  --shadow-heavy: rgba(0, 0, 0, 0.25);
+  --shadow-primary: 0 4px 15px rgba(43, 88, 118, 0.2);
+
+  /* 📏 Layout & Spacing */
+  --navbar-height: 70px;
+  --border-radius: 16px;
+  --border-radius-lg: 20px;
+  --border-radius-xl: 24px;
+  --transition: all 0.3s ease;
+  --transition-fast: all 0.2s ease;
+}

@@ -1,0 +1,10 @@
+/* Table Styles */
+.table th {
+    border-top: none;
+    font-weight: 600;
+    background: rgba(43, 88, 118, 0.05);
+}
+
+.table td {
+    vertical-align: middle;
+}

@@ -1,0 +1,148 @@
+/* 새 색상 팔레트 */
+:root {
+  --primary-color: #2a2a72;
+  --primary-dark: #1d1d50;
+  --secondary-color: #ff6f61;
+  --accent-color: #ffa07a;
+  --warning-color: #f39c12;
+  --danger-color: #e74c3c;
+  --success-color: #27ae60;
+  --text-color: #333333;
+  --text-muted: #777777;
+  --background-light: #f4f4f4;
+  --background-white: #ffffff;
+  --border-color: #dddddd;
+  --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+/* 기본 타이포그래피 */
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--background-light);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+}
+
+/* 컨테이너 */
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* 헤더 스타일 */
+header {
+  background: var(--primary-color);
+  color: var(--background-white);
+}
+
+/* 카드 기본 스타일 */
+.card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--background-white);
+  transition: all 0.3s ease;
+}
+
+/* 검색 인풋 & 버튼 */
+.search-input {
+  padding: 12px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(42, 42, 114, 0.15);
+}
+
+.search-button {
+  background-color: var(--primary-color);
+  color: var(--background-white);
+  border: none;
+  padding: 12px 25px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.search-button:hover {
+  background-color: var(--primary-dark);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 버튼 활성 상태 */
+.btn.active,
+.btn:active {
+  background-color: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+  color: #fff !important;
+}
+
+/* 아코디언 영역 */
+.section-content-area {
+  background-color: #f9f9f9;
+  padding: 0;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.5s ease, opacity 0.5s ease, padding 0.5s ease;
+}
+
+.section-content-area.expanded {
+  padding: 1rem;
+  max-height: 2000px;
+  opacity: 1;
+}
+
+/* 약 검색 결과 그리드 레이아웃 */
+.drug-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  width: 100%;
+  align-items: start; /* Align items to the top */
+}
+
+/* 각 약 카드 스타일 */
+.drug-card {
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  break-inside: avoid;
+  grid-column: span 1;
+}
+
+/* 확장된 카드 스타일 */
+.drug-card.expanded-card {
+  grid-column: 1 / -1; /* 전체 행 차지 */
+  order: -1; /* 확장된 카드를 맨 위로 */
+  display: block; /* Ensure flexible width for expanded content */
+}
+
+/* 반응형 디자인 */
+@media (max-width: 992px) {
+  .drug-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .drug-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .drug-list {
+    grid-template-columns: 1fr;
+  }
+}

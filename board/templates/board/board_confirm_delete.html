@@ -1,0 +1,27 @@
+{% extends 'base.html' %} {% load static %} {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/board/common.css' %}" />
+<link
+  rel="stylesheet"
+  href="{% static 'css/board/board_confirm_delete.css' %}"
+/>
+{% endblock %} {% block page_content %}
+<div class="container mt-5">
+  <div class="card shadow-lg">
+    <div class="card-header bg-gradient-danger text-white">
+      <h3 class="mb-0">문서 삭제 확인</h3>
+    </div>
+    <div class="card-body">
+      <p class="lead mb-4">정말로 이 문서를 삭제하시겠습니까?</p>
+      <form method="post" class="d-flex gap-3">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+          <i class="fas fa-trash-alt mr-2"></i>삭제
+        </button>
+        <a href="{% url 'board_detail' board.pk %}" class="btn btn-secondary">
+          <i class="fas fa-times mr-2"></i>취소
+        </a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

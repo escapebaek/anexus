@@ -1,0 +1,420 @@
+/* ==========================================
+   📊 QUESTION SYSTEM - (높이 조절 버전)
+   ========================================== */
+/* Question Card Base */
+.question-card {
+  margin-bottom: 2.5rem;
+  border: 1px solid rgba(43, 88, 118, 0.08);
+  background: var(--white);
+  backdrop-filter: blur(20px);
+  position: relative;
+  border-radius: var(--border-radius);
+  padding: 1.6rem;
+  width: 100%;
+  max-width: 900px; /* Consistency */
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+/* Question Text */
+.question-text {
+  font-size: 1.2rem; /* 기존 1.3rem에서 축소 */
+  color: var(--text-dark);
+  font-weight: 600;
+  line-height: 1.6; /* 기존 1.7에서 축소 */
+  margin-bottom: 1.5rem; /* 기존 2rem에서 축소 */
+  padding: 1.5rem; /* 기존 2rem에서 축소 */
+  background: linear-gradient(
+    135deg,
+    rgba(43, 88, 118, 0.05),
+    rgba(78, 67, 118, 0.03)
+  );
+  border-radius: 1rem;
+  border: 1px solid rgba(43, 88, 118, 0.08);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+}
+
+.question-text::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--primary-gradient);
+}
+
+/* Question Options Grid */
+.options-grid {
+  display: grid;
+  gap: 0.6rem; /* 기존 0.8rem에서 축소 */
+  margin: 1.5rem 0; /* 기존 2rem에서 축소 */
+  width: 100%;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .options-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* Enhanced Form Check */
+.form-check {
+  padding: 1rem 1.5rem; /* 기존 1.2rem 1.8rem에서 축소 */
+  border: 2px solid rgba(43, 88, 118, 0.08);
+  border-radius: 14px; /* 기존 16px에서 축소 */
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  background: var(--white);
+  margin-bottom: 0.6rem; /* 기존 0.75rem에서 축소 */
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  min-height: 60px; /* 기존 65px에서 축소 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.form-check::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(43, 88, 118, 0.05),
+    transparent
+  );
+  transition: left 0.3s ease;
+}
+
+.form-check:hover::before {
+  left: 100%;
+}
+
+.form-check:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(43, 88, 118, 0.03),
+    rgba(78, 67, 118, 0.02)
+  );
+  transform: translateY(-2px) scale(1.01);
+  border-color: rgba(43, 88, 118, 0.15);
+  box-shadow: 0 6px 20px rgba(43, 88, 118, 0.08);
+}
+
+.form-check-input {
+  margin-right: 1.2rem;
+  flex-shrink: 0;
+  width: 1.6rem !important;
+  height: 1.6rem !important;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+  border: 2px solid rgba(43, 88, 118, 0.2);
+  background: var(--white);
+}
+
+.form-check-input:checked {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+  box-shadow: 0 0 0 4px rgba(43, 88, 118, 0.1);
+  transform: scale(1.1);
+}
+
+.form-check-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(43, 88, 118, 0.2);
+  border-color: var(--primary-dark);
+}
+
+.form-check:has(.form-check-input:checked) {
+  background: linear-gradient(
+    135deg,
+    rgba(43, 88, 118, 0.08),
+    rgba(78, 67, 118, 0.06)
+  );
+  border-color: var(--primary-dark);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 8px 25px rgba(43, 88, 118, 0.12);
+}
+
+.form-check-label {
+  color: var(--text-dark);
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.5;
+  cursor: pointer;
+  flex: 1;
+  padding: 0.5rem 0;
+  word-wrap: break-word;
+}
+
+/* ==========================================
+   🎨 ENHANCED QUESTION DISPLAY BOXES
+   ========================================== */
+.question-category-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: linear-gradient(
+    135deg,
+    rgba(43, 88, 118, 0.08),
+    rgba(78, 67, 118, 0.05)
+  );
+  backdrop-filter: blur(15px);
+  padding: 0.8rem 1.5rem;
+  border-radius: 25px;
+  border: 1px solid rgba(43, 88, 118, 0.15);
+  color: var(--primary-dark);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 15px rgba(43, 88, 118, 0.08);
+  transition: var(--transition);
+}
+
+.question-category-box:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(43, 88, 118, 0.15);
+  border-color: rgba(43, 88, 118, 0.25);
+}
+
+.question-category-box i {
+  font-size: 1.1rem;
+}
+
+.answer-display-box,
+.explanation-display-box,
+.image-display-box {
+  border-radius: 18px;
+  padding: 1.5rem 2rem;
+  margin: 1.5rem 0; /* 기존 2rem에서 축소 */
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.answer-display-box {
+  background: linear-gradient(
+    135deg,
+    rgba(40, 167, 69, 0.08),
+    rgba(34, 139, 34, 0.05)
+  );
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(40, 167, 69, 0.2);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.1);
+}
+.explanation-display-box {
+  background: linear-gradient(
+    135deg,
+    rgba(23, 162, 184, 0.08),
+    rgba(13, 110, 253, 0.05)
+  );
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(23, 162, 184, 0.2);
+  box-shadow: 0 6px 20px rgba(23, 162, 184, 0.1);
+}
+.image-display-box {
+  background: linear-gradient(
+    135deg,
+    rgba(111, 66, 193, 0.08),
+    rgba(142, 36, 170, 0.05)
+  );
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(111, 66, 193, 0.2);
+  box-shadow: 0 8px 25px rgba(111, 66, 193, 0.1);
+  text-align: center;
+}
+
+.answer-display-box:hover,
+.explanation-display-box:hover,
+.image-display-box:hover {
+  transform: translateY(-3px) scale(1.01);
+}
+
+.answer-display-title,
+.explanation-display-title,
+.image-display-title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.answer-display-title {
+  color: #1e7e34;
+}
+.explanation-display-title {
+  color: #0c5460;
+}
+.image-display-title {
+  color: #5a2d7e;
+  justify-content: center;
+}
+
+.answer-display-title i,
+.explanation-display-title i,
+.image-display-title i {
+  font-size: 1.3rem;
+}
+.answer-display-title i {
+  color: #28a745;
+}
+.explanation-display-title i {
+  color: #17a2b8;
+}
+.image-display-title i {
+  color: #6f42c1;
+}
+
+.answer-display-content,
+.explanation-display-content {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.answer-display-content {
+  color: #155724;
+  font-weight: 600;
+}
+.explanation-display-content {
+  color: #0c5460;
+  font-weight: 500;
+}
+
+/* Question Image */
+.question-image {
+  margin: 1.5rem 0; /* 기존 2rem에서 축소 */
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+.question-image img {
+  width: 70%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 1.2rem; /* 기존 1.5rem에서 축소 */
+}
+
+/* ==========================================
+   📖 QUESTION LIST ALIGNMENT SYSTEM
+   ========================================== */
+.questions-left-align .question-text {
+  text-align: left !important;
+}
+.questions-left-align .form-check {
+  text-align: left !important;
+  justify-content: flex-start !important;
+}
+.questions-left-align .form-check-label {
+  text-align: left !important;
+}
+
+/* 유튜브 동영상 관련 스타일 */
+.question-video {
+  margin: 20px 0;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%; /* 16:9 비율 */
+  margin: 15px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+}
+
+.video-controls {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.video-controls .btn-action-glass {
+  margin: 0 5px;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+}
+
+.video-explanation-box {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 15px 0;
+  color: white;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.video-explanation-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.video-explanation-title i {
+  color: #ffd700;
+}
+
+/* YouTube 플레이어 로딩 애니메이션 */
+.video-container::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  z-index: 1;
+}
+
+.video-container iframe {
+  z-index: 2;
+}
+
+/* 동영상이 로드되면 로딩 애니메이션 숨기기 */
+.video-container iframe[src*="youtube"] + ::before {
+  display: none;
+}

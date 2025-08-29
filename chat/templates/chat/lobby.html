@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block page_content %}
+
+<div class="lobby-section position-relative">
+  <div class="container py-5">
+    <div class="text-center mb-5">
+      <h2 class="section-title">ANESTHESIA CHAT LOBBY</h2>
+    </div>
+
+    {% if rooms %}
+    <div class="row g-4">
+      {% for room in rooms %}
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card room-card">
+          <div class="feature-icon">
+            <i class="fas fa-comments"></i>
+          </div>
+          <h3 class="feature-title">{{ room.name }}</h3>
+          {% if room.password %}
+          <div class="password-badge">
+            <i class="fas fa-lock"></i>
+            Password Protected
+          </div>
+          {% endif %}
+          <div class="mt-4">
+            <a href="{% url 'check_room_access' room_name=room.name %}" class="btn btn-feature w-100">
+              Enter Room
+              <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state feature-card text-center">
+      <div class="feature-icon">
+        <i class="fas fa-comment-slash"></i>
+      </div>
+      <h3 class="feature-title">No Chat Rooms Available</h3>
+      <p class="feature-text">Be the first to create a new chat room!</p>
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-5">
+      <a href="{% url 'create_room' %}" class="btn btn-hero">
+        Create a Chat Room
+        <i class="fas fa-plus ml-2"></i>
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Reusing styles from home.html */
+  .lobby-section {
+    background: #f8f9fa;
+    min-height: 85vh;
+    padding: 40px 0;
+  }
+
+  .section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2b5876;
+    margin-bottom: 1rem;
+  }
+
+  .feature-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2.5rem;
+    height: 100%;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  }
+
+  .feature-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #2b5876, #4e4376);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    color: white;
+    transform: rotate(45deg);
+    transition: all 0.3s ease;
+  }
+
+  .feature-icon i {
+    transform: rotate(-45deg);
+  }
+
+  .feature-card:hover .feature-icon {
+    transform: rotate(90deg);
+  }
+
+  .feature-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2b5876;
+    margin-bottom: 1rem;
+  }
+
+  .btn-feature {
+    background: linear-gradient(135deg, #2b5876, #4e4376);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+  }
+
+  .btn-feature:hover {
+    transform: translateX(5px);
+    color: white;
+    box-shadow: 0 5px 15px rgba(43,88,118,0.3);
+  }
+
+  .btn-hero {
+    background: linear-gradient(135deg, #2b5876, #4e4376);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+  }
+
+  .btn-hero:hover {
+    transform: translateY(-2px);
+    color: white;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+
+  /* New specific styles for lobby */
+  .room-card {
+    position: relative;
+    padding-top: 2rem;
+  }
+
+  .password-badge {
+    background: #ffeeba;
+    color: #856404;
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    margin: 1rem 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .empty-state {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+  }
+
+  .empty-state .feature-text {
+    color: #6c757d;
+    font-size: 1.1rem;
+    margin-bottom: 0;
+  }
+</style>
+
+{% endblock %}

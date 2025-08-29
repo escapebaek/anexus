@@ -1,0 +1,278 @@
+{% extends 'base.html' %} {% block page_content %}
+<div class="container py-5">
+  <!-- Page Header -->
+  <div class="text-center mb-5">
+    <h1 class="page-title">{{ coag.drugName }}</h1>
+    <div class="title-underline"></div>
+  </div>
+
+  <!-- Guidelines Grid -->
+  <div class="row g-4">
+    <!-- Neuraxial Block -->
+    <div class="col-lg-6 mb-4">
+      <div class="guideline-card">
+        <div class="card-icon">
+          <i class="fas fa-syringe"></i>
+        </div>
+        <h3 class="card-title">Neuraxial Block</h3>
+        <div class="guideline-content">
+          <div class="guideline-item">
+            <h4>Before Procedure</h4>
+            <p>{{ coag.nx_hold_b_p }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>After Procedure</h4>
+            <p>{{ coag.nx_restart_a_p }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>Before Catheter Removal</h4>
+            <p>{{ coag.nx_hold_b_c }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>After Catheter Removal</h4>
+            <p>{{ coag.nx_restart_a_c }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deep Plexus Block -->
+    <div class="col-lg-6 mb-4">
+      <div class="guideline-card">
+        <div class="card-icon">
+          <i class="fas fa-layer-group"></i>
+        </div>
+        <h3 class="card-title">Deep Plexus/Peripheral Block</h3>
+        <div class="guideline-content">
+          <div class="guideline-item">
+            <h4>Before Procedure</h4>
+            <p>{{ coag.db_hold_b_p }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>After Procedure</h4>
+            <p>{{ coag.db_restart_a_p }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>Before Catheter Removal</h4>
+            <p>{{ coag.db_hold_b_c }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>After Catheter Removal</h4>
+            <p>{{ coag.db_restart_a_c }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Superficial Block -->
+    <div class="col-lg-6 mb-4">
+      <div class="guideline-card">
+        <div class="card-icon">
+          <i class="fas fa-microscope"></i>
+        </div>
+        <h3 class="card-title">Superficial Block</h3>
+        <div class="guideline-content">
+          <div class="guideline-item">
+            <h4>Before Procedure</h4>
+            <p>{{ coag.sp_hold_b_p }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>After Procedure</h4>
+            <p>{{ coag.sp_restart_a_p }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>Before Catheter Removal</h4>
+            <p>{{ coag.sp_hold_b_c }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>After Catheter Removal</h4>
+            <p>{{ coag.sp_restart_a_c }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anticoagulated Parturient -->
+    <div class="col-lg-6 mb-4">
+      <div class="guideline-card">
+        <div class="card-icon">
+          <i class="fas fa-baby-carriage"></i>
+        </div>
+        <h3 class="card-title">Anticoagulated Parturient Neuraxial Block</h3>
+        <div class="guideline-content">
+          <div class="guideline-item">
+            <h4>Before Procedure</h4>
+            <p>{{ coag.ap_hold_b_p }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>After Procedure</h4>
+            <p>{{ coag.ap_restart_a_p }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>Before Catheter Removal</h4>
+            <p>{{ coag.ap_hold_b_c }}</p>
+          </div>
+          <div class="guideline-item">
+            <h4>After Catheter Removal</h4>
+            <p>{{ coag.ap_restart_a_c }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Common Styles */
+  :root {
+    --primary-gradient: linear-gradient(135deg, #2b5876, #4e4376);
+    --primary-dark: #2b5876;
+    --primary-light: #4e4376;
+    --text-light: #ffffff;
+  }
+
+  /* Page Title Styles */
+  .page-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--primary-dark);
+    margin-bottom: 1rem;
+  }
+
+  .title-underline {
+    width: 80px;
+    height: 4px;
+    background: var(--primary-gradient);
+    margin: 0 auto;
+    border-radius: 2px;
+  }
+
+  /* Card Styles */
+  .feature-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2.5rem;
+    height: 100%;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  }
+
+  .feature-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--primary-gradient);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .feature-icon i {
+    font-size: 2rem;
+    color: white;
+  }
+
+  .feature-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 1rem;
+  }
+
+  .feature-subtitle {
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Guideline Card Styles */
+  .guideline-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    height: 100%;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .guideline-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--primary-gradient);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-icon i {
+    font-size: 1.5rem;
+    color: white;
+  }
+
+  .card-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 1.5rem;
+  }
+
+  .guideline-content {
+    padding-top: 1rem;
+  }
+
+  .guideline-item {
+    margin-bottom: 1.5rem;
+  }
+
+  .guideline-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .guideline-item h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+  }
+
+  .guideline-item p {
+    color: #6c757d;
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* Button Styles */
+  .btn-gradient {
+    background: var(--primary-gradient);
+    color: var(--text-light);
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+  }
+
+  .btn-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(43, 88, 118, 0.2);
+    color: var(--text-light);
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% block page_content %}
+{% load static %}
+
+{# 반드시 공통 테마를 먼저 로드해 동일 스타일을 상속받습니다. #}
+<link rel="stylesheet" href="{% static 'calculator/css/calculator.css' %}">
+{# pediatrics 전용 오버라이드는 최소화/무오버라이드로 유지 (필요시만 사용) #}
+<link rel="stylesheet" href="{% static 'ped/css/pedcalc.css' %}">
+
+<div class="calculator-hero">
+  <div class="hero-overlay"></div>
+  <div class="container position-relative text-center">
+    <h1 class="page-title animate-fade-in">Pediatric Anesthesia Calculator</h1>
+    <p class="page-subtitle animate-fade-in-delayed">Calculate precise dosages for pediatric patients</p>
+  </div>
+</div>
+
+<div class="calculator-content">
+  <div class="container-fluid px-4">
+
+    <form action="" method="GET" id="calcForm" class="needs-validation" novalidate>
+      <!-- Patient Information -->
+      <div class="info-card animate-fade-in">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="number" name="age" id="age" class="form-control"
+                     value="{{ age }}" step="0.1" required min="0" max="18" placeholder="Age">
+              <label for="age">Age (years)</label>
+              <div class="invalid-feedback">Please enter age (0–18).</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="number" name="height" id="height" class="form-control"
+                     value="{{ height }}" required min="30" max="200" placeholder="Height">
+              <label for="height">Height (cm)</label>
+              <div class="invalid-feedback">Please enter height (30–200 cm).</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="number" name="weight" id="weight" class="form-control"
+                     value="{{ weight }}" step="0.1" required min="1" max="120" placeholder="Weight">
+              <label for="weight">Weight (kg)</label>
+              <div class="invalid-feedback">Please enter weight (1–120 kg).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cards -->
+      <div class="calculator-grid">
+
+        <!-- Airway Management (그룹 카드 유지) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-lungs"></i></div>
+            <h3>Airway Management</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if ett_id %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-ruler"></i> ETT ID</div>
+                <div class="result-value">{{ ett_id|default:"" }}{% if ett_id %} mm{% endif %}</div>
+              </div>
+              <div class="result-item {% if ett_depth %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-arrows-alt-v"></i> ETT Depth</div>
+                <div class="result-value">{{ ett_depth|default:"" }}{% if ett_depth %} cm{% endif %}</div>
+              </div>
+              <div class="result-item {% if c_line %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-level-down-alt"></i> C Line</div>
+                <div class="result-value">{{ c_line|default:"" }}{% if c_line %} cm{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Atropine (분리) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-tablets"></i></div>
+            <h3>Atropine</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if atropine %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-calculator"></i> Dose</div>
+                <div class="result-value">{{ atropine|default:"" }}{% if atropine %} mg{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lidocaine (분리) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-prescription-bottle-alt"></i></div>
+            <h3>Lidocaine</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if lidocaine %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-calculator"></i> Dose</div>
+                <div class="result-value">{{ lidocaine|default:"" }}{% if lidocaine %} mg{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Propofol (분리) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-syringe"></i></div>
+            <h3>Propofol</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if propofol %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-calculator"></i> Dose</div>
+                <div class="result-value">{{ propofol|default:"" }}{% if propofol %} mg{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TPT (분리) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-vial"></i></div>
+            <h3>TPT</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if tpt %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-calculator"></i> Dose</div>
+                <div class="result-value">{{ tpt|default:"" }}{% if tpt %} mg{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ROC (분리) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-capsules"></i></div>
+            <h3>ROC</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if roc %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-calculator"></i> Dose</div>
+                <div class="result-value">{{ roc|default:"" }}{% if roc %} mg{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fentanyl (분리) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-band-aid"></i></div>
+            <h3>Fentanyl</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if ftn %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-calculator"></i> Dose</div>
+                <div class="result-value">{{ ftn|default:"" }}{% if ftn %} mcg{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Denogan (분리) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-prescription-bottle"></i></div>
+            <h3>Denogan</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if dng %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-calculator"></i> Dose</div>
+                <div class="result-value">{{ dng|default:"" }}{% if dng %} mg{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ondansetron (분리) -->
+        <div class="calculator-card animate-fade-in">
+          <div class="calculator-card-header">
+            <div class="card-icon"><i class="fas fa-pills"></i></div>
+            <h3>Ondansetron</h3>
+          </div>
+          <div class="calculator-card-body">
+            <div class="result-box">
+              <div class="result-item {% if ond %}has-result{% endif %}">
+                <div class="result-label"><i class="fas fa-calculator"></i> Dose</div>
+                <div class="result-value">{{ ond|default:"" }}{% if ond %} mg{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- /calculator-grid -->
+    </form>
+
+    <button type="submit" form="calcForm" class="btn btn-calculate animate-fade-in">
+      Calculate <i class="fas fa-arrow-right"></i>
+    </button>
+  </div>
+</div>
+
+<script>
+  // Bootstrap 5 form validation + 결과 상태 토글(빈 값이면 .empty, 값 있으면 .has-result)
+  (function () {
+    const form = document.getElementById('calcForm');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        if (!form.checkValidity()) {
+          e.preventDefault(); e.stopPropagation();
+          form.classList.add('was-validated');
+          const firstInvalid = form.querySelector(':invalid');
+          if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, false);
+    }
+    // calculator.css와 동일한 방식의 empty/has-result 처리
+    document.querySelectorAll('.result-box .result-item').forEach(function (box) {
+      const el = box.querySelector('.result-value');
+      if (!el) return;
+      const raw = (el.textContent || el.innerText || '').trim().toLowerCase();
+      if (!raw) {
+        box.classList.add('empty');
+        el.innerHTML = '<span class="empty-hint"><i class="fas fa-info-circle me-1"></i> Enter required inputs above to calculate.</span>';
+      } else {
+        box.classList.add('has-result');
+      }
+    });
+  })();
+</script>
+{% endblock %}

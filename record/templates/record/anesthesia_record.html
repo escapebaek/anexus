@@ -1,0 +1,999 @@
+{% extends 'base.html' %} {% block page_content %}
+<div class="anesthesia-record">
+  <h2>Anesthesia Record Dashboard</h2>
+
+  <div class="dashboard-grid">
+    <!-- Left Column - Vital Signs Input -->
+    <div class="left-column">
+      <div class="input-section card">
+        <h3>Vital Signs Input</h3>
+        <form method="POST" id="recordForm">
+          {% csrf_token %}
+          <input type="hidden" id="record_id" name="record_id" value="" />
+
+          <div class="form-group">
+            {{ form.patient_id.label_tag }} {{ form.patient_id }}
+          </div>
+
+          <div class="form-group">
+            {{ form.timestamp.label_tag }} {{ form.timestamp }}
+            <small>(비워두면 현재 시간으로 저장됩니다.)</small>
+          </div>
+
+          <div class="vitals-grid">
+            <div class="form-group">{{ form.hr.label_tag }} {{ form.hr }}</div>
+            <div class="form-group">
+              {{ form.sbp.label_tag }} {{ form.sbp }}
+            </div>
+            <div class="form-group">
+              {{ form.dbp.label_tag }} {{ form.dbp }}
+            </div>
+            <div class="form-group">
+              {{ form.spo2.label_tag }} {{ form.spo2 }}
+            </div>
+          </div>
+
+          <h4>Extra Vitals</h4>
+          <div id="extraVitalsContainer" class="extra-vitals-container"></div>
+
+          <div class="button-container">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="addExtraVital()"
+            >
+              <i class="fas fa-plus"></i> Add Extra Vital
+            </button>
+          </div>
+
+          {{ form.extra_vitals_json }}
+
+          <div class="form-group">
+            {{ form.additional_notes.label_tag }} {{ form.additional_notes }}
+          </div>
+
+          <div class="button-container">
+            <button
+              type="submit"
+              id="submitButton"
+              name="save_record"
+              class="btn btn-primary"
+            >
+              Save Record
+            </button>
+            <button
+              type="button"
+              onclick="resetForm()"
+              class="btn btn-secondary"
+            >
+              Reset Form
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Right Column - Records and Charts -->
+    <div class="right-column">
+      <!-- Records Section Moved Up -->
+      <div class="records-section card">
+        <div class="section-header">
+          <h3>Records</h3>
+          <div class="action-buttons">
+            <button id="exportPdfBtn" class="btn btn-secondary">
+              <i class="fas fa-file-pdf"></i> Export to PDF
+            </button>
+            <form
+              method="POST"
+              action="{% url 'reset_all' %}"
+              onsubmit="return confirm('Are you sure you want to reset ALL records?');"
+              style="display: inline-block"
+            >
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">
+                Reset All Records
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="records-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Patient ID</th>
+                <th>HR</th>
+                <th>SBP</th>
+                <th>DBP</th>
+                <th>SpO2</th>
+                <th>Extra Vitals</th>
+                <th>Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in records %}
+              <tr>
+                <td>{{ record.timestamp|date:'H:i' }}</td>
+                <td>{{ record.patient_id }}</td>
+                <td>{{ record.hr }}</td>
+                <td>{{ record.sbp }}</td>
+                <td>{{ record.dbp }}</td>
+                <td>{{ record.spo2 }}</td>
+                <td>
+                  {% if record.extra_vitals %}
+                  <ul class="extra-vitals-list">
+                    {% for key, value in record.extra_vitals.items %}
+                    <li>{{ key }}: {{ value }}</li>
+                    {% endfor %}
+                  </ul>
+                  {% endif %}
+                </td>
+                <td>{{ record.additional_notes }}</td>
+                <td>
+                  <div class="record-actions">
+                    <button
+                      type="button"
+                      onclick="editRecord({{ record.id }})"
+                      class="btn btn-secondary btn-xs"
+                    >
+                      Edit
+                    </button>
+                    <form
+                      method="POST"
+                      action="{% url 'delete_record' record.id %}"
+                      style="display: inline"
+                    >
+                      {% csrf_token %}
+                      <button
+                        type="submit"
+                        class="btn btn-danger btn-xs"
+                        onclick="return confirm('Are you sure to delete this record?');"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="chart-section card">
+        <h3>Vitals Chart</h3>
+        <div class="chart-container">
+          <canvas id="vitalsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Free Text Section Moved Down -->
+      <div class="free-text-section card">
+        <h3>Free Text Note</h3>
+        <form method="POST" id="freeTextForm">
+          {% csrf_token %} {{ form_free.as_p }}
+          <div class="button-container">
+            <button type="submit" name="save_free_text" class="btn btn-primary">
+              Save Free Text
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Add a hidden div for PDF export -->
+      <div id="pdfContent" style="display: none">
+        <div class="pdf-container">
+          <h2>Anesthesia Records</h2>
+
+          <!-- Chart section -->
+          <div class="pdf-chart-section">
+            <h3>Vitals Chart</h3>
+            <div id="pdfChartContainer"></div>
+          </div>
+
+          <!-- Records table section -->
+          <div class="pdf-records-section">
+            <h3>Records Table</h3>
+            <div id="recordsTableClone"></div>
+          </div>
+
+          <!-- Free text section -->
+          <div class="pdf-free-text">
+            <h3>Free Text Note</h3>
+            <div id="freeTextContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Main Layout */
+  .anesthesia-record {
+    padding: 2rem;
+    background: #f5f7fa;
+    max-width: 1800px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+
+  .anesthesia-record h2 {
+    color: #2c5282;
+    margin-bottom: 2rem;
+    font-weight: 600;
+    font-size: 2.25rem;
+    text-align: center;
+    letter-spacing: -0.025em;
+  }
+
+  /* Grid Layout */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 350px 1fr; /* Reduced from 400px */
+    gap: 1.5rem;
+  }
+
+  .left-column {
+    position: sticky;
+    top: 2rem;
+    height: fit-content;
+  }
+
+  .right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* Card Styling */
+  .card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+  }
+
+  /* Section Headers */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  /* Button Styling */
+  .button-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #4299e1, #2b6cb0);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.2);
+  }
+
+  .btn-secondary {
+    background: #718096;
+    color: white;
+  }
+
+  .btn-danger {
+    background: #f56565;
+    color: white;
+  }
+
+  .btn-xs {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  /* Form Styling */
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-group label {
+    display: block;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+  }
+
+  .form-control,
+  input[type="text"],
+  input[type="number"],
+  input[type="datetime-local"],  /* Added for timestamp */
+  textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+    color: #2d3748;
+  }
+
+  input[type="datetime-local"] {
+    padding: 0.625rem;
+    background: #fff;
+    border-color: #cbd5e0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .form-control:focus {
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+    outline: none;
+  }
+
+  /* Extra Vitals */
+  .extra-vitals-container {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+  }
+
+  .extra-vital-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    align-items: center;
+  }
+
+  .extraVitalRow button {
+    background-color: #f56565; /* btn-danger 배경색 예시 */
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  /* Remove button styling */
+  .extra-vital-row button {
+    padding: 0.5rem 0.75rem;
+    background: #e53e3e;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .extra-vital-row button:hover {
+    background: #c53030;
+    transform: translateY(-1px);
+  }
+
+  .extra-vitals-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    white-space: normal;
+    font-size: 0.75rem;
+  }
+
+  .extra-vitals-list li {
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  /* Table Styling */
+  .table-container {
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .records-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.75rem;
+  }
+
+  .records-table th,
+  .records-table td {
+    padding: 0.625rem;
+    border: 1px solid #e2e8f0;
+    text-align: left;
+    vertical-align: middle;
+    font-size: 0.815rem;
+  }
+
+  .records-table th {
+    background: #f1f5f9;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.025em;
+  }
+
+  .records-table tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+  }
+
+  /* Column widths */
+  .records-table th:nth-child(1),
+  .records-table td:nth-child(1) {
+    width: 10%;
+  } /* Reduced time column */
+
+  .records-table th:nth-child(2),
+  .records-table td:nth-child(2) {
+    width: 20%;
+  } /* Reduced patient ID */
+
+  .records-table th:nth-child(3),
+  .records-table td:nth-child(3),
+  .records-table th:nth-child(4),
+  .records-table td:nth-child(4),
+  .records-table th:nth-child(5),
+  .records-table td:nth-child(5),
+  .records-table th:nth-child(6),
+  .records-table td:nth-child(6) {
+    width: 10%;
+  } /* Slightly reduced vital columns */
+
+  .records-table th:nth-child(7),
+  .records-table td:nth-child(7) {
+    width: 15%;
+  } /* Increased extra vitals */
+
+  .records-table th:nth-child(8),
+  .records-table td:nth-child(8) {
+    width: 15%;
+  } /* Increased notes */
+
+  .records-table th:nth-child(9),
+  .records-table td:nth-child(9) {
+    width: 8%; /* Reduced from 10% */
+    padding: 0.4rem; /* Reduced padding in the cell */
+  }
+
+  /* Chart Styling */
+  .chart-section {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .chart-container {
+    width: 100%;
+    height: 300px;
+    position: relative;
+  }
+
+  #vitalsChart {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Action Buttons */
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .record-actions {
+    display: flex;
+    flex-wrap: wrap; /* 버튼들이 한 줄에 고정되지 않고 여러 줄로 감싸도록 허용 */
+    gap: 0.1rem; /* 버튼 간 간격을 조금 줄입니다 */
+    justify-content: center;
+  }
+
+  .record-actions button {
+    padding: 0.15rem 0.3rem;
+    font-size: 0.65rem;
+    border-radius: 0.2rem;
+    min-height: 1.25rem;
+    white-space: nowrap;
+    line-height: 1;
+    flex: 1 1 auto; /* 버튼이 컨테이너 내에서 자동으로 크기를 조절하도록 함 */
+    max-width: 100%; /* 버튼이 부모 영역을 넘지 않도록 제한 */
+  }
+
+  .record-actions button:hover {
+    transform: translateY(-1px);
+  }
+
+  .record-actions form {
+    display: inline-flex;
+    margin: 0;
+  }
+
+  /* Update PDF export styles */
+  .pdf-container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+
+  .pdf-chart-section {
+    margin-bottom: 30px;
+    page-break-after: always;
+  }
+
+  .pdf-chart-section canvas {
+    max-width: 100%;
+    height: auto !important;
+  }
+
+  .pdf-records-section {
+    margin-top: 30px;
+    page-break-after: always;
+  }
+
+  .pdf-free-text {
+    margin-top: 30px;
+    page-break-before: always;
+  }
+
+  .pdf-free-text h3 {
+    margin-bottom: 15px;
+  }
+
+  #freeTextContent {
+    white-space: pre-wrap;
+    font-family: monospace;
+    line-height: 1.5;
+  }
+
+  /* Update existing free text form style */
+  #id_content {
+    min-height: 150px;
+    white-space: pre-wrap;
+  }
+
+  .pdf-section-title {
+    color: #2c5282;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 1200px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .left-column {
+      position: static;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .anesthesia-record {
+      padding: 1rem;
+    }
+
+    .button-container,
+    .action-buttons {
+      flex-direction: column;
+    }
+
+    .btn {
+      width: 100%;
+    }
+
+    .records-table th,
+    .records-table td {
+      padding: 0.35rem 0.5rem;
+    }
+  }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  document.getElementById("exportPdfBtn").addEventListener("click", async function () {
+    // Get the free text content
+    var freeTextArea = document.querySelector('#id_content');
+    var freeTextContent = freeTextArea ? freeTextArea.value : '';
+    
+    // Clone the records table
+    var originalTable = document.querySelector('.records-table');
+    var tableClone = originalTable.cloneNode(true);
+    
+    // Clone the chart
+    var originalChart = document.getElementById('vitalsChart');
+    var chartClone = document.createElement('canvas');
+    chartClone.style.height = '300px';
+    document.getElementById('pdfChartContainer').innerHTML = '';
+    document.getElementById('pdfChartContainer').appendChild(chartClone);
+    
+    // Create a new chart instance for PDF
+    var newChart = new Chart(chartClone.getContext('2d'), {
+      type: chart.config.type,
+      data: chart.config.data,
+      options: {
+        ...chart.config.options,
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          ...chart.config.options.plugins,
+          legend: {
+            ...chart.config.options.plugins.legend,
+            labels: {
+              ...chart.config.options.plugins.legend.labels,
+              font: {
+                size: 11 // Increase font size for PDF
+              }
+            }
+          }
+        },
+        scales: {
+          ...chart.config.options.scales,
+          x: {
+            ...chart.config.options.scales.x,
+            ticks: {
+              ...chart.config.options.scales.x.ticks,
+              font: {
+                size: 10 // Increase font size for PDF
+              }
+            }
+          },
+          y: {
+            ...chart.config.options.scales.y,
+            ticks: {
+              ...chart.config.options.scales.y.ticks,
+              font: {
+                size: 10 // Increase font size for PDF
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    // Prepare the PDF content
+    document.getElementById('recordsTableClone').innerHTML = '';
+    document.getElementById('recordsTableClone').appendChild(tableClone);
+    document.getElementById('freeTextContent').textContent = freeTextContent;
+    
+    // Generate PDF from the hidden content
+    var pdfContent = document.getElementById('pdfContent');
+    pdfContent.style.display = 'block'; // Temporarily show for capture
+    
+    // Wait for chart to render
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    html2canvas(pdfContent, {
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      height: pdfContent.scrollHeight
+    }).then(function(canvas) {
+      pdfContent.style.display = 'none';
+      
+      const { jsPDF } = window.jspdf;
+      var pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Add the content to PDF
+      var imgData = canvas.toDataURL('image/png');
+      var imgProps = pdf.getImageProperties(imgData);
+      var pdfWidth = pdf.internal.pageSize.getWidth();
+      var pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      // Add content to PDF, creating new pages as needed
+      var position = 0;
+      var pageHeight = pdf.internal.pageSize.getHeight();
+      
+      while (position < pdfHeight) {
+        if (position > 0) {
+          pdf.addPage();
+        }
+        
+        pdf.addImage(imgData, 'PNG', 0, -position, pdfWidth, pdfHeight);
+        position += pageHeight;
+      }
+      
+      pdf.save('anesthesia_records.pdf');
+      
+      // Cleanup
+      newChart.destroy();
+    });
+  });
+
+  // --- 페이지 로드시 localStorage에서 저장된 값 복원 ---
+  function loadPreservedValues() {
+      var preservedPatient = localStorage.getItem('patient_id');
+      if (preservedPatient) {
+          document.getElementById('id_patient_id').value = preservedPatient;
+      }
+      var preservedExtraVitals = localStorage.getItem('extraVitals');
+      if (preservedExtraVitals) {
+          try {
+              var extraVitalKeys = JSON.parse(preservedExtraVitals); // extra vital의 이름 목록 (배열)
+              var container = document.getElementById('extraVitalsContainer');
+              container.innerHTML = ''; // 기존에 입력된 행은 초기화
+              extraVitalKeys.forEach(function(key) {
+                  addExtraVital(key, ''); // 값은 비워둡니다.
+              });
+          } catch(e) {
+              console.error("Error parsing preserved extra vitals:", e);
+          }
+      }
+  }
+  window.addEventListener('load', loadPreservedValues);
+
+  // --- 폼 제출 시 patient ID와 extra vital 이름을 localStorage에 저장 ---
+  document.getElementById('recordForm').addEventListener('submit', function(e) {
+      // 저장할 patient id
+      var patientId = document.getElementById('id_patient_id').value;
+      localStorage.setItem('patient_id', patientId);
+
+      // extra vital의 이름(키) 목록 저장
+      var container = document.getElementById('extraVitalsContainer');
+      var rows = container.querySelectorAll('.extraVitalRow');
+      var extraKeys = [];
+      rows.forEach(function(row) {
+           var key = row.querySelector('.vitalKey').value;
+           if(key) {
+               extraKeys.push(key);
+           }
+      });
+      localStorage.setItem('extraVitals', JSON.stringify(extraKeys));
+
+      // 그리고 제출 시 extra vital 전체 데이터를 hidden 필드에 채워 넣음 (기존 로직)
+      var extraVitals = {};
+      rows.forEach(function(row) {
+           var key = row.querySelector('.vitalKey').value;
+           var value = row.querySelector('.vitalValue').value;
+           if(key) {
+               extraVitals[key] = isNaN(value) ? value : parseFloat(value);
+           }
+      });
+      document.getElementById("id_extra_vitals_json").value = JSON.stringify(extraVitals);
+  });
+
+  // --- Extra Vitals 동적 입력 처리 ---
+  function addExtraVital(key='', value='') {
+      var container = document.getElementById('extraVitalsContainer');
+      var div = document.createElement('div');
+      div.className = 'extraVitalRow';
+      div.innerHTML = '<input type="text" class="vitalKey" placeholder="Vital Name" value="'+key+'"> ' +
+                      '<input type="text" class="vitalValue" placeholder="Value" value="'+value+'"> ' +
+                      '<button type="button" onclick="removeExtraVital(this)">Remove</button>';
+      container.appendChild(div);
+  }
+
+  function removeExtraVital(btn) {
+      var row = btn.parentNode;
+      row.parentNode.removeChild(row);
+  }
+
+  // --- Reset Form 버튼: 로컬에 저장된 persistent 값들도 삭제 ---
+  function resetForm(){
+      // localStorage에 저장된 patient id와 extra vitals 삭제
+      localStorage.removeItem('patient_id');
+      localStorage.removeItem('extraVitals');
+
+      var form = document.getElementById('recordForm');
+      form.reset();
+      document.getElementById('record_id').value = '';
+      document.getElementById('extraVitalsContainer').innerHTML = '';
+      document.getElementById('submitButton').innerText = 'Save Record';
+  }
+
+  // --- Reset All 버튼 클릭 시 localStorage도 삭제 ---
+  function clearLocalStorage() {
+      localStorage.removeItem('patient_id');
+      localStorage.removeItem('extraVitals');
+  }
+
+  // 만약 Reset All 폼에 onsubmit 속성을 추가할 수 있다면:
+  // <form method="POST" action="{% url 'reset_all' %}" onsubmit="clearLocalStorage()" ...>
+  // 또는 아래와 같이 이벤트 리스너를 추가할 수도 있습니다.
+  var resetAllForm = document.querySelector('form[action$="reset/"]');
+  if(resetAllForm){
+      resetAllForm.addEventListener('submit', clearLocalStorage);
+  }
+
+  // --- recordsData 및 editRecord, Chart.js 처리 부분은 기존 코드와 동일 ---
+  var recordsData = [
+    {% for record in records %}
+    {
+      id: {{ record.id }},
+      patient_id: "{{ record.patient_id|escapejs }}",
+      timestamp: "{{ record.timestamp|date:'Y-m-d\\TH:i' }}",
+      hr: "{{ record.hr|default_if_none:'' }}",
+      sbp: "{{ record.sbp|default_if_none:'' }}",
+      dbp: "{{ record.dbp|default_if_none:'' }}",
+      spo2: "{{ record.spo2|default_if_none:'' }}",
+      extra_vitals: {{ record.extra_vitals|default:"{}"|safe }},
+      additional_notes: "{{ record.additional_notes|escapejs }}"
+    },
+    {% endfor %}
+  ];
+
+  function editRecord(id) {
+      var rec = recordsData.find(function(item){ return item.id === id; });
+      if(!rec) return;
+      document.getElementById('record_id').value = rec.id;
+      document.getElementById('id_patient_id').value = rec.patient_id;
+      document.getElementById('id_timestamp').value = rec.timestamp;
+      document.getElementById('id_hr').value = rec.hr;
+      document.getElementById('id_sbp').value = rec.sbp;
+      document.getElementById('id_dbp').value = rec.dbp;
+      document.getElementById('id_spo2').value = rec.spo2;
+      document.getElementById('id_additional_notes').value = rec.additional_notes;
+
+      var extraContainer = document.getElementById('extraVitalsContainer');
+      extraContainer.innerHTML = '';
+      for (var key in rec.extra_vitals) {
+          addExtraVital(key, rec.extra_vitals[key]);
+      }
+      document.getElementById('submitButton').innerText = 'Update Record';
+  }
+
+  // --- Chart.js 처리 ---
+  // 내림차순으로 저장된 records를 reverse() 하여 시간 순(오름차순)으로 그립니다.
+  var chartRecords = [
+    {% for record in records %}
+    {
+      timestamp: "{{ record.timestamp|date:'H:i' }}",
+      hr: {{ record.hr|default:"null" }},
+      sbp: {{ record.sbp|default:"null" }},
+      dbp: {{ record.dbp|default:"null" }},
+      spo2: {{ record.spo2|default:"null" }},
+      extra_vitals: {{ record.extra_vitals|default:"{}"|safe }}
+    },
+    {% endfor %}
+  ];
+
+  var fixedVitals = ['hr', 'sbp', 'dbp', 'spo2'];
+  var extraKeys = new Set();
+  chartRecords.forEach(function(rec) {
+      if(rec.extra_vitals) {
+          for(var key in rec.extra_vitals){
+              extraKeys.add(key);
+          }
+      }
+  });
+  extraKeys = Array.from(extraKeys);
+
+  function getColor(index) {
+      var colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'cyan', 'magenta'];
+      return colors[index % colors.length];
+  }
+
+  var datasets = [];
+  // 고정 필드: 모든 데이터셋 hidden:false (기본 on)
+  fixedVitals.forEach(function(vital, index) {
+      var data = chartRecords.map(function(rec) {
+          return rec[vital];
+      });
+      datasets.push({
+          label: vital.toUpperCase(),
+          data: data,
+          borderColor: getColor(index),
+          fill: false,
+          hidden: false
+      });
+  });
+
+  // extra vital 데이터셋: 기본 hidden:false (모두 표시)
+  extraKeys.forEach(function(vital, index) {
+      var data = chartRecords.map(function(rec) {
+          return rec.extra_vitals ? rec.extra_vitals[vital] : null;
+      });
+      datasets.push({
+          label: vital,
+          data: data,
+          borderColor: getColor(index + fixedVitals.length),
+          fill: false,
+          hidden: false
+      });
+  });
+
+  var ctx = document.getElementById('vitalsChart').getContext('2d');
+  var chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartRecords.map(function(rec) { return rec.timestamp; }),
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          align: 'start',
+          labels: {
+            boxWidth: 8,
+            padding: 2,
+            font: {
+              size: 9
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45,
+            autoSkip: true,
+            maxTicksLimit: 20,
+            font: {
+              size: 8
+            }
+          }
+        },
+        y: {
+          grid: {
+            borderDash: [2, 2]
+          },
+          beginAtZero: true,
+          suggestedMin: 0,  // 최소값을 0으로 설정
+          ticks: {
+            font: {
+              size: 8
+            }
+          }
+        }
+      },
+      elements: {
+        point: {
+          radius: 1.5,
+          hoverRadius: 3
+        },
+        line: {
+          tension: 0.2,
+          borderWidth: 1
+        }
+      },
+      layout: {
+        padding: {
+          left: 2,
+          right: 2,
+          top: 2,
+          bottom: 2
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

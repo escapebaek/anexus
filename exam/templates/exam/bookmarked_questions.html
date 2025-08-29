@@ -1,0 +1,625 @@
+{% extends 'base.html' %}
+{% load exam_filters %}
+{% load markdown_extras %}
+
+{% block extra_css %}
+<style>
+  /* Markdown 스타일링 */
+  .markdown-content {
+    line-height: 1.6;
+    color: #333;
+  }
+
+  .markdown-content h1,
+  .markdown-content h2,
+  .markdown-content h3,
+  .markdown-content h4,
+  .markdown-content h5,
+  .markdown-content h6 {
+    margin: 1em 0 0.5em 0;
+    font-weight: bold;
+    color: #2c3e50;
+  }
+
+  .markdown-content h1 {
+    font-size: 1.5em;
+  }
+  .markdown-content h2 {
+    font-size: 1.3em;
+  }
+  .markdown-content h3 {
+    font-size: 1.1em;
+  }
+
+  .markdown-content p {
+    margin: 0.8em 0;
+  }
+
+  .markdown-content strong {
+    font-weight: bold;
+    color: #2c3e50;
+  }
+
+  .markdown-content em {
+    font-style: italic;
+    color: #555;
+  }
+
+  .markdown-content code {
+    background-color: #f8f9fa;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: "Monaco", "Consolas", "Courier New", monospace;
+    font-size: 0.9em;
+    color: #d63384;
+  }
+
+  .markdown-content pre {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 1em 0;
+  }
+
+  .markdown-content pre code {
+    background: none;
+    padding: 0;
+    color: #333;
+  }
+
+  .markdown-content blockquote {
+    border-left: 4px solid #007bff;
+    background-color: #f8f9fa;
+    margin: 1em 0;
+    padding: 0.8em 1em;
+    font-style: italic;
+  }
+
+  .markdown-content ul,
+  .markdown-content ol {
+    margin: 0.8em 0;
+    padding-left: 2em;
+  }
+
+  .markdown-content li {
+    margin: 0.3em 0;
+  }
+
+  .markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.9em;
+  }
+
+  .markdown-content table th,
+  .markdown-content table td {
+    border: 1px solid #dee2e6;
+    padding: 0.6em;
+    text-align: left;
+  }
+
+  .markdown-content table th {
+    background-color: #e9ecef;
+    font-weight: bold;
+  }
+
+  .markdown-content table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+  }
+
+  .markdown-content a {
+    color: #007bff;
+    text-decoration: none;
+  }
+
+  .markdown-content a:hover {
+    text-decoration: underline;
+  }
+
+  /* 코드 하이라이팅 기본 스타일 */
+  .markdown-content .highlight {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 1em;
+    margin: 1em 0;
+  }
+
+  .markdown-content .highlight .c {
+    color: #8e908c;
+  } /* Comment */
+  .markdown-content .highlight .k {
+    color: #8959a8;
+  } /* Keyword */
+  .markdown-content .highlight .s {
+    color: #718c00;
+  } /* String */
+  .markdown-content .highlight .nf {
+    color: #4271ae;
+  } /* Name.Function */
+  .markdown-content .highlight .nb {
+    color: #f5871f;
+  } /* Name.Builtin */
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<!-- Hero Section -->
+<div
+  class="hero-section position-relative d-flex flex-column justify-content-center align-items-center"
+>
+  <div class="hero-overlay"></div>
+  <div class="hero-content text-center">
+    <h1 class="hero-title animate-fade-in">북마크된 문제</h1>
+    <p class="hero-subtitle animate-fade-in-delayed">
+      저장된 문제들을 다시 복습해보세요.
+    </p>
+  </div>
+  <div class="hero-wave">
+    <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path
+        fill="currentColor"
+        d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,208C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+      ></path>
+    </svg>
+  </div>
+</div>
+
+<!-- Questions Section -->
+<div class="questions-section questions-left-align">
+  <div class="container">
+    <div class="row g-4">
+      {% for question in questions %}
+      <div class="col-12">
+        <div
+          class="question-card animate-fade-in"
+          data-correct-option="{{ question.correct_option }}"
+        >
+          <!-- 북마크 버튼 -->
+          <div
+            class="bookmark-button bookmarked"
+            data-question-id="{{ question.id }}"
+            onclick="toggleBookmark({{ question.id }}, this)"
+          >
+            <i class="fas fa-star"></i>
+          </div>
+
+          <div class="question-content">
+            <!-- 카테고리 표시 -->
+            {% if question.category %}
+            <div class="question-category-box">
+              <i class="fas fa-tags"></i>
+              <span>{{ question.category.name }}</span>
+            </div>
+            {% endif %}
+
+            <!-- 시험 제목 표시 -->
+            {% if question.exam %}
+            <div class="question-exam-box">
+              <i class="fas fa-file-alt"></i>
+              <span>{{ question.exam.title }}</span>
+            </div>
+            {% endif %}
+
+            <div class="question-text">{{ question.question_text|safe }}</div>
+
+            <!-- 기존 이미지 표시 -->
+            {% if question.image %}
+            <div class="question-image">
+              <img
+                src="{{ question.image.url }}"
+                alt="Question Image"
+                class="img-fluid"
+              />
+            </div>
+            {% endif %}
+
+            <!-- 새로 추가: 유튜브 동영상 표시 -->
+            {% if question.get_youtube_embed_id %}
+            <div class="question-video">
+              <div
+                class="video-container"
+                style="
+                  position: relative;
+                  width: 100%;
+                  height: 0;
+                  padding-bottom: 56.25%;
+                  margin: 15px 0;
+                "
+              >
+                <iframe
+                  id="youtube_{{ question.id }}"
+                  src="https://www.youtube.com/embed/{{ question.get_youtube_embed_id }}?enablejsapi=1&rel=0"
+                  frameborder="0"
+                  allowfullscreen
+                  style="
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    border-radius: 8px;
+                  "
+                ></iframe>
+              </div>
+              <div
+                class="video-controls"
+                style="text-align: center; margin-top: 10px"
+              >
+                <button
+                  type="button"
+                  class="btn-action-glass"
+                  onclick="playYouTube('{{ question.id }}')"
+                >
+                  <i class="fas fa-play"></i> 재생
+                </button>
+                <button
+                  type="button"
+                  class="btn-action-glass"
+                  onclick="pauseYouTube('{{ question.id }}')"
+                >
+                  <i class="fas fa-pause"></i> 일시정지
+                </button>
+                <button
+                  type="button"
+                  class="btn-action-glass"
+                  onclick="stopYouTube('{{ question.id }}')"
+                >
+                  <i class="fas fa-stop"></i> 정지
+                </button>
+              </div>
+            </div>
+            {% endif %}
+
+            <div class="options-grid">
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="option1_{{ question.id }}"
+                  name="question_{{ question.id }}"
+                  value="{{ question.option1 }}"
+                  class="form-check-input"
+                />
+                <label
+                  for="option1_{{ question.id }}"
+                  class="form-check-label"
+                  >{{ question.option1 }}</label
+                >
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="option2_{{ question.id }}"
+                  name="question_{{ question.id }}"
+                  value="{{ question.option2 }}"
+                  class="form-check-input"
+                />
+                <label
+                  for="option2_{{ question.id }}"
+                  class="form-check-label"
+                  >{{ question.option2 }}</label
+                >
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="option3_{{ question.id }}"
+                  name="question_{{ question.id }}"
+                  value="{{ question.option3 }}"
+                  class="form-check-input"
+                />
+                <label
+                  for="option3_{{ question.id }}"
+                  class="form-check-label"
+                  >{{ question.option3 }}</label
+                >
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="option4_{{ question.id }}"
+                  name="question_{{ question.id }}"
+                  value="{{ question.option4 }}"
+                  class="form-check-input"
+                />
+                <label
+                  for="option4_{{ question.id }}"
+                  class="form-check-label"
+                  >{{ question.option4 }}</label
+                >
+              </div>
+              {% if question.option5 %}
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="option5_{{ question.id }}"
+                  name="question_{{ question.id }}"
+                  value="{{ question.option5 }}"
+                  class="form-check-input"
+                />
+                <label
+                  for="option5_{{ question.id }}"
+                  class="form-check-label"
+                  >{{ question.option5 }}</label
+                >
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+              <button
+                type="button"
+                class="btn-action-glass"
+                onclick="toggleDisplay('answer_{{ question.id }}')"
+              >
+                <i class="fas fa-check-circle"></i> 정답 보기
+              </button>
+              <button
+                type="button"
+                class="btn-action-glass"
+                onclick="toggleDisplay('explanation_{{ question.id }}')"
+              >
+                <i class="fas fa-info-circle"></i> 해설 보기
+              </button>
+              {% if question.comment_image %}
+              <button
+                type="button"
+                class="btn-action-glass"
+                onclick="toggleDisplay('image_{{ question.id }}')"
+              >
+                <i class="fas fa-image"></i> 이미지 보기
+              </button>
+              {% endif %}
+              <!-- 새로 추가: 해설 동영상 버튼 -->
+              {% if question.get_comment_youtube_embed_id %}
+              <button
+                type="button"
+                class="btn-action-glass"
+                onclick="toggleDisplay('video_explanation_{{ question.id }}')"
+              >
+                <i class="fas fa-video"></i> 해설 영상
+              </button>
+              {% endif %}
+            </div>
+
+            <!-- 정답 표시 박스 -->
+            <div
+              id="answer_{{ question.id }}"
+              class="answer-display-box hidden"
+            >
+              <div class="answer-display-title">
+                <i class="fas fa-check-circle"></i> 정답
+              </div>
+              <div class="answer-display-content">
+                {{ question.correct_option }}
+              </div>
+            </div>
+
+            <!-- 해설 표시 박스 (Markdown 지원 추가) -->
+            <div
+              id="explanation_{{ question.id }}"
+              class="explanation-display-box hidden"
+            >
+              <div class="explanation-display-title">
+                <i class="fas fa-info-circle"></i> 해설
+              </div>
+              <div class="explanation-display-content markdown-content">
+                {{ question.comment|markdown }}
+              </div>
+            </div>
+
+            <!-- 이미지 표시 박스 -->
+            {% if question.comment_image %}
+            <div
+              id="image_{{ question.id }}"
+              class="image-display-box hidden"
+            >
+              <div class="image-display-title">
+                <i class="fas fa-image"></i> 관련 이미지
+              </div>
+              <img
+                src="{{ question.comment_image.url }}"
+                alt="Explanation Image"
+                class="img-fluid rounded"
+              />
+            </div>
+            {% endif %}
+
+            <!-- 새로 추가: 해설 동영상 표시 박스 -->
+            {% if question.get_comment_youtube_embed_id %}
+            <div
+              id="video_explanation_{{ question.id }}"
+              class="video-explanation-box hidden"
+            >
+              <div class="video-explanation-title">
+                <i class="fas fa-video"></i> 해설 동영상
+              </div>
+              <div
+                class="video-container"
+                style="
+                  position: relative;
+                  width: 100%;
+                  height: 0;
+                  padding-bottom: 56.25%;
+                  margin: 15px 0;
+                "
+              >
+                <iframe
+                  id="comment_youtube_{{ question.id }}"
+                  src="https://www.youtube.com/embed/{{ question.get_comment_youtube_embed_id }}?enablejsapi=1&rel=0"
+                  frameborder="0"
+                  allowfullscreen
+                  style="
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    border-radius: 8px;
+                  "
+                ></iframe>
+              </div>
+              <div
+                class="video-controls"
+                style="text-align: center; margin-top: 10px"
+              >
+                <button
+                  type="button"
+                  class="btn-action-glass"
+                  onclick="playCommentYouTube('{{ question.id }}')"
+                >
+                  <i class="fas fa-play"></i> 재생
+                </button>
+                <button
+                  type="button"
+                  class="btn-action-glass"
+                  onclick="pauseCommentYouTube('{{ question.id }}')"
+                >
+                  <i class="fas fa-pause"></i> 일시정지
+                </button>
+                <button
+                  type="button"
+                  class="btn-action-glass"
+                  onclick="stopCommentYouTube('{{ question.id }}')"
+                >
+                  <i class="fas fa-stop"></i> 정지
+                </button>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <div class="no-bookmarks-message text-center py-5">
+          <div class="empty-state">
+            <i class="fas fa-bookmark fa-4x mb-4 empty-state-icon"></i>
+            <h3 class="empty-state-title">아직 북마크된 문제가 없습니다</h3>
+            <p class="empty-state-description">
+              시험을 보면서 문제를 북마크하여 나중에 다시 복습해보세요.
+            </p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% csrf_token %}
+
+<!-- YouTube API 로드 -->
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+  let youtubePlayers = {}; // YouTube 플레이어들을 저장할 객체
+
+  // YouTube API 준비 완료 콜백
+  function onYouTubeIframeAPIReady() {
+    // 모든 YouTube iframe을 플레이어로 초기화
+    {% for question in questions %}
+      {% if question.get_youtube_embed_id %}
+        youtubePlayers['youtube_{{ question.id }}'] = new YT.Player('youtube_{{ question.id }}');
+      {% endif %}
+      {% if question.get_comment_youtube_embed_id %}
+        youtubePlayers['comment_youtube_{{ question.id }}'] = new YT.Player('comment_youtube_{{ question.id }}');
+      {% endif %}
+    {% endfor %}
+  }
+
+  // YouTube 동영상 제어 함수들
+  function playYouTube(questionId) {
+    const player = youtubePlayers['youtube_' + questionId];
+    if (player && player.playVideo) {
+      player.playVideo();
+    }
+  }
+
+  function pauseYouTube(questionId) {
+    const player = youtubePlayers['youtube_' + questionId];
+    if (player && player.pauseVideo) {
+      player.pauseVideo();
+    }
+  }
+
+  function stopYouTube(questionId) {
+    const player = youtubePlayers['youtube_' + questionId];
+    if (player && player.stopVideo) {
+      player.stopVideo();
+    }
+  }
+
+  function playCommentYouTube(questionId) {
+    const player = youtubePlayers['comment_youtube_' + questionId];
+    if (player && player.playVideo) {
+      player.playVideo();
+    }
+  }
+
+  function pauseCommentYouTube(questionId) {
+    const player = youtubePlayers['comment_youtube_' + questionId];
+    if (player && player.pauseVideo) {
+      player.pauseVideo();
+    }
+  }
+
+  function stopCommentYouTube(questionId) {
+    const player = youtubePlayers['comment_youtube_' + questionId];
+    if (player && player.stopVideo) {
+      player.stopVideo();
+    }
+  }
+
+  function toggleDisplay(id) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.classList.toggle("hidden");
+    }
+  }
+
+  function toggleBookmark(questionId, button) {
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+    fetch(`/exam/bookmark/${questionId}/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "ok") {
+          if (data.is_bookmarked) {
+            button.classList.add("bookmarked");
+          } else {
+            button.classList.remove("bookmarked");
+            // 북마크가 해제되면 카드를 부드럽게 제거
+            const questionCard = button.closest(".col-12");
+            if (questionCard) {
+              questionCard.style.animation = "fadeOut 0.3s ease-out";
+              setTimeout(() => {
+                questionCard.remove();
+                // 모든 문제가 제거되면 페이지 새로고침
+                if (document.querySelectorAll(".question-card").length === 0) {
+                  location.reload();
+                }
+              }, 300);
+            }
+          }
+        } else {
+          alert("북마크 처리 중 오류가 발생했습니다.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("북마크 처리 중 오류가 발생했습니다.");
+      });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,790 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load dict_extras %} {# load our custom filter #}
+
+{% block page_content %}
+{% csrf_token %}
+<div class="dashboard-container">
+  <div class="dashboard-hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Surgery Schedule Dashboard</h1>
+      <p class="hero-subtitle">Memo Loading Requires 2~3 seconds</p>
+    </div>
+  </div>
+
+  <div class="schedule-wrapper">
+    {% if schedule_by_room %}
+      <div class="schedule-grid">
+        {% for room, schedules in schedule_by_room.items %}
+          <!-- Default state: folded -->
+          <div class="schedule-card collapsed">
+            <div class="room-header">
+              <div class="room-info">
+                <h3 class="room-title">{{ room }}</h3>
+              </div>
+              <!-- Toggle button default text "Open" because card is folded -->
+              <button class="toggle-room" onclick="toggleRoom(this)">Open</button>
+            </div>
+
+            <!-- Full schedule timeline (hidden by default) -->
+            <div class="schedule-timeline" style="display: none;">
+              {% for schedule in schedules %}
+                <div class="timeline-item" data-status="{{ schedule.status }}">
+                  <div class="timeline-status">
+                    <span class="status-indicator"></span>
+                  </div>
+                  <div class="timeline-time">
+                    <span class="time">{{ schedule.time_slot }}</span>
+                    <span class="duration">{{ schedule.duration }}분</span>
+                  </div>
+                  <div class="timeline-content">
+                    <h4 class="surgery-name">{{ schedule.surgery_name }}</h4>
+                    <div class="surgery-details">
+                      <span class="detail-item">
+                        <i class="fas fa-user-md"></i>
+                        {{ schedule.surgeon }}
+                      </span>
+                    </div>
+                    <div class="patient-info">
+                      <span class="patient-name">
+                        <i class="fas fa-user"></i>
+                        {{ schedule.patient_name }}
+                      </span>
+                      <span class="patient-tag">{{ schedule.patient_info }}</span>
+                      <button class="memo-btn"
+                              onclick="openMemoModal('{{ schedule.id }}', '{{ schedule.patient_name }}')">
+                        <i class="fas fa-pen-fancy"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <!-- Summary view (visible by default when folded) -->
+            <div class="schedule-summary" style="display: block;">
+              {% with summary=summary_by_room|get_item:room %}
+                {% if summary.ongoing %}
+                  <div class="timeline-item" data-status="{{ summary.ongoing.status }}">
+                    <div class="timeline-status">
+                      <span class="status-indicator"></span>
+                    </div>
+                    <div class="timeline-time">
+                      <span class="time">{{ summary.ongoing.time_slot }}</span>
+                      <span class="duration">{{ summary.ongoing.duration }}분</span>
+                    </div>
+                    <div class="timeline-content">
+                      <h4 class="surgery-name">{{ summary.ongoing.surgery_name }}</h4>
+                      <div class="surgery-details">
+                        <span class="detail-item">
+                          <i class="fas fa-user-md"></i>
+                          {{ summary.ongoing.surgeon }}
+                        </span>
+                      </div>
+                      <div class="patient-info">
+                        <span class="patient-name">
+                          <i class="fas fa-user"></i>
+                          {{ summary.ongoing.patient_name }}
+                        </span>
+                        <span class="patient-tag">{{ summary.ongoing.patient_info }}</span>
+                        <!-- Memo button in summary view -->
+                        <button class="memo-btn"
+                                onclick="openMemoModal('{{ summary.ongoing.id }}', '{{ summary.ongoing.patient_name }}')">
+                          <i class="fas fa-pen-fancy"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="timeline-item no-ongoing">
+                    <div class="timeline-content">
+                      <h4>No ongoing surgery</h4>
+                    </div>
+                  </div>
+                {% endif %}
+
+                <div class="summary-counts">
+                  {% if summary.pending %}
+                    <span class="pending-count">Remaining: {{ summary.pending }}</span>
+                  {% endif %}
+                  {% if summary.finished %}
+                    <span class="finished-count">Finished: {{ summary.finished }}</span>
+                  {% endif %}
+                </div>
+              {% endwith %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-calendar-times"></i>
+        <h3>등록된 수술 일정이 없습니다</h3>
+        <p>새로운 수술 일정을 업로드해주세요.</p>
+        <button class="btn-upload-empty">일정 업로드</button>
+      </div>
+    {% endif %}
+
+    <!-- Always show the file upload section -->
+    <div class="upload-section">
+      <div class="upload-card">
+        <div class="upload-content">
+          <div class="upload-header">
+            <div class="upload-icon">
+              <i class="fas fa-file-upload"></i>
+            </div>
+            <h3>새로운 수술 스케줄 업로드</h3>
+            <p class="upload-description">
+              엑셀 파일을 업로드하여 수술 일정을 등록하세요
+            </p>
+          </div>
+          <form method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+            {% csrf_token %}
+            <div class="file-drop-area">
+              <input type="file" name="file" id="fileInput" class="file-input" accept=".xlsx,.xls"/>
+              <label for="fileInput" class="file-label">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span>파일을 선택하거나 끌어다 놓으세요</span>
+                <span class="file-type-hint">Supported: Excel (.xlsx, .xls)</span>
+              </label>
+            </div>
+            <div class="upload-actions">
+              <button type="submit" name="action" value="update" class="btn-upload btn-update">
+                <i class="fas fa-sync-alt"></i>
+                스케줄 업데이트
+              </button>
+              <button type="submit" name="action" value="replace" class="btn-upload btn-replace">
+                <i class="fas fa-upload"></i>
+                전체 교체
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Memo Modal (unchanged) -->
+<div id="memoModal" class="memo-modal">
+  <div class="memo-modal-content">
+    <div class="memo-modal-header">
+      <div class="memo-header-content">
+        <h3 id="memoPatientName"></h3>
+        <span class="memo-subtitle">환자 메모</span>
+      </div>
+      <button class="close-modal" onclick="closeMemoModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="memo-modal-body">
+      <textarea id="memoText" class="memo-textarea" placeholder="환자에 대한 메모를 입력하세요..."></textarea>
+      <div class="memo-modal-footer">
+        <button class="btn-save" onclick="saveMemoAndClose()">
+          저장하기
+          <i class="fas fa-check"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* General container styles remain unchanged */
+  .dashboard-container { background-color: #f8f9fa; min-height: 100vh; padding-bottom: 3rem; font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+  .dashboard-hero { background: linear-gradient(135deg, #1a4569, #3d3561); padding: 3rem 0; position: relative; overflow: hidden; margin-bottom: 3rem; }
+  .hero-content { max-width: 1200px; margin: 0 auto; padding: 0 2rem; color: white; text-align: center; }
+  .hero-title { font-size: 2.8rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -0.5px; background: linear-gradient(to right, #ffffff, #e2e8f0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+  .hero-subtitle { font-size: 1.2rem; opacity: 0.9; margin: 0; font-weight: 300; letter-spacing: 0.5px; }
+  .schedule-wrapper { max-width: 1400px; margin: -60px auto 0; padding: 0 2rem; position: relative; z-index: 10; }
+
+  /* Responsive grid for schedule cards:
+     Using CSS Grid here lets us show 3 columns on wide screens,
+     2 columns on medium screens, and 1 column on small screens.
+  */
+  .schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: -40px;
+  }
+
+  .room-header { display: flex; align-items: center; padding: 1.5rem; background: linear-gradient(135deg, #2b5876, #4e4376); color: white; }
+  .room-title { font-size: 1.25rem; font-weight: 600; margin: 0; }
+  .schedule-timeline, .schedule-summary { padding: 1.5rem; }
+  .timeline-item { display: grid; grid-template-columns: 30px 80px 1fr; gap: 1rem; padding: 1rem; border-left: 3px solid #e5e7eb; margin-left: 1rem; position: relative; }
+  .timeline-status { position: relative; }
+  .status-indicator { position: absolute; left: -1.7rem; top: 0; width: 1rem; height: 1rem; border-radius: 50%; background: #94a3b8; border: 2px solid white; transition: all 0.3s ease; }
+  .timeline-item[data-status="대기"],
+  .timeline-item[data-status="대기중"] .status-indicator { background: #94a3b8; }
+  .timeline-item[data-status="진행중"],
+  .timeline-item[data-status="수술중"] .status-indicator { background: #22c55e; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2); }
+  .timeline-item[data-status="완료"] .status-indicator { background: #3b82f6; }
+  .time { font-weight: 600; color: #2b5876; display: block; font-size: 0.9rem; }
+  .duration { font-size: 0.8rem; color: #64748b; }
+  .surgery-name { font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem; white-space: normal; word-break: keep-all; }
+  .surgery-details { display: flex; gap: 1rem; color: #64748b; font-size: 0.9rem; }
+  .detail-item i { margin-right: 0.5rem; }
+
+
+  .toggle-room {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-left: auto;
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .toggle-room::before {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.3s ease;
+  }
+
+  .room-info {
+    flex: 1;
+  }
+
+  .schedule-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .schedule-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  }
+  
+  .schedule-card:not(.collapsed) .toggle-room::before {
+    transform: rotate(-135deg);
+  }
+  
+  .toggle-room:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+  }
+  
+  /* Enhanced summary counts style */
+  .summary-counts {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(to right, rgba(43, 88, 118, 0.05), rgba(78, 67, 118, 0.05));
+    border-radius: 0.75rem;
+    margin-top: 1rem;
+  }
+  
+  .pending-count,
+  .finished-count {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #475569;
+    font-weight: 500;
+  }
+  
+  .pending-count::before,
+  .finished-count::before {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+  }
+  
+  .pending-count::before {
+    background: #94a3b8;
+  }
+  
+  .finished-count::before {
+    background: #3b82f6;
+  }
+
+      @media (max-width: 1400px) {
+        .schedule-grid {
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+        }
+      }
+
+      @media (max-width: 900px) {
+        .schedule-grid {
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+        }
+      }
+
+      @media (max-width: 768px) {
+        .dashboard-hero {
+          padding: 2rem 0;
+        }
+
+        .hero-title {
+          font-size: 2rem;
+        }
+
+        .hero-subtitle {
+          font-size: 1rem;
+        }
+      }
+
+      @font-face {
+        font-family: "Pretendard";
+        src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff")
+          format("woff");
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      .memo-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #2b5876, #4e4376);
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-left: 0.5rem;
+        box-shadow: 0 2px 8px rgba(43, 88, 118, 0.2);
+      }
+
+      .memo-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(43, 88, 118, 0.3);
+      }
+
+      .memo-btn i {
+        font-size: 0.9rem;
+      }
+
+      /* Upload Section Styles */
+      .upload-section {
+        margin-top: 2rem;
+        padding: 2rem;
+      }
+
+      .upload-card {
+        background: white;
+        border-radius: 1.25rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .upload-content {
+        padding: 2rem;
+      }
+
+      .upload-header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+
+      .upload-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #2b5876, #4e4376);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: white;
+        font-size: 1.5rem;
+      }
+
+      .upload-description {
+        color: #64748b;
+        margin-top: 0.5rem;
+      }
+
+      .file-drop-area {
+        border: 2px dashed #e2e8f0;
+        border-radius: 1rem;
+        padding: 2rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+      }
+
+      .file-drop-area:hover {
+        border-color: #2b5876;
+        background: #f8fafc;
+      }
+
+      .file-input {
+        display: none;
+      }
+
+      .file-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        color: #64748b;
+      }
+
+      .file-label i {
+        font-size: 2rem;
+        color: #2b5876;
+        margin-bottom: 0.5rem;
+      }
+
+      .file-type-hint {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+      }
+
+      .btn-upload {
+        flex: 1;
+        padding: 1rem;
+        color: white;
+        border: none;
+        border-radius: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      .btn-upload:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(43, 88, 118, 0.2);
+      }
+
+      .btn-upload i {
+        font-size: 1.1rem;
+      }
+
+      .upload-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .btn-update {
+        background: linear-gradient(135deg, #2b7623, #1a4569);
+      }
+
+      .btn-replace {
+        background: linear-gradient(135deg, #2b5876, #4e4376);
+      }
+
+      /* Enhanced Modal Styles */
+      .memo-modal-header {
+        background: linear-gradient(135deg, #2b5876, #4e4376);
+        color: white;
+        padding: 1.5rem;
+      }
+
+      .memo-header-content h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+
+      .memo-subtitle {
+        font-size: 0.9rem;
+        opacity: 0.8;
+      }
+
+      .close-modal {
+        color: white;
+      }
+
+      .memo-textarea {
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s ease;
+      }
+
+      .memo-textarea:focus {
+        border-color: #2b5876;
+        box-shadow: 0 0 0 4px rgba(43, 88, 118, 0.1);
+      }
+
+      .memo-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .memo-modal.active {
+        display: flex;
+        opacity: 1;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .memo-modal-content {
+        background: white;
+        width: 90%;
+        max-width: 600px; /* Increased from 500px */
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transform: translateY(20px);
+        transition: transform 0.3s ease;
+      }
+
+      .memo-modal-body {
+        padding: 1.5rem;
+      }
+
+      .memo-textarea {
+        width: 100%;
+        min-height: 300px; /* Increased from default */
+        padding: 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 0.5rem;
+        font-family: inherit;
+        font-size: 1rem;
+        line-height: 1.5;
+        resize: vertical;
+        transition: all 0.3s ease;
+      }
+
+      .memo-textarea:focus {
+        border-color: #2b5876;
+        box-shadow: 0 0 0 4px rgba(43, 88, 118, 0.1);
+        outline: none;
+      }
+
+      .memo-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        padding: 1.5rem 0 0 0;
+      }
+
+      .btn-save {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #2b5876, #4e4376);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-save:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+
+      .close-modal {
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+        padding: 0.5rem;
+        font-size: 1.2rem;
+        transition: color 0.2s ease;
+      }
+
+      .close-modal:hover {
+        opacity: 0.8;
+      }
+    </style>
+
+    <script>
+      let currentScheduleId = null;
+
+  // Toggle function: if collapsed (default) then "Open" shows full timeline; if open, then "Fold" returns to summary.
+  function toggleRoom(button) {
+    var card = button.closest(".schedule-card");
+    var timeline = card.querySelector(".schedule-timeline");
+    var summary = card.querySelector(".schedule-summary");
+    if (card.classList.contains("collapsed")) {
+      // Expand: show full timeline and hide summary
+      card.classList.remove("collapsed");
+      timeline.style.display = "block";
+      summary.style.display = "none";
+      button.textContent = "Fold";
+    } else {
+      // Collapse: hide timeline and show summary
+      card.classList.add("collapsed");
+      timeline.style.display = "none";
+      summary.style.display = "block";
+      button.textContent = "Open";
+    }
+  }
+
+  function openMemoModal(scheduleId, patientName) {
+    currentScheduleId = scheduleId;
+    const modal = document.getElementById("memoModal");
+    const patientNameElement = document.getElementById("memoPatientName");
+    const memoText = document.getElementById("memoText");
+
+    patientNameElement.textContent = patientName;
+    modal.classList.add("active");
+
+    // Get CSRF token
+    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    fetch(`/api/memos/${scheduleId}/`, {
+      method: "GET",
+      headers: {
+        "X-CSRFToken": csrfToken,
+        "Content-Type": "application/json"
+      },
+      credentials: "same-origin"
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        memoText.value = data.content || "";
+      })
+      .catch((error) => {
+        console.error("Error fetching memo:", error);
+        memoText.value = "";
+      });
+  }
+
+  function saveMemoAndClose() {
+    const memoText = document.getElementById("memoText").value;
+    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    const saveButton = document.querySelector(".btn-save");
+
+    if (!currentScheduleId) {
+      console.error("No schedule ID found");
+      alert("Error: Could not identify the current schedule.");
+      return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.innerHTML = "Saving...";
+
+    fetch(`/api/memos/${currentScheduleId}/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
+        Accept: "application/json"
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ content: memoText })
+    })
+      .then((response) =>
+        response.text().then((text) => {
+          try {
+            return JSON.parse(text);
+          } catch (e) {
+            console.error("Response was not JSON:", text);
+            throw new Error("Server returned invalid JSON response");
+          }
+        })
+      )
+      .then((data) => {
+        if (data.status === "success") {
+          closeMemoModal();
+        } else {
+          throw new Error(data.message || "Unknown error occurred");
+        }
+      })
+      .catch((error) => {
+        console.error("Error saving memo:", error);
+        alert(`Failed to save memo: ${error.message}`);
+      })
+      .finally(() => {
+        saveButton.disabled = false;
+        saveButton.innerHTML = 'Save <i class="fas fa-check"></i>';
+      });
+  }
+
+  function closeMemoModal() {
+    const modal = document.getElementById("memoModal");
+    modal.classList.remove("active");
+    currentScheduleId = null;
+  }
+
+  // Close modal when clicking outside or pressing ESC
+  document.addEventListener("click", (e) => {
+    const modal = document.getElementById("memoModal");
+    if (e.target === modal) {
+      closeMemoModal();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeMemoModal();
+    }
+  });
+
+  // File upload preview and drag/drop handling (unchanged)
+  const fileInput = document.getElementById("fileInput");
+  const fileLabel = document.querySelector(".file-label span");
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files.length > 0) {
+      fileLabel.textContent = e.target.files[0].name;
+    }
+  });
+  const dropArea = document.querySelector(".file-drop-area");
+  ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+    dropArea.addEventListener(eventName, preventDefaults, false);
+  });
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  ["dragenter", "dragover"].forEach((eventName) => {
+    dropArea.addEventListener(eventName, highlight, false);
+  });
+  ["dragleave", "drop"].forEach((eventName) => {
+    dropArea.addEventListener(eventName, unhighlight, false);
+  });
+  function highlight(e) {
+    dropArea.classList.add("highlight");
+  }
+  function unhighlight(e) {
+    dropArea.classList.remove("highlight");
+  }
+  dropArea.addEventListener("drop", handleDrop, false);
+  function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    fileInput.files = files;
+    fileLabel.textContent = files[0].name;
+  }
+    </script>
+    {% endblock %}
+  </div>
+</div>

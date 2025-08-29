@@ -1,0 +1,42 @@
+// ==========================================
+// npm run build:css for BUILD!!
+// 🚀 ANEXUS PROJECT MAIN SCSS FILE (Updated with @use)
+// Modern, future-proof, and warning-free.
+// npm run build:css for BUILD!!
+// ==========================================
+
+// 1. Abstracts (Variables, Mixins, Functions, Animations)
+// We use 'as *' to make variables available globally, similar to @import.
+@use "abstracts/variables" as *;
+@use "abstracts/animations" as *;
+
+// 2. Core (Base styles, Utilities, etc.)
+@use "core/base";
+@use "core/utilities";
+
+// 3. Layout (Header, Footer, Navbar, Grid system, etc.)
+@use "layout/navbar";
+@use "layout/header";
+@use "layout/footer";
+@use "layout/sections";
+
+// 4. Components (Buttons, Cards, Forms, Modals, etc.)
+@use "components/buttons";
+@use "components/cards";
+@use "components/forms";
+@use "components/question-system";
+@use "components/alerts";
+@use "components/badges";
+@use "components/tables";
+@use "components/modal";
+@use "components/chat";
+@use "components/timer";
+@use "components/bookmark";
+@use "components/board";
+@use "components/etc"; // 나머지 스타일
+
+// 5. Media Queries & Special Modes (Should be loaded last)
+@use "core/responsive";
+@use "core/accessibility";
+@use "core/dark-mode";
+@use "core/print";

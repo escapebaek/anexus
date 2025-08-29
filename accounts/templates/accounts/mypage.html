@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<link rel="stylesheet" href="{% static 'accounts/mypage.css' %}">
+{% endblock %}
+
+{% block page_content %}
+<div class="mypage-section position-relative min-vh-100">
+  <div class="mypage-overlay"></div>
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="profile-card animate-fade-in">
+          <div class="card-header text-center">
+            <h1 class="profile-title">My Profile</h1>
+            <p class="profile-subtitle">Manage your account information</p>
+          </div>
+          
+          <!-- Update Information -->
+          <div class="card-body">
+            <form method="POST" action="{% url 'update_user_info' %}" class="profile-form">
+              {% csrf_token %}
+              
+              <div class="row g-4">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="first_name" class="form-label">First Name</label>
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="fas fa-user"></i>
+                      </span>
+                      <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="last_name" class="form-label">Last Name</label>
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="fas fa-user"></i>
+                      </span>
+                      <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="email" class="form-label">Email</label>
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="fas fa-envelope"></i>
+                      </span>
+                      <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="training_hospital" class="form-label">Training Hospital</label>
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="fas fa-hospital"></i>
+                      </span>
+                      <select class="form-control" id="training_hospital" name="training_hospital">
+                        {% for choice in user.TRAINING_HOSPITAL_CHOICES %}
+                        <option value="{{ choice.0 }}" {% if choice.0 == user.training_hospital %}selected{% endif %}>
+                          {{ choice.1 }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-center mt-4">
+                <button type="submit" class="btn btn-update">
+                  Update Information
+                  <i class="fas fa-check ml-2"></i>
+                </button>
+              </div>
+            </form>
+
+            <!-- Change Password -->
+            <div class="password-section text-center mt-5">
+              <h3 class="password-title">Change Password</h3>
+              <p class="password-subtitle">Keep your account secure by updating your password regularly</p>
+              <a href="{% url 'password_change' %}" class="btn btn-password">
+                Change Password
+                <i class="fas fa-key ml-2"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
