@@ -1,6 +1,6 @@
 {% extends 'base.html' %} 
 {% load static %} 
-
+{% load markdown_tags %}
 
 {% block page_content %}
 <div class="board-container">
@@ -22,7 +22,7 @@
             </div>
             <div class="post-meta-item">
               <i class="fas fa-eye"></i>
-              <span>조회수</span> {# 실제 조회수 변수 삽입 #}
+              <span>조회수</span>
             </div>
           </div>
 
@@ -44,7 +44,7 @@
 
       <!-- 게시글 내용 -->
       <div class="post-content">
-        {{ board.contents|safe }}
+        {{ board.contents|mdtohtml }}
       </div>
     </div>
 
@@ -107,21 +107,19 @@
 {% block extra_js %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // 댓글 textarea 자동 높이 조절
     const textarea = document.querySelector('.comment-form textarea');
     if (textarea) {
-      textarea.classList.add('form-control'); // 일관된 스타일을 위해 클래스 추가
+      textarea.classList.add('form-control'); 
       textarea.setAttribute('placeholder', '따뜻한 댓글을 남겨주세요...');
-      textarea.setAttribute('rows', '1'); // 초기 높이를 1줄로
+      textarea.setAttribute('rows', '1');
 
       const initialHeight = textarea.scrollHeight;
       
       textarea.addEventListener('input', function () {
-        this.style.height = 'auto'; // 높이 초기화
+        this.style.height = 'auto';
         let newHeight = this.scrollHeight;
-        // 최소 높이와 최대 높이 설정
         if (newHeight < initialHeight) newHeight = initialHeight;
-        if (newHeight > 200) newHeight = 200; // 최대 200px까지만 늘어남
+        if (newHeight > 200) newHeight = 200;
         
         this.style.height = newHeight + 'px';
       });

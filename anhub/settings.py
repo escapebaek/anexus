@@ -39,9 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # backend
     'storages',
-    # ckeditor
-    'ckeditor',
-    'ckeditor_uploader',
+    'mdeditor',
     # CORS for API calls
     'corsheaders',
 ]
@@ -150,19 +148,19 @@ MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/
 
 ############################################################################
 # CKEditor
-CKEDITOR_UPLOAD_PATH = "uploads/"
-CKEDITOR_CONFIGS = {
+MDEDITOR_CONFIGS = {
     'default': {
-        'toolbar': 'full',
-        'height': 300,
         'width': '100%',
-        'toolbar_Custom': [
-            ['Bold', 'Italic', 'Underline'],
-            ['NumberedList', 'BulletedList'],
-            ['Link', 'Unlink'],
-            ['RemoveFormat', 'Source']
-        ],
-    },
+        'height': 500,
+        'toolbar': ["undo", "redo", "|",
+                   "bold", "del", "italic", "quote", "code", "|",
+                   "h1", "h2", "h3", "h5", "h6", "|",
+                   "list-ul", "list-ol", "hr", "|",
+                   "link", "reference-link", "image", "code-block", "|",
+                   "preview", "watch", "fullscreen"],
+        'upload_image_formats': ["jpg", "jpeg", "gif", "png", "bmp", "webp"],
+        'image_folder': 'editor',
+    }
 }
 
 ############################################################################
