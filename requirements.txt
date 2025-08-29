@@ -6,7 +6,6 @@ asgiref==3.7.2
 attrs==25.3.0
 autobahn==24.4.2
 Automat==25.4.16
-beautifulsoup4==4.13.5
 certifi==2024.7.4
 cffi==1.17.1
 charset-normalizer==3.3.2
