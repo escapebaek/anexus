@@ -1,8 +1,8 @@
-.git
+node_modules/
 venv/
 __pycache__/
 *.pyc
-*.sqlite3
-node_modules/
+.git/
+*.txt~
 media/
-requirements.txt~
+staticfiles/
