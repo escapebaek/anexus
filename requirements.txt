@@ -38,7 +38,6 @@ multidict==6.6.4
 oauthlib==3.2.2
 openpyxl==3.1.5
 packaging==25.0
-pandas==2.2.3
 pillow==10.4.0
 platformdirs==4.2.2
 postgrest==1.1.1
