@@ -25,8 +25,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('land.urls')),
     path('coag/', include('coag.urls')),
-    path('calculator/', include('calculator.urls')),
-    path('ped/', include('ped.urls')),
     path('board/', include('board.urls')),
     path('accounts/', include('accounts.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
@@ -34,12 +32,7 @@ urlpatterns = [
     path('drugdictionary/', include('drugdictionary.urls')),
     path('schedule/', include('schedule.urls')),
     path('record/', include('record.urls')),
-    #CKeditor 추가
     path('ckeditor/', include('ckeditor_uploader.urls')),
-    #chat
-    path('chat/', include('chat.urls')), 
-    # debug
-    # path('__debug__/', include('debug_toolbar.urls')),
     path('api/', include('schedule.urls')),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

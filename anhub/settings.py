@@ -21,12 +21,9 @@ INSTALLED_APPS = [
     # my apps
     'land.apps.LandConfig',
     'coag.apps.CoagConfig',
-    'calculator.apps.CalculatorConfig',
-    'ped.apps.PedConfig',
     'board.apps.BoardConfig',
     'accounts.apps.AccountsConfig',
     'exam.apps.ExamConfig',
-    'chat.apps.ChatConfig',
     'drugdictionary.apps.DrugdictionaryConfig',
     'schedule.apps.ScheduleConfig',
     'record.apps.RecordConfig',
