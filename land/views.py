@@ -3,7 +3,7 @@ from django.shortcuts import render, reverse
 def home(request):
     cards = [
         {"title": "Coagulation Guideline", "text": "Find the latest coagulation guidelines.", "url": reverse('coag_index'), "icon": "fas fa-vial"},
-        {"title": "Drug Calculator", "text": "Accurate drug dosage calculations.", "url": reverse('calculator'), "icon": "fas fa-calculator"},
+        {"title": "Drug Calculator", "text": "Accurate drug dosage calculations.", "url": "https://escapebaek.github.io/anesthesia-calculator/", "icon": "fas fa-calculator"},
         {"title": "Pediatric Calculator", "text": "Accurate calculations for pediatric anesthesia.", "url": reverse('pedcalculate'), "icon": "fas fa-baby"},
         {"title": "Questions", "text": "More information about board exam.", "url": reverse('question_home'), "icon": "fas fa-question-circle"},
         {"title": "Schedule", "text": "Surgery schedule for today.", "url": reverse('schedule_dashboard'), "icon": "fas fa-calendar-alt"},
