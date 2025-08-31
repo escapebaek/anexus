@@ -4,7 +4,7 @@ def home(request):
     cards = [
         {"title": "Coagulation Guideline", "text": "Find the latest coagulation guidelines.", "url": reverse('coag_index'), "icon": "fas fa-vial"},
         {"title": "Drug Calculator", "text": "Accurate drug dosage calculations.", "url": "https://escapebaek.github.io/anesthesia-calculator/", "icon": "fas fa-calculator"},
-        {"title": "Pediatric Calculator", "text": "Accurate calculations for pediatric anesthesia.", "url": reverse('pedcalculate'), "icon": "fas fa-baby"},
+        {"title": "Pediatric Calculator", "text": "Accurate calculations for pediatric anesthesia.", "url": "https://escapebaek.github.io/pediatric-anesthesia-calculator/", "icon": "fas fa-baby"},
         {"title": "Questions", "text": "More information about board exam.", "url": reverse('question_home'), "icon": "fas fa-question-circle"},
         {"title": "Schedule", "text": "Surgery schedule for today.", "url": reverse('schedule_dashboard'), "icon": "fas fa-calendar-alt"},
         {"title": "Record", "text": "Anesthesia record for today.", "url": reverse('anesthesia_record'), "icon": "fas fa-pencil-alt"},
