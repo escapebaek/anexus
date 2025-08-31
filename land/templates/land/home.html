@@ -1,14 +1,14 @@
-{% extends 'base.html' %} 
-{% load static %} 
-{% block page_content %}
+{% extends 'base.html' %} {% load static %} {% block page_content %}
 
 <!-- Hero Section -->
-<div class="hero-section position-relative d-flex flex-column justify-content-center align-items-center">
+<div
+  class="hero-section position-relative d-flex flex-column justify-content-center align-items-center"
+>
   <div class="hero-background">
     <div class="gradient-orb orb-1"></div>
     <div class="gradient-orb orb-2"></div>
   </div>
-  
+
   <div class="hero-content text-center">
     <h1 class="hero-title">Welcome to ANExuS</h1>
     <p class="hero-subtitle">
@@ -28,7 +28,10 @@
     <div class="row g-3">
       {% for card in cards %}
       <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="feature-card scroll-reveal" data-delay="{{ forloop.counter0|add:1 }}">
+        <div
+          class="feature-card scroll-reveal"
+          data-delay="{{ forloop.counter0|add:1 }}"
+        >
           <div class="feature-icon">
             <i class="fas fa-{{ card.icon }}"></i>
           </div>
@@ -41,7 +44,7 @@
           </a>
           {% else %}
           <button class="btn btn-feature disabled" disabled>
-            <span>Access Restricted</span>
+            <span>Access Restricted!</span>
             <i class="fas fa-lock ms-1"></i>
           </button>
           {% endif %}
@@ -113,7 +116,7 @@
     font-size: 3.2rem;
     font-weight: 800;
     margin-bottom: 1rem;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     opacity: 0;
     animation: fadeInUp 0.8s ease-out 0.3s forwards;
   }
@@ -127,13 +130,13 @@
   }
 
   .btn-hero {
-    background: rgba(255,255,255,0.15);
+    background: rgba(255, 255, 255, 0.15);
     color: white;
     padding: 1rem 2rem;
     border-radius: 30px;
     font-weight: 600;
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
     text-decoration: none;
     display: inline-block;
@@ -143,11 +146,11 @@
   }
 
   .btn-hero:hover {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255, 255, 255, 0.25);
     transform: translateY(-2px) scale(1.02);
     color: white;
     text-decoration: none;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
 
   /* Features Section - Optimized spacing */
@@ -173,7 +176,7 @@
   }
 
   .section-title::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: -8px;
     left: 50%;
@@ -201,13 +204,13 @@
     transition: all 0.3s ease;
     text-decoration: none;
     display: inline-block;
-    box-shadow: 0 3px 10px rgba(43,88,118,0.2);
+    box-shadow: 0 3px 10px rgba(43, 88, 118, 0.2);
     will-change: transform;
   }
 
   .btn-feature:hover {
     transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 5px 15px rgba(43,88,118,0.3);
+    box-shadow: 0 5px 15px rgba(43, 88, 118, 0.3);
     color: white;
     text-decoration: none;
   }
@@ -227,7 +230,8 @@
 
   /* Optimized Animations */
   @keyframes float {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateY(0px);
     }
     50% {
@@ -270,7 +274,7 @@
     .hero-title {
       font-size: 2.8rem;
     }
-    
+
     .section-title {
       font-size: 2.3rem;
     }
@@ -281,20 +285,20 @@
       height: 75vh;
       min-height: 500px;
     }
-    
+
     .hero-title {
       font-size: 2.5rem;
     }
-    
+
     .hero-subtitle {
       font-size: 1.2rem;
     }
-    
+
     .section-title {
       font-size: 2.1rem;
       margin-bottom: 2.5rem;
     }
-    
+
     .features-section {
       padding: 50px 0;
     }
@@ -305,32 +309,33 @@
       height: 70vh;
       min-height: 450px;
     }
-    
+
     .hero-title {
       font-size: 2.2rem;
       margin-bottom: 0.8rem;
     }
-    
+
     .hero-subtitle {
       font-size: 1.1rem;
       margin-bottom: 1.5rem;
     }
-    
+
     .btn-hero {
       padding: 0.8rem 1.5rem;
       font-size: 0.9rem;
     }
-    
+
     .section-title {
       font-size: 1.9rem;
       margin-bottom: 2rem;
     }
-    
+
     .features-section {
       padding: 40px 0;
     }
-    
-    .orb-1, .orb-2 {
+
+    .orb-1,
+    .orb-2 {
       width: 120px;
       height: 120px;
       filter: blur(30px);
@@ -341,21 +346,22 @@
     .hero-title {
       font-size: 1.9rem;
     }
-    
+
     .hero-subtitle {
       font-size: 1rem;
     }
-    
+
     .btn-hero {
       padding: 0.7rem 1.3rem;
       font-size: 0.85rem;
     }
-    
+
     .section-title {
       font-size: 1.7rem;
     }
-    
-    .orb-1, .orb-2 {
+
+    .orb-1,
+    .orb-2 {
       width: 100px;
       height: 100px;
       filter: blur(25px);
@@ -367,14 +373,14 @@
     .gradient-orb {
       animation: none;
     }
-    
+
     .hero-title,
     .hero-subtitle,
     .btn-hero {
       animation: none;
       opacity: 1;
     }
-    
+
     .scroll-reveal {
       transition: none;
       opacity: 1;
@@ -387,78 +393,92 @@
     .hero-section {
       background: linear-gradient(135deg, #1a365d, #2d3748);
     }
-    
+
     .btn-hero {
-      border: 2px solid rgba(255,255,255,0.8);
+      border: 2px solid rgba(255, 255, 255, 0.8);
     }
   }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Optimized Scroll Reveal with Intersection Observer
-  const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -10px 0px'
-  };
+  document.addEventListener("DOMContentLoaded", function () {
+    // Optimized Scroll Reveal with Intersection Observer
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: "0px 0px -10px 0px",
+    };
 
-  const observer = new IntersectionObserver(function(entries) {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const delay = parseInt(entry.target.dataset.delay) || 0;
-        setTimeout(() => {
-          entry.target.classList.add('revealed');
-        }, delay * 50); // Reduced delay for faster loading
-        
-        // Stop observing once revealed for performance
-        observer.unobserve(entry.target);
+    const observer = new IntersectionObserver(function (entries) {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const delay = parseInt(entry.target.dataset.delay) || 0;
+          setTimeout(() => {
+            entry.target.classList.add("revealed");
+          }, delay * 50); // Reduced delay for faster loading
+
+          // Stop observing once revealed for performance
+          observer.unobserve(entry.target);
+        }
+      });
+    }, observerOptions);
+
+    // Observe all scroll-reveal elements
+    document.querySelectorAll(".scroll-reveal").forEach((el, index) => {
+      // Add staggered delay if not specified
+      if (!el.dataset.delay) {
+        el.dataset.delay = index;
       }
+      observer.observe(el);
     });
-  }, observerOptions);
 
-  // Observe all scroll-reveal elements
-  document.querySelectorAll('.scroll-reveal').forEach((el, index) => {
-    // Add staggered delay if not specified
-    if (!el.dataset.delay) {
-      el.dataset.delay = index;
-    }
-    observer.observe(el);
-  });
+    // Optimized smooth scroll for hero button
+    document
+      .querySelector(".btn-hero")
+      ?.addEventListener("click", function (e) {
+        e.preventDefault();
+        const target = document.querySelector("#features");
+        if (target) {
+          const navHeight =
+            document.querySelector(".navbar")?.offsetHeight || 70;
+          const targetPosition = target.offsetTop - navHeight - 20;
 
-  // Optimized smooth scroll for hero button
-  document.querySelector('.btn-hero')?.addEventListener('click', function(e) {
-    e.preventDefault();
-    const target = document.querySelector('#features');
-    if (target) {
-      const navHeight = document.querySelector('.navbar')?.offsetHeight || 70;
-      const targetPosition = target.offsetTop - navHeight - 20;
-      
-      window.scrollTo({
-        top: targetPosition,
-        behavior: 'smooth'
+          window.scrollTo({
+            top: targetPosition,
+            behavior: "smooth",
+          });
+        }
+      });
+
+    // Preload feature icons for better performance
+    const iconClasses = [
+      "heartbeat",
+      "pills",
+      "baby",
+      "chart-line",
+      "history",
+      "shield-alt",
+      "users",
+      "mobile-alt",
+    ];
+    iconClasses.forEach((iconClass) => {
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.href = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.woff2`;
+      document.head.appendChild(link);
+    });
+
+    // Performance monitoring (optional)
+    if ("performance" in window) {
+      window.addEventListener("load", function () {
+        const loadTime =
+          performance.timing.loadEventEnd - performance.timing.navigationStart;
+        if (loadTime > 3000) {
+          // If load time > 3s
+          console.warn("Page load time:", loadTime + "ms");
+        }
       });
     }
   });
-
-  // Preload feature icons for better performance
-  const iconClasses = ['heartbeat', 'pills', 'baby', 'chart-line', 'history', 'shield-alt', 'users', 'mobile-alt'];
-  iconClasses.forEach(iconClass => {
-    const link = document.createElement('link');
-    link.rel = 'prefetch';
-    link.href = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.woff2`;
-    document.head.appendChild(link);
-  });
-
-  // Performance monitoring (optional)
-  if ('performance' in window) {
-    window.addEventListener('load', function() {
-      const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
-      if (loadTime > 3000) { // If load time > 3s
-        console.warn('Page load time:', loadTime + 'ms');
-      }
-    });
-  }
-});
 </script>
 
 {% endblock %}
