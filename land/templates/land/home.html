@@ -14,10 +14,16 @@
     <p class="hero-subtitle">
       Your one-stop solution for safe and precise anesthesia care.
     </p>
-    <a href="#features" class="btn btn-hero">
-      <span>Explore Our Features</span>
-      <i class="fas fa-arrow-right ms-2"></i>
-    </a>
+    <div class="hero-buttons">
+      <a href="#features" class="btn btn-hero btn-hero-primary">
+        <span>Explore Our Features</span>
+        <i class="fas fa-arrow-right ms-2"></i>
+      </a>
+      <a href="https://escapebaek.github.io/me/" target="_blank" class="btn btn-hero btn-hero-secondary">
+        <span>About the Developer</span>
+        <i class="fas fa-user ms-2"></i>
+      </a>
+    </div>
   </div>
 </div>
 
@@ -26,21 +32,27 @@
   <div class="container-fluid">
     <h2 class="section-title scroll-reveal">Our Features</h2>
     <div class="row g-3">
+      
+      
       {% for card in cards %}
       <div class="col-xl-3 col-lg-4 col-md-6">
         <div
           class="feature-card scroll-reveal"
-          data-delay="{{ forloop.counter0|add:1 }}"
+          data-delay="{{ forloop.counter }}"
         >
           <div class="feature-icon">
-            <i class="fas fa-{{ card.icon }}"></i>
+            <i class="{{ card.icon }}"></i>
           </div>
           <h3 class="feature-title">{{ card.title }}</h3>
           <p class="feature-text">{{ card.text }}</p>
           {% if user.is_authenticated and user.is_approved %}
-          <a href="{{ card.url }}" class="btn btn-feature">
+          <a href="{{ card.url }}" class="btn btn-feature" {% if "github.io" in card.url or "anesthesia.or.kr" in card.url or "nysora.com" in card.url or "orphananesthesia.eu" in card.url or "med.utoronto.ca" in card.url or "accrac.com" in card.url or "snuh.org" in card.url %}target="_blank"{% endif %}>
             <span>Access Now</span>
+            {% if "github.io" in card.url or "anesthesia.or.kr" in card.url or "nysora.com" in card.url or "orphananesthesia.eu" in card.url or "med.utoronto.ca" in card.url or "accrac.com" in card.url or "snuh.org" in card.url %}
+            <i class="fas fa-external-link-alt ms-1"></i>
+            {% else %}
             <i class="fas fa-chevron-right ms-1"></i>
+            {% endif %}
           </a>
           {% else %}
           <button class="btn btn-feature disabled" disabled>
@@ -129,9 +141,16 @@
     animation: fadeInUp 0.8s ease-out 0.6s forwards;
   }
 
+  .hero-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeInUp 0.8s ease-out 0.9s forwards;
+  }
+
   .btn-hero {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
     padding: 1rem 2rem;
     border-radius: 30px;
     font-weight: 600;
@@ -140,17 +159,34 @@
     transition: all 0.3s ease;
     text-decoration: none;
     display: inline-block;
-    opacity: 0;
-    animation: fadeInUp 0.8s ease-out 0.9s forwards;
     will-change: transform;
   }
 
+  .btn-hero-primary {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+
+  .btn-hero-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
   .btn-hero:hover {
-    background: rgba(255, 255, 255, 0.25);
     transform: translateY(-2px) scale(1.02);
     color: white;
     text-decoration: none;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .btn-hero-primary:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .btn-hero-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
   }
 
   /* Features Section - Optimized spacing */
@@ -320,9 +356,17 @@
       margin-bottom: 1.5rem;
     }
 
+    .hero-buttons {
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
     .btn-hero {
       padding: 0.8rem 1.5rem;
       font-size: 0.9rem;
+      width: auto;
+      min-width: 200px;
     }
 
     .section-title {
@@ -354,6 +398,7 @@
     .btn-hero {
       padding: 0.7rem 1.3rem;
       font-size: 0.85rem;
+      min-width: 180px;
     }
 
     .section-title {
@@ -376,7 +421,7 @@
 
     .hero-title,
     .hero-subtitle,
-    .btn-hero {
+    .hero-buttons {
       animation: none;
       opacity: 1;
     }
@@ -433,7 +478,7 @@
 
     // Optimized smooth scroll for hero button
     document
-      .querySelector(".btn-hero")
+      .querySelector(".btn-hero-primary")
       ?.addEventListener("click", function (e) {
         e.preventDefault();
         const target = document.querySelector("#features");
