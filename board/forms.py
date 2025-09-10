@@ -9,21 +9,42 @@ class BoardForm(forms.ModelForm):
 
     class Meta:
         model = Board
-        fields = ['title', 'contents']
+        fields = ['title', 'contents', 'is_notice']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '제목을 입력하세요'
+            }),
+            'is_notice': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
+        }
+        labels = {
+            'title': '제목',
+            'contents': '내용',
+            'is_notice': '공지사항으로 등록'
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # 관리자가 아닌 경우 공지사항 체크박스 숨기기
+        if self.user and not (self.user.is_staff or self.user.is_superuser):
+            self.fields['is_notice'].widget = forms.HiddenInput()
+            self.fields['is_notice'].initial = False
 
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ['content']
         widgets = {
-            # 아래 'class' 속성을 추가했습니다.
             'content': forms.Textarea(attrs={
                 'class': 'form-control', 
-                'rows': 4, # rows는 3에서 4로 조금 늘려 더 나은 사용자 경험을 제공합니다.
-                'placeholder': '따뜻한 댓글을 남겨주세요...' # 플레이스홀더 텍스트를 수정했습니다.
+                'rows': 4,
+                'placeholder': '따뜻한 댓글을 남겨주세요...'
             }),
         }
-        # label이 필요 없다면 아래 코드를 추가하여 숨길 수 있습니다.
         labels = {
             'content': '',
         }

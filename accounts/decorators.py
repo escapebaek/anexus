@@ -6,8 +6,9 @@ def user_is_approved(function=None):
     """
     Decorator for views that checks that the logged in user is approved.
     """
+    # 핵심 수정: specially_approved 사용자도 포함
     actual_decorator = user_passes_test(
-        lambda u: u.is_authenticated and u.is_approved,
+        lambda u: u.is_authenticated and (u.is_approved or u.is_specially_approved),
         login_url='login',
         redirect_field_name=None
     )

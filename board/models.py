@@ -12,8 +12,13 @@ class Board(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_date = models.DateTimeField(default=timezone.now)
     modified_date = models.DateTimeField(default=timezone.now)
+    is_notice = models.BooleanField(default=False, verbose_name='공지사항')  # 공지사항 여부 필드 추가
     
     def save(self, *args, **kwargs):
+        # 수정 시간 자동 업데이트
+        if self.pk:  # 기존 글을 수정하는 경우
+            self.modified_date = timezone.now()
+            
         if self.id is None:  # 새로운 인스턴스인 경우
             last_entry = Board.objects.order_by('id').last()
             if last_entry:
@@ -23,7 +28,11 @@ class Board(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.title
+        notice_prefix = "[공지] " if self.is_notice else ""
+        return f"{notice_prefix}{self.title}"
+
+    class Meta:
+        ordering = ['-is_notice', '-id']  # 공지사항이 먼저, 그 다음 ID 역순
 
 class Comment(models.Model):
     board = models.ForeignKey(Board, related_name='comments', on_delete=models.CASCADE)

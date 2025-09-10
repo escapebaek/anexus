@@ -25,7 +25,30 @@
 
       <!-- 게시글 목록 -->
       <ul class="post-list">
-        {% for board in page_obj %} {# 이전 'boards'에서 'page_obj'로 변경 #}
+        <!-- 공지사항 목록 -->
+        {% for notice in notices %}
+        <li class="post-item notice-item">
+          <div class="post-id">
+            <span class="notice-badge">
+              <i class="fas fa-bullhorn"></i>
+              공지
+            </span>
+          </div>
+          <div class="post-title-col">
+            <a href="{% url 'board_detail' notice.pk %}" class="post-title-link notice-title">
+              <i class="fas fa-pin me-1"></i>{{ notice.title }}
+            </a>
+            {% if notice.comments.count > 0 %}
+            <span class="comment-count ms-1">[{{ notice.comments.count }}]</span>
+            {% endif %}
+          </div>
+          <div class="post-author">{{ notice.author }}</div>
+          <div class="post-date">{{ notice.created_date|date:"y.m.d" }}</div>
+        </li>
+        {% endfor %}
+        
+        <!-- 일반 게시글 목록 -->
+        {% for board in page_obj %}
         <li class="post-item">
           <div class="post-id">{{ board.id }}</div>
           <div class="post-title-col">
@@ -40,15 +63,17 @@
           <div class="post-date">{{ board.created_date|date:"y.m.d" }}</div>
         </li>
         {% empty %}
+        {% if not notices %}
         <li class="empty-board">
           <div class="empty-icon"><i class="fas fa-feather-alt"></i></div>
           <p>아직 작성된 게시글이 없습니다.<br>첫 번째 글을 남겨주세요!</p>
         </li>
+        {% endif %}
         {% endfor %}
       </ul>
     </div>
     
-    <!-- 페이지네이션 (Pagination) - 동적으로 생성되도록 수정 -->
+    <!-- 페이지네이션 (Pagination) -->
     {% if page_obj.has_other_pages %}
     <div class="pagination-container">
       <nav aria-label="Page navigation">
@@ -94,4 +119,71 @@
 
   </div>
 </div>
+
+<style>
+/* 공지사항 스타일 */
+.notice-item {
+  background: linear-gradient(135deg, #fff8e1 0%, #fff3c4 100%);
+  border-left: 4px solid #ff9800;
+  position: relative;
+  animation: subtle-glow 2s ease-in-out infinite alternate;
+}
+
+.notice-item:hover {
+  background: linear-gradient(135deg, #fff6e0 0%, #fff1c0 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.15);
+}
+
+.notice-badge {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+}
+
+.notice-title {
+  font-weight: 600;
+  color: #e65100 !important;
+}
+
+.notice-title:hover {
+  color: #bf360c !important;
+}
+
+@keyframes subtle-glow {
+  0% {
+    box-shadow: 0 2px 5px rgba(255, 152, 0, 0.1);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2);
+  }
+}
+
+/* 다크모드 대응 */
+@media (prefers-color-scheme: dark) {
+  .notice-item {
+    background: linear-gradient(135deg, #2d2416 0%, #3d3020 100%);
+    border-left-color: #ff9800;
+  }
+  
+  .notice-item:hover {
+    background: linear-gradient(135deg, #332718 0%, #433224 100%);
+  }
+  
+  .notice-title {
+    color: #ffb74d !important;
+  }
+  
+  .notice-title:hover {
+    color: #ffa726 !important;
+  }
+}
+</style>
 {% endblock page_content %}
