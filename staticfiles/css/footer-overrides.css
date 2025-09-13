@@ -1,0 +1,12 @@
+/* Footer social icons refinements */
+footer .social-icons{margin-top:1.5rem;display:flex;justify-content:center;gap:14px}
+footer .social-icons a{color:var(--text-light);font-size:1.2rem;transition:var(--transition);display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);text-decoration:none;position:relative;overflow:hidden}
+footer .social-icons a i{line-height:1}
+footer .social-icons a::before{content:"";position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle,rgba(255,255,255,0.2),transparent 70%);transform:scale(0);transition:transform .3s ease}
+footer .social-icons a:hover::before{transform:scale(1)}
+footer .social-icons a:hover{transform:translateY(-3px) scale(1.06);background:rgba(255,255,255,0.18);box-shadow:0 8px 18px rgba(255,255,255,0.18);color:var(--text-light);text-decoration:none}
+footer .social-icons a.github:hover{box-shadow:0 10px 22px rgba(0,0,0,0.25)}
+footer .social-icons a.youtube{color:#fff}
+footer .social-icons a.youtube:hover{box-shadow:0 10px 22px rgba(255,0,0,0.25)}
+@media (max-width:576px){footer .social-icons{gap:12px}footer .social-icons a{width:36px;height:36px;font-size:1.05rem}}
+
