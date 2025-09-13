@@ -1,0 +1,134 @@
+/* ==========================================
+   💬 CHAT SYSTEM - MODERN MESSAGING
+   ========================================== */
+.chat-container {
+  width: 100%;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transform: translateZ(0);
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  background: var(--primary-gradient);
+  color: var(--text-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M20 20L0 0v40l20-20zM40 0v40L20 20l20-20z'/%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.3;
+}
+
+.chat-messages {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: var(--bg-light);
+  position: relative;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  max-width: 80%;
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+.message-bubble {
+  padding: 1rem 1.5rem;
+  border-radius: 20px;
+  max-width: 100%;
+  word-wrap: break-word;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: var(--transition);
+}
+
+.message-bubble:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.message-own {
+  align-self: flex-end;
+}
+
+.message-own .message-bubble {
+  background: var(--primary-gradient);
+  color: var(--text-light);
+  box-shadow: 0 4px 15px rgba(43, 88, 118, 0.2);
+}
+
+.message-other .message-bubble {
+  background: var(--white);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-dark);
+}
+
+.chat-input-area {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+  background: var(--white);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.message-input {
+  flex-grow: 1;
+  padding: 1rem 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 25px;
+  margin-right: 1rem;
+  font-size: 1rem;
+  background: var(--bg-light);
+  transition: var(--transition);
+}
+
+.message-input:focus {
+  outline: none;
+  border-color: var(--primary-dark);
+  background: var(--white);
+  box-shadow: 0 0 0 3px var(--primary-alpha);
+  transform: scale(1.02);
+}
+
+.send-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--primary-gradient);
+  color: var(--text-light);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: var(--transition);
+  box-shadow: 0 4px 15px rgba(43, 88, 118, 0.2);
+}
+
+.send-btn:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 6px 20px rgba(43, 88, 118, 0.3);
+}

@@ -1,6 +1,6 @@
 // ==========================================
 // npm run build:css for BUILD!!
-// 🚀 ANEXUS PROJECT MAIN SCSS FILE (Updated with @use)
+// ANEXUS PROJECT MAIN SCSS FILE (Updated with @use)
 // Modern, future-proof, and warning-free.
 // npm run build:css for BUILD!!
 // ==========================================
@@ -20,20 +20,11 @@
 @use "layout/footer";
 @use "layout/sections";
 
-// 4. Components (Buttons, Cards, Forms, Modals, etc.)
-@use "components/buttons";
-@use "components/cards";
-@use "components/forms";
-@use "components/question-system";
-@use "components/alerts";
-@use "components/badges";
-@use "components/tables";
-@use "components/modal";
-@use "components/chat";
-@use "components/timer";
-@use "components/bookmark";
-@use "components/board";
-@use "components/etc"; // 나머지 스타일
+// 4. Components
+// 4.1 UI components (Buttons, Cards, Forms, Tables, Alerts, Badges, Modal, Timer, etc.)
+@use "components/ui";
+// 4.2 App-scoped components (Accounts, Board, Bookmark, Chat, Question System, ...)
+@use "components/apps";
 
 // 5. Media Queries & Special Modes (Should be loaded last)
 @use "core/responsive";

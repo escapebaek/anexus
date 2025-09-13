@@ -1,20 +1,23 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block custom_css %}
-<link rel="stylesheet" href="{% static 'accounts/login.css' %}?v=2">
-{% endblock %}
+{# Styles moved to global SCSS bundle (components/accounts) #}
 
 {% block page_content %}
 <div class="login-section position-relative d-flex align-items-center justify-content-center min-vh-100">
   <div class="login-overlay"></div>
+  <div class="hero-background">
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+    <div class="gradient-orb orb-3"></div>
+  </div>
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-md-6 col-lg-5">
         <div class="login-card animate-fade-in">
           <div class="card-header text-center">
-            <h2 class="login-title">Welcome Back</h2>
-            <p class="login-subtitle">Access your ANExuS account</p>
+            <h2 class="auth-login-title">Welcome Back</h2>
+            <p class="auth-login-subtitle">Access your ANExuS account</p>
           </div>
           <div class="card-body">
             <form method="post">

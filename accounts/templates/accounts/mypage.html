@@ -1,9 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block custom_css %}
-<link rel="stylesheet" href="{% static 'accounts/mypage.css' %}">
-{% endblock %}
+{# Styles moved to global SCSS bundle (components/accounts) #}
 
 {% block page_content %}
 <div class="mypage-section position-relative min-vh-100">

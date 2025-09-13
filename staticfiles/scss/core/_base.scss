@@ -42,11 +42,17 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Focus Ring Enhancement */
-*:focus-visible {
+/* Focus Ring Enhancement (only show for keyboard users) */
+.keyboard-navigation *:focus-visible {
   outline: 2px solid var(--primary-dark);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Hide focus styling on mouse click while preserving keyboard focus styles */
+*:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Scroll Behavior */
