@@ -37,10 +37,14 @@
     text-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
 
-  .login-subtitle {
-    opacity: 0.9;
-    font-size: 1.1rem;
+  .card-header .login-subtitle {
+    color: #ffffff !important;
+    opacity: 1;
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
     margin-bottom: 0;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.25);
   }
 
   .card-body {
