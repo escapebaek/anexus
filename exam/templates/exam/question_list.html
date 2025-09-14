@@ -140,6 +140,24 @@
     color: #f5871f;
   } /* Name.Builtin */
 </style>
+<style>
+  /* Consistent horizontal width for question boxes */
+  .question-card {
+    max-width: 960px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative; /* anchors absolute controls inside */
+  }
+
+  /* Optional: slightly tighter on medium screens */
+  @media (max-width: 992px) {
+    .question-card { max-width: 860px; }
+  }
+  @media (max-width: 768px) {
+    .question-card { max-width: 100%; }
+  }
+</style>
 {% endblock %} {% block page_content %}
 <!-- 로딩 오버레이 -->
 <div
