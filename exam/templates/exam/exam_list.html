@@ -25,10 +25,10 @@
 <div class="exam-section">
   <div class="container">
     {% if user.is_specially_approved %}
-    <div class="row g-4">
+    <div class="row g-4 align-items-stretch">
       {% for exam in exams %}
-      <div class="col-md-6 col-lg-4">
-        <div class="exam-card animate-fade-in">
+      <div class="col-md-6 col-lg-4 d-flex">
+        <div class="exam-card animate-fade-in w-100">
           <div class="exam-icon">
             <i class="fas fa-file-medical"></i>
           </div>
@@ -118,13 +118,14 @@
     background: white;
     border-radius: 20px;
     padding: 2.5rem;
-    height: 100%;
+    height: 100%; /* allow stretch within equal-height columns */
     transition: all 0.3s ease;
     border: 1px solid rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
+    width: 100%;
   }
 
   .exam-card:hover {
@@ -237,6 +238,46 @@
     animation: fadeIn 1s ease-out 0.3s both;
   }
 </style>
+
+<script>
+  // Equalize exam-card heights per visual row, responsive-friendly
+  (function () {
+    function equalizeExamCardHeights() {
+      const cards = Array.from(document.querySelectorAll('.exam-card'));
+      if (!cards.length) return;
+
+      // Reset inline height to measure natural content height
+      cards.forEach((el) => (el.style.height = 'auto'));
+
+      // Group cards by their top position (i.e., rows)
+      const rows = new Map();
+      cards.forEach((el) => {
+        const top = Math.round(el.getBoundingClientRect().top);
+        const key = String(top);
+        if (!rows.has(key)) rows.set(key, []);
+        rows.get(key).push(el);
+      });
+
+      // For each row, set all heights to the tallest in that row
+      rows.forEach((els) => {
+        const rowMax = els.reduce((m, el) => Math.max(m, el.offsetHeight), 0);
+        els.forEach((el) => (el.style.height = rowMax + 'px'));
+      });
+    }
+
+    // Debounced resize handler
+    let resizeTimer;
+    function onResize() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(equalizeExamCardHeights, 120);
+    }
+
+    // Run on DOM ready and after full load (fonts/images)
+    document.addEventListener('DOMContentLoaded', equalizeExamCardHeights);
+    window.addEventListener('load', equalizeExamCardHeights);
+    window.addEventListener('resize', onResize);
+  })();
+</script>
 
 {% endblock %}
 
