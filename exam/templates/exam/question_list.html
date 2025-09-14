@@ -227,8 +227,10 @@
         {% for question in questions %}
         <div class="col-12">
           <div
+            id="q_{{ question.id }}"
             class="question-card animate-fade-in"
             data-correct-option="{{ question.correct_option }}"
+            data-qindex="{{ forloop.counter }}"
           >
             <!-- 북마크 버튼 -->
             <div
@@ -237,6 +239,17 @@
               onclick="toggleBookmark({{ question.id }}, this)"
             >
               <i class="fas fa-star"></i>
+            </div>
+
+            <!-- 임시 북마크 버튼 (시험 중 전용) -->
+            <div
+              class="temp-bookmark-button"
+              data-question-id="{{ question.id }}"
+              data-qindex="{{ forloop.counter }}"
+              onclick="toggleTempBookmark({{ question.id }}, {{ forloop.counter }}, this)"
+              title="임시 북마크"
+            >
+              <i class="fas fa-thumbtack"></i>
             </div>
 
             <div class="question-content">
@@ -544,6 +557,161 @@
   </div>
 </div>
 
+<!-- Floating panel: Temporary Bookmarks -->
+<style>
+  /* Temp bookmark button sits next to the permanent star */
+  .temp-bookmark-button {
+    position: absolute;
+    top: 1.25rem;
+    left: 1.25rem;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(0,0,0,0.1);
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 4;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .temp-bookmark-button i { color: var(--text-muted); }
+  .temp-bookmark-button.active i { color: var(--primary-dark); }
+  .temp-bookmark-button:hover { transform: scale(1.08); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+
+  /* Floating panel */
+  .temp-bookmark-panel {
+    position: fixed;
+    right: 16px;
+    top: 110px;
+    width: 260px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    z-index: 1051;
+    overflow: hidden;
+  }
+  .temp-bookmark-panel.collapsed { width: 56px; }
+  .temp-bookmark-panel.collapsed .panel-header span { display: none; }
+  .temp-bookmark-panel.collapsed .panel-body,
+  .temp-bookmark-panel.collapsed .panel-footer,
+  .temp-bookmark-panel.collapsed .panel-actions .btn-outline-danger { display: none; }
+  .temp-bookmark-panel .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.06);
+    font-weight: 600;
+  }
+  .temp-bookmark-panel .panel-body { padding: 10px 12px; max-height: 320px; overflow: auto; }
+  .temp-bookmark-panel .panel-footer { padding: 6px 12px; border-top: 1px solid rgba(0,0,0,0.06); background: #fafafa; }
+  .temp-bookmark-panel .bookmark-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .temp-bookmark-panel .bookmark-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 36px; height: 32px; padding: 0 10px; border-radius: 16px;
+    background: var(--primary-alpha); border: 1px solid var(--primary-alpha);
+    color: var(--primary-dark); font-weight: 600; cursor: pointer; text-decoration: none;
+  }
+  .temp-bookmark-panel .bookmark-chip:hover { background: #ffe9c7; }
+  .temp-bookmark-panel .panel-fab { position: absolute; right: 12px; bottom: 12px; display: none; }
+  @media (max-width: 992px) { .temp-bookmark-panel { width: 210px; } }
+  @media (max-width: 768px) { .temp-bookmark-panel { right: 8px; width: 190px; } }
+</style>
+
+<div id="tempBookmarkPanel" class="temp-bookmark-panel">
+  <div class="panel-header">
+    <span><i class="fas fa-thumbtack"></i> Temp Bookmarks</span>
+    <div class="panel-actions">
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="togglePanelBtn">Minimize</button>
+      <button type="button" class="btn btn-sm btn-outline-danger" id="clearTempBookmarksBtn">Clear</button>
+    </div>
+  </div>
+  <div class="panel-body">
+    <div id="tempBookmarkList" class="bookmark-list"></div>
+  </div>
+  <div class="panel-footer small text-muted">Click to jump to question</div>
+  <button type="button" class="panel-fab btn btn-primary" id="openPanelFab" title="Open temp bookmarks">
+    <i class="fas fa-thumbtack"></i>
+  </button>
+ </div>
+
+<script>
+  // Temporary bookmark (session-only) logic
+  (function () {
+    const panel = document.getElementById('tempBookmarkPanel');
+    if (!panel) return;
+    const listEl = document.getElementById('tempBookmarkList');
+    const btnHide = document.getElementById('togglePanelBtn');
+    const btnClear = document.getElementById('clearTempBookmarksBtn');
+    const NAV_HEIGHT = (document.getElementById('mainNavbar')?.offsetHeight || 64) + 12;
+    const STORAGE_KEY = 'tempBookmarks_exam_{{ exam.id }}';
+
+    function loadTemp() { try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { return {}; } }
+    function saveTemp(state) { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    let temp = loadTemp(); // { [qid]: index }
+
+    function updateButtons() {
+      document.querySelectorAll('.temp-bookmark-button').forEach(function (btn) {
+        const qid = btn.getAttribute('data-question-id');
+        if (qid && temp[qid]) btn.classList.add('active'); else btn.classList.remove('active');
+      });
+    }
+
+    function scrollToQuestion(qid) {
+      const el = document.getElementById('q_' + qid);
+      if (!el) return;
+      const y = el.getBoundingClientRect().top + window.pageYOffset - NAV_HEIGHT;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+
+    function renderList() {
+      const entries = Object.entries(temp).map(function (pair) { return { qid: pair[0], idx: parseInt(pair[1], 10) || 0 }; });
+      entries.sort(function (a, b) { return a.idx - b.idx; });
+      listEl.innerHTML = '';
+      if (entries.length === 0) {
+        listEl.innerHTML = '<div class="text-muted small">비어 있습니다</div>';
+        return;
+      }
+      entries.forEach(function (item) {
+        const a = document.createElement('a');
+        a.className = 'bookmark-chip';
+        a.href = '#';
+        a.textContent = String(item.idx);
+        a.title = '문제 #' + item.idx;
+        a.addEventListener('click', function (ev) { ev.preventDefault(); scrollToQuestion(item.qid); });
+        listEl.appendChild(a);
+      });
+    }
+
+    window.toggleTempBookmark = function (qid, index) {
+      const key = String(qid);
+      if (temp[key]) delete temp[key]; else temp[key] = index;
+      saveTemp(temp);
+      updateButtons();
+      renderList();
+    };
+
+    if (btnHide) btnHide.addEventListener('click', function () {
+      if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        this.textContent = 'Minimize';
+      } else {
+        panel.classList.add('collapsed');
+        this.textContent = 'Expand';
+      }
+    });
+    if (btnClear) btnClear.addEventListener('click', function () {
+      if (!confirm('임시 북마크를 모두 삭제하시겠어요?')) return;
+      temp = {}; saveTemp(temp); updateButtons(); renderList();
+    });
+
+    // Initialize state on load
+    updateButtons();
+    renderList();
+
+    // Expose cleaner for endExam
+    window.__clearTempBookmarks = function() { sessionStorage.removeItem(STORAGE_KEY); };
+  })();
+</script>
+
 <!-- YouTube API 로드 -->
 <script src="https://www.youtube.com/iframe_api"></script>
 
@@ -708,6 +876,11 @@
         player.stopVideo();
       }
     });
+
+    // Clear temporary bookmarks for this exam
+    if (window.__clearTempBookmarks) {
+      try { window.__clearTempBookmarks(); } catch (e) {}
+    }
 
     const loadingOverlay = document.getElementById("loadingOverlay");
     loadingOverlay.classList.remove("hidden");

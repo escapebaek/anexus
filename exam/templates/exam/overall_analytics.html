@@ -1,0 +1,188 @@
+﻿{% extends 'base.html' %}
+{% block page_content %}
+<div class="container mt-5">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="section-title mb-0">Overall Analytics</h1>
+    <div>
+      <a href="{% url 'my_results' %}" class="btn btn-outline-secondary me-2">
+        <i class="fas fa-list"></i> My Results
+      </a>
+      <a href="{% url 'question_home' %}" class="btn btn-primary">
+        <i class="fas fa-arrow-left"></i> Back to Home
+      </a>
+    </div>
+  </div>
+
+  {% if has_data %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between flex-wrap">
+        <div>
+          <div class="text-muted">Attempts: {{ attempts }} | Avg: {{ avg_pct }}% | Best: {{ best_pct }}%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h4 class="mt-2">All Exams Combined</h4>
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-lg-7">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Category Breakdown (counts)</h5>
+          <div class="chart-container">
+            <canvas id="allCountsChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Category Accuracy (%)</h5>
+          <div class="chart-container">
+            <canvas id="allAccChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h4 class="mt-2">Per Exam (all attempts)</h4>
+  <div class="card mb-3">
+    <div class="card-body d-flex flex-wrap align-items-center gap-2">
+      <label class="me-2 mb-0">Exam:</label>
+      <select id="examSelect" class="form-select" style="max-width: 360px;">
+        {% for ex in exam_cards %}
+        <option value="{{ ex.id }}">{{ ex.title }} ({{ ex.attempts }} attempts, avg {{ ex.avg_pct }}%)</option>
+        {% endfor %}
+      </select>
+      <a id="examRollupLink" href="#" class="btn btn-outline-info btn-sm ms-auto"><i class="fas fa-chart-bar"></i> Open Exam Analytics</a>
+    </div>
+  </div>
+  <div class="row g-4">
+    <div class="col-12 col-lg-7">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Category Breakdown (counts)</h5>
+          <div class="chart-container">
+            <canvas id="examCountsChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Category Accuracy (%)</h5>
+          <div class="chart-container">
+            <canvas id="examAccChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="fas fa-chart-bar fa-3x mb-3"></i>
+    <div>No data yet. Take an exam to see analytics.</div>
+  </div>
+  {% endif %}
+</div>
+
+{% if has_data %}
+<style>.chart-container{position:relative;height:420px}</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  // All exams combined
+  const labelsAll = {{ labels_all|safe }};
+  const correctAll = {{ correct_all|safe }};
+  const incorrectAll = {{ incorrect_all|safe }};
+  const unansweredAll = {{ unanswered_all|safe }};
+  const noanswerAll = {{ noanswer_all|safe }};
+  const accAll = {{ acc_all|safe }};
+
+  new Chart(document.getElementById('allCountsChart'), {
+    type: 'bar',
+    data: {
+      labels: labelsAll,
+      datasets: [
+        { label: 'Correct', data: correctAll, backgroundColor: '#2ecc71' },
+        { label: 'Incorrect', data: incorrectAll, backgroundColor: '#e74c3c' },
+        { label: 'Unanswered', data: unansweredAll, backgroundColor: '#f1c40f' },
+        { label: 'No Answer', data: noanswerAll, backgroundColor: '#95a5a6' },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      indexAxis: 'y',
+      scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true, ticks: { autoSkip: false, font: { size: 12 } } } }
+    }
+  });
+
+  new Chart(document.getElementById('allAccChart'), {
+    type: 'bar',
+    data: {
+      labels: labelsAll,
+      datasets: [
+        { label: 'Accuracy %', data: accAll, backgroundColor: '#3498db' },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      indexAxis: 'y',
+      scales: { x: { beginAtZero: true, max: 100 }, y: { ticks: { autoSkip: false, font: { size: 12 } } } }
+    }
+  });
+
+  // Per-exam charts
+  const examData = {{ exam_data|safe }};
+  const examSelect = document.getElementById('examSelect');
+  const examCountsCtx = document.getElementById('examCountsChart');
+  const examAccCtx = document.getElementById('examAccChart');
+
+  let examCountsChart = null;
+  let examAccChart = null;
+
+  function renderExamCharts(examId) {
+    const data = examData[String(examId)] || {labels:[],correct:[],incorrect:[],unanswered:[],noanswer:[],accuracy:[]};
+    if (examCountsChart) examCountsChart.destroy();
+    if (examAccChart) examAccChart.destroy();
+    examCountsChart = new Chart(examCountsCtx, {
+      type: 'bar',
+      data: { labels: data.labels, datasets: [
+        { label: 'Correct', data: data.correct, backgroundColor: '#2ecc71' },
+        { label: 'Incorrect', data: data.incorrect, backgroundColor: '#e74c3c' },
+        { label: 'Unanswered', data: data.unanswered, backgroundColor: '#f1c40f' },
+        { label: 'No Answer', data: data.noanswer, backgroundColor: '#95a5a6' },
+      ] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } }, indexAxis:'y', scales:{ x:{ stacked:true, beginAtZero:true }, y:{ stacked:true, ticks:{ autoSkip:false, font:{ size:12 } } } } }
+    });
+    examAccChart = new Chart(examAccCtx, {
+      type: 'bar',
+      data: { labels: data.labels, datasets: [{ label: 'Accuracy %', data: data.accuracy, backgroundColor: '#3498db' }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, indexAxis:'y', scales:{ x:{ beginAtZero:true, max:100 }, y:{ ticks:{ autoSkip:false, font:{ size:12 } } } } }
+    });
+  }
+
+  if (examSelect && examSelect.options.length > 0) {
+    renderExamCharts(examSelect.value);
+    const rollupLink = document.getElementById('examRollupLink');
+    if (rollupLink) {
+      rollupLink.href = `/exam/analytics/exam/${examSelect.value}/`;
+    }
+    examSelect.addEventListener('change', function() {
+      renderExamCharts(this.value);
+      if (rollupLink) {
+        rollupLink.href = `/exam/analytics/exam/${this.value}/`;
+      }
+    });
+  }
+</script>
+{% endif %}
+{% endblock %}
+

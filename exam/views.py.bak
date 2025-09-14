@@ -1,4 +1,4 @@
-﻿from django.shortcuts import render, get_object_or_404, reverse, redirect
+from django.shortcuts import render, get_object_or_404, reverse, redirect
 from .models import Exam, Question, ExamResult, Category
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
@@ -278,7 +278,7 @@ def category_questions(request, category_name):
     try:
         category = get_object_or_404(Category, name=decoded_category_name)
         
-        # Bookmark ?곹깭瑜?prefetch濡?媛?몄샂
+        # Bookmark ?�태�?prefetch�?가?�옴
         questions = Question.objects.filter(
             category=category
         ).prefetch_related(
@@ -289,7 +289,7 @@ def category_questions(request, category_name):
             )
         ).order_by('order')
         
-        # 媛?吏덈Ц??遺곷쭏???곹깭 ?ㅼ젙
+        # �?질문??북마???�태 ?�정
         for question in questions:
             question.is_bookmarked = bool(getattr(question, 'user_bookmarks', []))
             
@@ -303,7 +303,7 @@ def category_questions(request, category_name):
 @login_required
 @user_is_specially_approved
 def bookmarked_questions(request):
-    # ?꾩옱 ?ъ슜?먯쓽 遺곷쭏?щ맂 吏덈Ц?ㅼ쓣 媛?몄샂
+    # ?�재 ?�용?�의 북마?�된 질문?�을 가?�옴
     bookmarked = Question.objects.filter(
         bookmark__user=request.user
     ).select_related('exam', 'category').order_by('exam__title', 'order')
@@ -319,14 +319,14 @@ def toggle_bookmark(request, question_id):
     try:
         question = get_object_or_404(Question, id=question_id)
         bookmark = Bookmark.objects.filter(
-            user=request.user,  # ?꾩옱 ?ъ슜?먯쓽 遺곷쭏?щ쭔 議고쉶
+            user=request.user,  # ?�재 ?�용?�의 북마?�만 조회
             question=question
         ).first()
         
-        if bookmark:  # ?대? 遺곷쭏?ш? 議댁옱?섎㈃ ??젣
+        if bookmark:  # ?��? 북마?��? 존재?�면 ??��
             bookmark.delete()
             is_bookmarked = False
-        else:  # ?덈줈 遺곷쭏???앹꽦
+        else:  # ?�로 북마???�성
             Bookmark.objects.create(
                 user=request.user,
                 question=question
@@ -346,7 +346,7 @@ def toggle_bookmark(request, question_id):
 @login_required
 @user_is_specially_approved
 def question_home(request):
-    sections = [
+        sections = [
         {
             "title": "Question Bank",
             "text": "Practice exams and question banks",
@@ -686,6 +686,5 @@ def delete_result(request, result_id: int):
     r = get_object_or_404(ExamResult, pk=result_id, user=request.user)
     r.delete()
     return redirect('my_results')
-
 
 

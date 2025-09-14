@@ -1,0 +1,120 @@
+﻿{% extends 'base.html' %}
+{% block page_content %}
+<div class="container mt-5">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="section-title mb-0">Exam Analytics</h1>
+    <div>
+      <a href="{% url 'my_results' %}" class="btn btn-outline-secondary me-2">
+        <i class="fas fa-list"></i> My Results
+      </a>
+      <a href="{% url 'question_home' %}" class="btn btn-primary">
+        <i class="fas fa-arrow-left"></i> Back to Home
+      </a>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between flex-wrap">
+        <div>
+          <h5 class="mb-1">{{ exam.title }}</h5>
+          {% if has_data %}
+          <div class="text-muted">Attempts: {{ attempts }} | Avg: {{ avg_pct }}% | Best: {{ best_pct }}%</div>
+          {% else %}
+          <div class="text-muted">No attempts yet.</div>
+          {% endif %}
+        </div>
+        {% if has_data %}
+        <a class="btn btn-success" href="{% url 'exam_results' %}?result_id={{ latest_result_id }}">
+          <i class="fas fa-eye"></i> View Latest Result
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if has_data %}
+  <div class="row g-4">
+    <div class="col-12 col-lg-7">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Category Breakdown (counts)</h5>
+          <div class="chart-container">
+            <canvas id="catCountsChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Category Accuracy (%)</h5>
+          <div class="chart-container">
+            <canvas id="catAccuracyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if has_data %}
+<style>.chart-container{position:relative;height:420px}</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const labels = {{ labels|safe }};
+  const correctData = {{ correct_data|safe }};
+  const incorrectData = {{ incorrect_data|safe }};
+  const unansweredData = {{ unanswered_data|safe }};
+  const noanswerData = {{ noanswer_data|safe }};
+  const accuracyPct = {{ accuracy_pct|safe }};
+
+  const ctx1 = document.getElementById('catCountsChart');
+  new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Correct', data: correctData, backgroundColor: '#2ecc71' },
+        { label: 'Incorrect', data: incorrectData, backgroundColor: '#e74c3c' },
+        { label: 'Unanswered', data: unansweredData, backgroundColor: '#f1c40f' },
+        { label: 'No Answer', data: noanswerData, backgroundColor: '#95a5a6' },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      indexAxis: 'y',
+      scales: {
+        x: { stacked: true, beginAtZero: true },
+        y: { stacked: true, ticks: { autoSkip: false, font: { size: 12 } } }
+      }
+    }
+  });
+
+  const ctx2 = document.getElementById('catAccuracyChart');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Accuracy %', data: accuracyPct, backgroundColor: '#3498db' },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      indexAxis: 'y',
+      scales: {
+        x: { beginAtZero: true, max: 100 },
+        y: { ticks: { autoSkip: false, font: { size: 12 } } }
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}
+

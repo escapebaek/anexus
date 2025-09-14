@@ -1,10 +1,7 @@
-{% extends 'base.html' %}
-{% load exam_filters %}
-{% load markdown_extras %}
-
+{% extends 'base.html' %} {% load exam_filters %} 
+{% load markdown_extras %} 
 {% block extra_css %}
 <style>
-  /* Markdown ?ㅽ??쇰쭅 */
   .markdown-content {
     line-height: 1.6;
     color: #333;
@@ -119,7 +116,7 @@
     text-decoration: underline;
   }
 
-  /* 肄붾뱶 ?섏씠?쇱씠??湲곕낯 ?ㅽ???*/
+  /* 코드 하이라이팅 기본 스타일 */
   .markdown-content .highlight {
     background-color: #f8f9fa;
     border-radius: 5px;
@@ -143,10 +140,8 @@
     color: #f5871f;
   } /* Name.Builtin */
 </style>
-{% endblock extra_css %}
-
-{% block page_content %}
-<!-- 濡쒕뵫 ?ㅻ쾭?덉씠 -->
+{% endblock %} {% block page_content %}
+<!-- 로딩 오버레이 -->
 <div
   id="loadingOverlay"
   class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -177,7 +172,7 @@
         margin: auto;
       "
     ></div>
-    <p class="mt-4 text-gray-700 font-medium">寃곌낵瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎...</p>
+    <p class="mt-4 text-gray-700 font-medium">결과를 불러오는 중입니다...</p>
   </div>
 </div>
 
@@ -187,9 +182,9 @@
 >
   <div class="hero-overlay"></div>
   <div class="hero-content text-center">
-    <h1 class="hero-title animate-fade-in">{{ category_name }}</h1>
+    <h1 class="hero-title animate-fade-in">{{ exam.title }}</h1>
     <p class="hero-subtitle animate-fade-in-delayed">
-      ?꾩꽑??臾몄젣?ㅻ줈 ?뱀떊???ㅻ젰???뺤씤?대낫?몄슂.
+      엄선된 문제들로 당신의 실력을 확인해보세요.
     </p>
     <div class="timer-controls animate-fade-in-delayed">
       <div class="timer-input-group">
@@ -199,15 +194,15 @@
           class="form-control"
           min="1"
           value="60"
-          placeholder="遺?
+          placeholder="분"
         />
-        <button id="start-exam-btn" class="btn-hero">?쒗뿕 ?쒖옉</button>
+        <button id="start-exam-btn" class="btn-hero">시험 시작</button>
         <button
           id="end-exam-btn"
           class="btn-action-glass danger"
           style="display: none"
         >
-          <i class="fas fa-stop-circle"></i> ?쒗뿕 醫낅즺
+          <i class="fas fa-stop-circle"></i> 시험 종료
         </button>
       </div>
       <div id="timer-display" class="timer-display">00:00</div>
@@ -235,7 +230,7 @@
             class="question-card animate-fade-in"
             data-correct-option="{{ question.correct_option }}"
           >
-            <!-- 遺곷쭏??踰꾪듉 -->
+            <!-- 북마크 버튼 -->
             <div
               class="bookmark-button {% if question.is_bookmarked %}bookmarked{% endif %}"
               data-question-id="{{ question.id }}"
@@ -245,7 +240,7 @@
             </div>
 
             <div class="question-content">
-              <!-- 移댄뀒怨좊━ ?쒖떆 -->
+              <!-- 카테고리 표시 -->
               {% if question.category %}
               <div class="question-category-box">
                 <i class="fas fa-tags"></i>
@@ -253,17 +248,9 @@
               </div>
               {% endif %}
 
-              <!-- ?쒗뿕 ?쒕ぉ ?쒖떆 -->
-              {% if question.exam %}
-              <div class="question-exam-box">
-                <i class="fas fa-file-alt"></i>
-                <span>{{ question.exam.title }}</span>
-              </div>
-              {% endif %}
-
               <div class="question-text">{{ question.question_text|safe }}</div>
 
-              <!-- 湲곗〈 ?대?吏 ?쒖떆 -->
+              <!-- 기존 이미지 표시 -->
               {% if question.image %}
               <div class="question-image">
                 <img
@@ -274,7 +261,7 @@
               </div>
               {% endif %}
 
-              <!-- ?덈줈 異붽?: ?좏뒠釉??숈쁺???쒖떆 -->
+              <!-- 새로 추가: 유튜브 동영상 표시 -->
               {% if question.get_youtube_embed_id %}
               <div class="question-video">
                 <div
@@ -311,21 +298,21 @@
                     class="btn-action-glass"
                     onclick="playYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-play"></i> ?ъ깮
+                    <i class="fas fa-play"></i> 재생
                   </button>
                   <button
                     type="button"
                     class="btn-action-glass"
                     onclick="pauseYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-pause"></i> ?쇱떆?뺤?
+                    <i class="fas fa-pause"></i> 일시정지
                   </button>
                   <button
                     type="button"
                     class="btn-action-glass"
                     onclick="stopYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-stop"></i> ?뺤?
+                    <i class="fas fa-stop"></i> 정지
                   </button>
                 </div>
               </div>
@@ -413,14 +400,14 @@
                   class="btn-action-glass"
                   onclick="toggleDisplay('answer_{{ question.id }}')"
                 >
-                  <i class="fas fa-check-circle"></i> ?뺣떟 蹂닿린
+                  <i class="fas fa-check-circle"></i> 정답 보기
                 </button>
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="toggleDisplay('explanation_{{ question.id }}')"
                 >
-                  <i class="fas fa-info-circle"></i> ?댁꽕 蹂닿린
+                  <i class="fas fa-info-circle"></i> 해설 보기
                 </button>
                 {% if question.comment_image %}
                 <button
@@ -428,55 +415,55 @@
                   class="btn-action-glass"
                   onclick="toggleDisplay('image_{{ question.id }}')"
                 >
-                  <i class="fas fa-image"></i> ?대?吏 蹂닿린
+                  <i class="fas fa-image"></i> 이미지 보기
                 </button>
                 {% endif %}
-                <!-- ?덈줈 異붽?: ?댁꽕 ?숈쁺??踰꾪듉 -->
+                <!-- 새로 추가: 해설 동영상 버튼 -->
                 {% if question.get_comment_youtube_embed_id %}
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="toggleDisplay('video_explanation_{{ question.id }}')"
                 >
-                  <i class="fas fa-video"></i> ?댁꽕 ?곸긽
+                  <i class="fas fa-video"></i> 해설 영상
                 </button>
                 {% endif %}
               </div>
 
-              <!-- ?뺣떟 ?쒖떆 諛뺤뒪 -->
+              <!-- 정답 표시 박스 -->
               <div
                 id="answer_{{ question.id }}"
                 class="answer-display-box hidden"
               >
                 <div class="answer-display-title">
-                  <i class="fas fa-check-circle"></i> ?뺣떟
+                  <i class="fas fa-check-circle"></i> 정답
                 </div>
                 <div class="answer-display-content">
                   {{ question.correct_option }}
                 </div>
               </div>
 
-              <!-- ?댁꽕 ?쒖떆 諛뺤뒪 (Markdown 吏??異붽?) -->
+              <!-- 해설 표시 박스 (Markdown 지원 추가) -->
               <div
                 id="explanation_{{ question.id }}"
                 class="explanation-display-box hidden"
               >
                 <div class="explanation-display-title">
-                  <i class="fas fa-info-circle"></i> ?댁꽕
+                  <i class="fas fa-info-circle"></i> 해설
                 </div>
                 <div class="explanation-display-content markdown-content">
                   {{ question.comment|markdown }}
                 </div>
               </div>
 
-              <!-- ?대?吏 ?쒖떆 諛뺤뒪 -->
+              <!-- 이미지 표시 박스 -->
               {% if question.comment_image %}
               <div
                 id="image_{{ question.id }}"
                 class="image-display-box hidden"
               >
                 <div class="image-display-title">
-                  <i class="fas fa-image"></i> 愿???대?吏
+                  <i class="fas fa-image"></i> 관련 이미지
                 </div>
                 <img
                   src="{{ question.comment_image.url }}"
@@ -486,14 +473,15 @@
               </div>
               {% endif %}
 
-              <!-- ?덈줈 異붽?: ?댁꽕 ?숈쁺???쒖떆 諛뺤뒪 -->
+              <!-- 새로 추가: 해설 동영상 표시 박스 -->
               {% if question.get_comment_youtube_embed_id %}
               <div
                 id="video_explanation_{{ question.id }}"
                 class="video-explanation-box hidden"
               >
                 <div class="video-explanation-title">
-                  <i class="fas fa-video"></i> ?댁꽕 ?숈쁺??                </div>
+                  <i class="fas fa-video"></i> 해설 동영상
+                </div>
                 <div
                   class="video-container"
                   style="
@@ -528,21 +516,21 @@
                     class="btn-action-glass"
                     onclick="playCommentYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-play"></i> ?ъ깮
+                    <i class="fas fa-play"></i> 재생
                   </button>
                   <button
                     type="button"
                     class="btn-action-glass"
                     onclick="pauseCommentYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-pause"></i> ?쇱떆?뺤?
+                    <i class="fas fa-pause"></i> 일시정지
                   </button>
                   <button
                     type="button"
                     class="btn-action-glass"
                     onclick="stopCommentYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-stop"></i> ?뺤?
+                    <i class="fas fa-stop"></i> 정지
                   </button>
                 </div>
               </div>
@@ -556,17 +544,18 @@
   </div>
 </div>
 
-<!-- YouTube API 濡쒕뱶 -->
+<!-- YouTube API 로드 -->
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
   let timerInterval;
   let timeRemaining;
-  let youtubePlayers = {}; // YouTube ?뚮젅?댁뼱?ㅼ쓣 ??ν븷 媛앹껜
+  let youtubePlayers = {}; // YouTube 플레이어들을 저장할 객체
 
-  // YouTube API 以鍮??꾨즺 肄쒕갚
+  // YouTube API 준비 완료 콜백
   function onYouTubeIframeAPIReady() {
-    // 紐⑤뱺 YouTube iframe???뚮젅?댁뼱濡?珥덇린??    {% for question in questions %}
+    // 모든 YouTube iframe을 플레이어로 초기화
+    {% for question in questions %}
       {% if question.get_youtube_embed_id %}
         youtubePlayers['youtube_{{ question.id }}'] = new YT.Player('youtube_{{ question.id }}');
       {% endif %}
@@ -576,7 +565,8 @@
     {% endfor %}
   }
 
-  // YouTube ?숈쁺???쒖뼱 ?⑥닔??  function playYouTube(questionId) {
+  // YouTube 동영상 제어 함수들
+  function playYouTube(questionId) {
     const player = youtubePlayers['youtube_' + questionId];
     if (player && player.playVideo) {
       player.playVideo();
@@ -618,7 +608,7 @@
     }
   }
 
-  // ??대㉧ ?쒕옒洹?湲곕뒫 ?⑥닔
+  // 타이머 드래그 기능 함수
   function makeDraggable(element) {
     let offsetX, offsetY;
 
@@ -631,7 +621,7 @@
 
       offsetX = e.clientX - element.offsetLeft;
       offsetY = e.clientY - element.offsetTop;
-      
+
       element.style.right = 'auto';
 
       document.addEventListener('mousemove', onMouseMove);
@@ -667,7 +657,7 @@
       fixedTimer.className = "fixed-timer";
       fixedTimer.innerHTML = `
         <div id="fixed-timer-display" class="timer-display">00:00</div>
-        <button class="fixed-timer-end-btn" onclick="endExamWithConfirmation()" title="?쒗뿕 醫낅즺">
+        <button class="fixed-timer-end-btn" onclick="endExamWithConfirmation()" title="시험 종료">
           <i class="fas fa-power-off"></i>
         </button>
       `;
@@ -702,7 +692,7 @@
   }
 
   function endExamWithConfirmation() {
-    if (confirm("?뺣쭚濡??쒗뿕??醫낅즺?섏떆寃좎뒿?덇퉴?")) {
+    if (confirm("정말로 시험을 종료하시겠습니까?")) {
       endExam();
     }
   }
@@ -712,7 +702,7 @@
     const fixedTimer = document.querySelector(".fixed-timer");
     if (fixedTimer) fixedTimer.remove();
 
-    // 紐⑤뱺 YouTube ?숈쁺???뺤?
+    // 모든 YouTube 동영상 정지
     Object.values(youtubePlayers).forEach(player => {
       if (player && player.stopVideo) {
         player.stopVideo();
@@ -755,7 +745,7 @@
     });
 
     const resultData = {
-      category_name: "{{ category_name }}",
+      exam_id: "{{ exam.id }}",
       num_correct: numCorrect,
       num_incorrect: numIncorrect,
       num_unanswered: numUnanswered,
@@ -780,14 +770,14 @@
         } else {
           loadingOverlay.classList.add("hidden");
           loadingOverlay.style.display = "none";
-          alert("오류가 발생했습니다. 다시 시도해 주세요.");
+          alert("결과 저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
         }
       })
       .catch((error) => {
         loadingOverlay.classList.add("hidden");
         loadingOverlay.style.display = "none";
         console.error("Error:", error);
-        alert("오류가 발생했습니다. 다시 시도해 주세요.");
+        alert("결과 저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
       });
   }
 
@@ -797,7 +787,7 @@
       if (!isNaN(duration) && duration > 0) {
         startTimer(duration);
       } else {
-        alert("오류가 발생했습니다. 다시 시도해 주세요.");
+        alert("유효한 시간을 분 단위로 입력해주세요.");
       }
     });
     document.getElementById("end-exam-btn").addEventListener("click", endExamWithConfirmation);
@@ -824,13 +814,32 @@
         if (data.status === "ok") {
           button.classList.toggle("bookmarked", data.is_bookmarked);
         } else {
-          alert("오류가 발생했습니다. 다시 시도해 주세요.");
+          alert("북마크 처리 중 오류가 발생했습니다.");
         }
       })
       .catch((error) => {
         console.error("Error:", error);
-        alert("오류가 발생했습니다. 다시 시도해 주세요.");
+        alert("북마크 처리 중 오류가 발생했습니다.");
       });
   }
+</script>
+<script>
+  // 페이지의 모든 콘텐츠가 로드된 후 실행됩니다.
+  document.addEventListener("DOMContentLoaded", function () {
+    // 'explanation_'으로 시작하는 모든 해설 박스를 찾습니다.
+    const explanationBoxes = document.querySelectorAll(
+      'div[id^="explanation_"]'
+    );
+
+    explanationBoxes.forEach((box) => {
+      // 해설 박스 내부의 모든 자식 요소를 선택합니다 (p, ul, li 등).
+      const allChildren = box.querySelectorAll(".markdown-content *");
+
+      allChildren.forEach((child) => {
+        // 각 자식 요소의 인라인 스타일을 직접 'left'로 설정하여 덮어씁니다.
+        child.style.textAlign = "left";
+      });
+    });
+  });
 </script>
 {% endblock %}

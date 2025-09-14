@@ -1,10 +1,7 @@
-{% extends 'base.html' %}
-{% load exam_filters %}
-{% load markdown_extras %}
-
+﻿{% extends 'base.html' %} {% load exam_filters %} 
+{% load markdown_extras %} 
 {% block extra_css %}
 <style>
-  /* Markdown ?ㅽ??쇰쭅 */
   .markdown-content {
     line-height: 1.6;
     color: #333;
@@ -119,7 +116,7 @@
     text-decoration: underline;
   }
 
-  /* 肄붾뱶 ?섏씠?쇱씠??湲곕낯 ?ㅽ???*/
+  /* ?熬곣뫀??????쒓낮???繹먮끏?????れ삀????????*/
   .markdown-content .highlight {
     background-color: #f8f9fa;
     border-radius: 5px;
@@ -143,10 +140,8 @@
     color: #f5871f;
   } /* Name.Builtin */
 </style>
-{% endblock extra_css %}
-
-{% block page_content %}
-<!-- 濡쒕뵫 ?ㅻ쾭?덉씠 -->
+{% endblock %} {% block page_content %}
+<!-- ?棺??짆?승?????곷츉???源낇꼧 -->
 <div
   id="loadingOverlay"
   class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -177,7 +172,7 @@
         margin: auto;
       "
     ></div>
-    <p class="mt-4 text-gray-700 font-medium">寃곌낵瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎...</p>
+    <p class="mt-4 text-gray-700 font-medium">?롪퍒???좊ご??釉띾쐞????노츎 繞벿살탳????덈펲...</p>
   </div>
 </div>
 
@@ -187,9 +182,9 @@
 >
   <div class="hero-overlay"></div>
   <div class="hero-content text-center">
-    <h1 class="hero-title animate-fade-in">{{ category_name }}</h1>
+    <h1 class="hero-title animate-fade-in">{{ exam.title }}</h1>
     <p class="hero-subtitle animate-fade-in-delayed">
-      ?꾩꽑??臾몄젣?ㅻ줈 ?뱀떊???ㅻ젰???뺤씤?대낫?몄슂.
+      ?熬곣뫕?????쒖굣????댁Ŧ ?獄???????댁졑???筌먦끉逾?????筌뤾쑴??
     </p>
     <div class="timer-controls animate-fade-in-delayed">
       <div class="timer-input-group">
@@ -199,16 +194,15 @@
           class="form-control"
           min="1"
           value="60"
-          placeholder="遺?
+          placeholder="??
         />
-        <button id="start-exam-btn" class="btn-hero">?쒗뿕 ?쒖옉</button>
+        <button id="start-exam-btn" class="btn-hero">???ロ벍 ??戮곗굚</button>
         <button
           id="end-exam-btn"
           class="btn-action-glass danger"
           style="display: none"
         >
-          <i class="fas fa-stop-circle"></i> ?쒗뿕 醫낅즺
-        </button>
+          <i class="fas fa-stop-circle"></i> ???ロ벍 ??リ턁筌?        </button>
       </div>
       <div id="timer-display" class="timer-display">00:00</div>
     </div>
@@ -232,10 +226,12 @@
         {% for question in questions %}
         <div class="col-12">
           <div
+            id="q_{{ question.id }}"
             class="question-card animate-fade-in"
             data-correct-option="{{ question.correct_option }}"
+            data-qindex="{{ forloop.counter }}"
           >
-            <!-- 遺곷쭏??踰꾪듉 -->
+            <!-- ?釉뚮궙壤???뺢퀗???-->
             <div
               class="bookmark-button {% if question.is_bookmarked %}bookmarked{% endif %}"
               data-question-id="{{ question.id }}"
@@ -244,8 +240,19 @@
               <i class="fas fa-star"></i>
             </div>
 
+            <!-- ?熬곣뫖六??釉뚮궙壤???뺢퀗???-->
+            <div
+              class="temp-bookmark-button"
+              data-question-id="{{ question.id }}"
+              data-qindex="{{ forloop.counter }}"
+              onclick="toggleTempBookmark({{ question.id }}, {{ forloop.counter }}, this)"
+              title="?熬곣뫖六??釉뚮궙壤??
+            >
+              <i class="fas fa-thumbtack"></i>
+            </div>
+
             <div class="question-content">
-              <!-- 移댄뀒怨좊━ ?쒖떆 -->
+              <!-- ?곸궠??誘ㅒ?μ쪚????戮?뻣 -->
               {% if question.category %}
               <div class="question-category-box">
                 <i class="fas fa-tags"></i>
@@ -253,17 +260,9 @@
               </div>
               {% endif %}
 
-              <!-- ?쒗뿕 ?쒕ぉ ?쒖떆 -->
-              {% if question.exam %}
-              <div class="question-exam-box">
-                <i class="fas fa-file-alt"></i>
-                <span>{{ question.exam.title }}</span>
-              </div>
-              {% endif %}
-
               <div class="question-text">{{ question.question_text|safe }}</div>
 
-              <!-- 湲곗〈 ?대?吏 ?쒖떆 -->
+              <!-- ?リ옇???????嶺뚯솘? ??戮?뻣 -->
               {% if question.image %}
               <div class="question-image">
                 <img
@@ -274,7 +273,7 @@
               </div>
               {% endif %}
 
-              <!-- ?덈줈 異붽?: ?좏뒠釉??숈쁺???쒖떆 -->
+              <!-- ???됱Ŧ ?怨뺣뼺?: ??ルㅏ裕?????됯껀????戮?뻣 -->
               {% if question.get_youtube_embed_id %}
               <div class="question-video">
                 <div
@@ -311,21 +310,20 @@
                     class="btn-action-glass"
                     onclick="playYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-play"></i> ?ъ깮
-                  </button>
+                    <i class="fas fa-play"></i> ??繹?                  </button>
                   <button
                     type="button"
                     class="btn-action-glass"
                     onclick="pauseYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-pause"></i> ?쇱떆?뺤?
+                    <i class="fas fa-pause"></i> ??源낅뻣?筌?
                   </button>
                   <button
                     type="button"
                     class="btn-action-glass"
                     onclick="stopYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-stop"></i> ?뺤?
+                    <i class="fas fa-stop"></i> ?筌?
                   </button>
                 </div>
               </div>
@@ -343,8 +341,7 @@
                   <label
                     for="option1_{{ question.id }}"
                     class="form-check-label"
-                    >{{ question.option1 }}</label
-                  >
+                  >{{ question.option1 }}</label>
                 </div>
                 <div class="form-check">
                   <input
@@ -357,8 +354,7 @@
                   <label
                     for="option2_{{ question.id }}"
                     class="form-check-label"
-                    >{{ question.option2 }}</label
-                  >
+                  >{{ question.option2 }}</label>
                 </div>
                 <div class="form-check">
                   <input
@@ -371,8 +367,7 @@
                   <label
                     for="option3_{{ question.id }}"
                     class="form-check-label"
-                    >{{ question.option3 }}</label
-                  >
+                  >{{ question.option3 }}</label>
                 </div>
                 <div class="form-check">
                   <input
@@ -385,8 +380,7 @@
                   <label
                     for="option4_{{ question.id }}"
                     class="form-check-label"
-                    >{{ question.option4 }}</label
-                  >
+                  >{{ question.option4 }}</label>
                 </div>
                 {% if question.option5 %}
                 <div class="form-check">
@@ -400,8 +394,7 @@
                   <label
                     for="option5_{{ question.id }}"
                     class="form-check-label"
-                    >{{ question.option5 }}</label
-                  >
+                  >{{ question.option5 }}</label>
                 </div>
                 {% endif %}
               </div>
@@ -413,71 +406,64 @@
                   class="btn-action-glass"
                   onclick="toggleDisplay('answer_{{ question.id }}')"
                 >
-                  <i class="fas fa-check-circle"></i> ?뺣떟 蹂닿린
-                </button>
+                  <i class="fas fa-check-circle"></i> ?筌먲퐢堉??곌랜??뵳?                </button>
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="toggleDisplay('explanation_{{ question.id }}')"
                 >
-                  <i class="fas fa-info-circle"></i> ?댁꽕 蹂닿린
-                </button>
+                  <i class="fas fa-info-circle"></i> ??怨댄맟 ?곌랜??뵳?                </button>
                 {% if question.comment_image %}
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="toggleDisplay('image_{{ question.id }}')"
                 >
-                  <i class="fas fa-image"></i> ?대?吏 蹂닿린
-                </button>
+                  <i class="fas fa-image"></i> ????嶺뚯솘? ?곌랜??뵳?                </button>
                 {% endif %}
-                <!-- ?덈줈 異붽?: ?댁꽕 ?숈쁺??踰꾪듉 -->
+                <!-- ???됱Ŧ ?怨뺣뼺?: ??怨댄맟 ???됯껀???뺢퀗???-->
                 {% if question.get_comment_youtube_embed_id %}
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="toggleDisplay('video_explanation_{{ question.id }}')"
                 >
-                  <i class="fas fa-video"></i> ?댁꽕 ?곸긽
-                </button>
+                  <i class="fas fa-video"></i> ??怨댄맟 ??⑤㈇留?                </button>
                 {% endif %}
               </div>
 
-              <!-- ?뺣떟 ?쒖떆 諛뺤뒪 -->
+              <!-- ?筌먲퐢堉???戮?뻣 ?꾩룆踰??-->
               <div
                 id="answer_{{ question.id }}"
                 class="answer-display-box hidden"
               >
                 <div class="answer-display-title">
-                  <i class="fas fa-check-circle"></i> ?뺣떟
-                </div>
+                  <i class="fas fa-check-circle"></i> ?筌먲퐢堉?r\n                </div>
                 <div class="answer-display-content">
                   {{ question.correct_option }}
                 </div>
               </div>
 
-              <!-- ?댁꽕 ?쒖떆 諛뺤뒪 (Markdown 吏??異붽?) -->
+              <!-- ??怨댄맟 ??戮?뻣 ?꾩룆踰??(Markdown 嶺뚯솘????怨뺣뼺?) -->
               <div
                 id="explanation_{{ question.id }}"
                 class="explanation-display-box hidden"
               >
                 <div class="explanation-display-title">
-                  <i class="fas fa-info-circle"></i> ?댁꽕
-                </div>
+                  <i class="fas fa-info-circle"></i> ??怨댄맟\r\n                </div>
                 <div class="explanation-display-content markdown-content">
                   {{ question.comment|markdown }}
                 </div>
               </div>
 
-              <!-- ?대?吏 ?쒖떆 諛뺤뒪 -->
+              <!-- ????嶺뚯솘? ??戮?뻣 ?꾩룆踰??-->
               {% if question.comment_image %}
               <div
                 id="image_{{ question.id }}"
                 class="image-display-box hidden"
               >
                 <div class="image-display-title">
-                  <i class="fas fa-image"></i> 愿???대?吏
-                </div>
+                  <i class="fas fa-image"></i> ??㉱??????嶺뚯솘?\r\n                </div>
                 <img
                   src="{{ question.comment_image.url }}"
                   alt="Explanation Image"
@@ -486,15 +472,14 @@
               </div>
               {% endif %}
 
-              <!-- ?덈줈 異붽?: ?댁꽕 ?숈쁺???쒖떆 諛뺤뒪 -->
+              <!-- ???됱Ŧ ?怨뺣뼺?: ??怨댄맟 ???됯껀????戮?뻣 ?꾩룆踰??-->
               {% if question.get_comment_youtube_embed_id %}
               <div
                 id="video_explanation_{{ question.id }}"
                 class="video-explanation-box hidden"
               >
                 <div class="video-explanation-title">
-                  <i class="fas fa-video"></i> ?댁꽕 ?숈쁺??                </div>
-                <div
+                  <i class="fas fa-video"></i> ??怨댄맟 ???됯껀??r\n                <div
                   class="video-container"
                   style="
                     position: relative;
@@ -528,21 +513,20 @@
                     class="btn-action-glass"
                     onclick="playCommentYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-play"></i> ?ъ깮
-                  </button>
+                    <i class="fas fa-play"></i> ??繹?                  </button>
                   <button
                     type="button"
                     class="btn-action-glass"
                     onclick="pauseCommentYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-pause"></i> ?쇱떆?뺤?
+                    <i class="fas fa-pause"></i> ??源낅뻣?筌?
                   </button>
                   <button
                     type="button"
                     class="btn-action-glass"
                     onclick="stopCommentYouTube('{{ question.id }}')"
                   >
-                    <i class="fas fa-stop"></i> ?뺤?
+                    <i class="fas fa-stop"></i> ?筌?
                   </button>
                 </div>
               </div>
@@ -556,17 +540,183 @@
   </div>
 </div>
 
-<!-- YouTube API 濡쒕뱶 -->
-<script src="https://www.youtube.com/iframe_api"></script>
+<style>
+  .options-grid .form-check { cursor: pointer; }
+  .options-grid .form-check-label { cursor: pointer; display: block; }
+  .options-grid .form-check-input { cursor: pointer; }
+  /* Ensure no overlay blocks clicks in options grid */
+  .options-grid * { pointer-events: auto; }
+</style>
+
+<!-- YouTube API ?棺??짆?삠궘?-->
+<!-- Floating panel: Temporary Bookmarks -->
+<div id=\"tempBookmarkPanel\" class=\"temp-bookmark-panel\">
+  <div class=\"panel-header\">
+    <span><i class=\"fas fa-thumbtack\"></i> Temp Bookmarks</span>
+    <div class=\"panel-actions\">
+      <button class=\"btn btn-sm btn-outline-secondary\" id=\"togglePanelBtn\">Minimize</button>
+      <button class=\"btn btn-sm btn-outline-danger\" id=\"clearTempBookmarksBtn\">Clear</button>
+    </div>
+  </div>
+  <div class=\"panel-body\">
+    <div id=\"tempBookmarkList\" class=\"bookmark-list\"></div>
+  </div>
+  <div class=\"panel-footer small text-muted\">Click to jump to question</div>
+  <button class=\"panel-fab btn btn-primary\" id=\"openPanelFab\" title=\"Open temp bookmarks\">\n    <i class=\"fas fa-thumbtack\"></i>\n  </button>
+</div><script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+  // Make entire option block clickable and robust to nested elements
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.options-grid .form-check').forEach(function(fc){
+      fc.addEventListener('click', function(e) {
+        const input = this.querySelector('input[type="radio"]');
+        if (!input) return;
+        if (e.target === input || (e.target.tagName === 'LABEL' && e.target.htmlFor === input.id)) return;
+        input.checked = true;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+  });
+</script>
+
+<style>
+  /* Temp bookmark button sits next to the permanent star */
+  .temp-bookmark-button {
+    position: absolute;
+    top: 1.25rem;
+    left: 1.25rem;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(0,0,0,0.1);
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 4;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .temp-bookmark-button i { color: var(--text-muted); }
+  .temp-bookmark-button.active i { color: var(--primary-dark); }
+  .temp-bookmark-button:hover { transform: scale(1.08); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+
+  /* Floating panel */
+  .temp-bookmark-panel {
+    position: fixed;
+    right: 16px;
+    top: 110px;
+    width: 260px;
+    background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    z-index: 1051;
+    overflow: hidden;
+  }
+  /* 癲ル슔?됭짆??????ㅺ컼?? ????밸쭬癲???影??탿???袁⑸즴???????????? */
+  .temp-bookmark-panel.collapsed { width: 56px; }
+  .temp-bookmark-panel.collapsed .panel-header span { display:none; }
+  .temp-bookmark-panel.collapsed .panel-body,
+  .temp-bookmark-panel.collapsed .panel-footer,
+  .temp-bookmark-panel.collapsed .panel-actions .btn-outline-danger { display:none; }
+  .temp-bookmark-panel .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.06);
+    font-weight: 600;
+  }
+  .temp-bookmark-panel .panel-body { padding: 10px 12px; max-height: 320px; overflow: auto; }
+  .temp-bookmark-panel .panel-footer { padding: 6px 12px; border-top: 1px solid rgba(0,0,0,0.06); background: #fafafa; }
+  .temp-bookmark-panel .bookmark-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .temp-bookmark-panel .bookmark-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 32px; padding: 0 10px; border-radius: 16px; background: var(--primary-alpha); border: 1px solid var(--primary-alpha); color: var(--primary-dark); font-weight: 600; cursor: pointer; text-decoration: none; }
+  .temp-bookmark-panel .bookmark-chip:hover { background: #ffe9c7; }
+  .temp-bookmark-panel .panel-fab { position: absolute; right: 12px; bottom: 12px; display: none; }
+
+  @media (max-width: 992px) {
+    .temp-bookmark-panel { width: 210px; }
+  }
+  @media (max-width: 768px) {
+    .temp-bookmark-panel { right: 8px; width: 190px; }
+  }
+</style>
+
+<script>
+  // Temporary bookmark (session-only) logic
+(function(){
+  const panel = document.getElementById('tempBookmarkPanel');
+  if (!panel) return;
+  const listEl = document.getElementById('tempBookmarkList');
+  const btnHide = document.getElementById('togglePanelBtn');
+  const btnClear = document.getElementById('clearTempBookmarksBtn');
+  const NAV_HEIGHT = (document.getElementById('mainNavbar')?.offsetHeight || 64) + 12;
+  const STORAGE_KEY = 'tempBookmarks_exam_{{ exam.id }}';
+
+  function loadTemp(){ try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}'); } catch(e){ return {}; } }
+  function saveTemp(state){ sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  let temp = loadTemp(); // { [qid]: index }
+
+  function updateButtons(){
+    document.querySelectorAll('.temp-bookmark-button').forEach(function(btn){
+      const qid = btn.getAttribute('data-question-id');
+      if (qid && temp[qid]) btn.classList.add('active'); else btn.classList.remove('active');
+    });
+  }
+
+  function scrollToQuestion(qid){
+    const el = document.getElementById('q_' + qid);
+    if (!el) return;
+    const y = el.getBoundingClientRect().top + window.pageYOffset - NAV_HEIGHT;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  }
+
+  function renderList(){
+    const entries = Object.entries(temp).map(function(pair){ return { qid: pair[0], idx: parseInt(pair[1],10)||0 }; });
+    entries.sort(function(a,b){ return a.idx - b.idx; });
+    listEl.innerHTML = '';
+    if (entries.length === 0){
+      listEl.innerHTML = '<div class="text-muted small">\uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4</div>';
+      return;
+    }
+    entries.forEach(function(item){
+      const a = document.createElement('a');
+      a.className = 'bookmark-chip';
+      a.href = '#';
+      a.textContent = String(item.idx);
+      a.title = '\uBB38\uC81C #'+ item.idx;
+      a.addEventListener('click', function(ev){ ev.preventDefault(); scrollToQuestion(item.qid); });
+      listEl.appendChild(a);
+    });
+  }
+
+  window.toggleTempBookmark = function(qid, index){
+    const key = String(qid);
+    if (temp[key]) delete temp[key]; else temp[key] = index;
+    saveTemp(temp);
+    updateButtons();
+    renderList();
+  };
+
+  if (btnHide) btnHide.addEventListener('click', function(){
+    if (panel.classList.contains('collapsed')){
+      panel.classList.remove('collapsed');
+      this.textContent = '\uCD5C\uC18C\uD654'; // 理쒖냼??    } else {
+      panel.classList.add('collapsed');
+      this.textContent = '\uD3BC\uCE58\uAE30'; // ?쇱튂湲?    }
+  });
+  if (btnClear) btnClear.addEventListener('click', function(){
+    if (!confirm('\uC784\uC2DC \uBD81\uB9C8\uD06C\uB97C \uBAA8\uB450 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C\?')) return;
+    temp = {}; saveTemp(temp); updateButtons(); renderList();
+  });
+
+  updateButtons();
+  renderList();
+})();;
+</script>
 
 <script>
   let timerInterval;
   let timeRemaining;
-  let youtubePlayers = {}; // YouTube ?뚮젅?댁뼱?ㅼ쓣 ??ν븷 媛앹껜
-
-  // YouTube API 以鍮??꾨즺 肄쒕갚
-  function onYouTubeIframeAPIReady() {
-    // 紐⑤뱺 YouTube iframe???뚮젅?댁뼱濡?珥덇린??    {% for question in questions %}
+  let youtubePlayers = {}; // YouTube ???????⑤９苑???源낃도 ???濚왿몾????좊즵??꼯??
+  // YouTube API 濚욌꼬裕뼘????ш끽維???熬곣뫖痢딀뤆?  function onYouTubeIframeAPIReady() {
+    // 癲ル슢?꾤땟???YouTube iframe?????????⑤９苑???縕?猿녿뎨??    {% for question in questions %}
       {% if question.get_youtube_embed_id %}
         youtubePlayers['youtube_{{ question.id }}'] = new YT.Player('youtube_{{ question.id }}');
       {% endif %}
@@ -576,7 +726,7 @@
     {% endfor %}
   }
 
-  // YouTube ?숈쁺???쒖뼱 ?⑥닔??  function playYouTube(questionId) {
+  // YouTube ??????????筌?苑???縕???  function playYouTube(questionId) {
     const player = youtubePlayers['youtube_' + questionId];
     if (player && player.playVideo) {
       player.playVideo();
@@ -618,8 +768,7 @@
     }
   }
 
-  // ??대㉧ ?쒕옒洹?湲곕뒫 ?⑥닔
-  function makeDraggable(element) {
+  // ?????????筌먦끉援????れ삀?????縕??  function makeDraggable(element) {
     let offsetX, offsetY;
 
     function onMouseDown(e) {
@@ -631,7 +780,7 @@
 
       offsetX = e.clientX - element.offsetLeft;
       offsetY = e.clientY - element.offsetTop;
-      
+
       element.style.right = 'auto';
 
       document.addEventListener('mousemove', onMouseMove);
@@ -667,7 +816,7 @@
       fixedTimer.className = "fixed-timer";
       fixedTimer.innerHTML = `
         <div id="fixed-timer-display" class="timer-display">00:00</div>
-        <button class="fixed-timer-end-btn" onclick="endExamWithConfirmation()" title="?쒗뿕 醫낅즺">
+        <button class="fixed-timer-end-btn" onclick="endExamWithConfirmation()" title="?????쾷 ???ろ꼤嶺?>
           <i class="fas fa-power-off"></i>
         </button>
       `;
@@ -702,7 +851,7 @@
   }
 
   function endExamWithConfirmation() {
-    if (confirm("?뺣쭚濡??쒗뿕??醫낅즺?섏떆寃좎뒿?덇퉴?")) {
+    if (confirm("?嶺뚮㉡?ｇ빊?띿뒙??????쾷?????ろ꼤嶺??筌뚯슜六?濡ろ뜑鴉?????뉖??")) {
       endExam();
     }
   }
@@ -712,7 +861,7 @@
     const fixedTimer = document.querySelector(".fixed-timer");
     if (fixedTimer) fixedTimer.remove();
 
-    // 紐⑤뱺 YouTube ?숈쁺???뺤?
+    // 癲ル슢?꾤땟???YouTube ?????????嶺?
     Object.values(youtubePlayers).forEach(player => {
       if (player && player.stopVideo) {
         player.stopVideo();
@@ -727,6 +876,24 @@
     let numCorrect = 0, numIncorrect = 0, numUnanswered = 0, numNoanswer = 0;
     let detailedResults = [];
 
+    // Helper: normalize answer and extract leading key
+    function normalizeText(t) {
+      if (!t) return '';
+      let s = String(t).replace(/<[^>]*>/g, '').trim();
+      // Map circled numbers to digits
+      const circledMap = {
+        '??:'1','??:'2','??:'3','??:'4','??:'5','??:'6','??:'7','??:'8','??:'9','??:'10'
+      };
+      s = s.replace(/[??브퀣沅??????????????됲??縕ョ댚?/g, m => circledMap[m] || m);
+      return s;
+    }
+    function leadingKey(t) {
+      const s = normalizeText(t);
+      // Remove common wrappers like (??좊읈?), A), 1. etc and pick first significant char/digit/Korean letter
+      const m = s.match(/[A-Za-z0-9??좊읈?-??/);
+      return m ? m[0].toUpperCase() : '';
+    }
+
     questionBlocks.forEach((block) => {
       const questionText = block.querySelector(".question-text").textContent.trim();
       const correctOption = block.dataset.correctOption;
@@ -739,7 +906,7 @@
       } else if (!selectedRadio) {
         numUnanswered++;
         resultType = "unanswered";
-      } else if (selectedRadio.value === correctOption) {
+      } else if (selectedRadio.value === correctOption || leadingKey(selectedRadio.value) === leadingKey(correctOption)) {
         numCorrect++;
         resultType = "correct";
       } else {
@@ -755,7 +922,7 @@
     });
 
     const resultData = {
-      category_name: "{{ category_name }}",
+      exam_id: "{{ exam.id }}",
       num_correct: numCorrect,
       num_incorrect: numIncorrect,
       num_unanswered: numUnanswered,
@@ -780,14 +947,14 @@
         } else {
           loadingOverlay.classList.add("hidden");
           loadingOverlay.style.display = "none";
-          alert("오류가 발생했습니다. 다시 시도해 주세요.");
+          alert("?濡ろ뜏???????濚?????곸씔??좊읈? ?袁⑸즵獒뺣뎾????怨?????덊렡. ???怨뺣빰 ??筌먲퐣?????낆뒩??뗫빝??");
         }
       })
       .catch((error) => {
         loadingOverlay.classList.add("hidden");
         loadingOverlay.style.display = "none";
         console.error("Error:", error);
-        alert("오류가 발생했습니다. 다시 시도해 주세요.");
+        alert("?濡ろ뜏???????濚?????곸씔??좊읈? ?袁⑸즵獒뺣뎾????怨?????덊렡. ???怨뺣빰 ??筌먲퐣?????낆뒩??뗫빝??");
       });
   }
 
@@ -797,7 +964,7 @@
       if (!isNaN(duration) && duration > 0) {
         startTimer(duration);
       } else {
-        alert("오류가 발생했습니다. 다시 시도해 주세요.");
+        alert("???レ챺?????癰?????????쒙쭕袁?뒙?????곸죷???⑥궢猷?嶺뚮ㅎ???");
       }
     });
     document.getElementById("end-exam-btn").addEventListener("click", endExamWithConfirmation);
@@ -824,13 +991,43 @@
         if (data.status === "ok") {
           button.classList.toggle("bookmarked", data.is_bookmarked);
         } else {
-          alert("오류가 발생했습니다. 다시 시도해 주세요.");
+          alert("??됰슢沅쇿＄??癲ル슪?ｇ몭??濚?????곸씔??좊읈? ?袁⑸즵獒뺣뎾????怨?????덊렡.");
         }
       })
       .catch((error) => {
         console.error("Error:", error);
-        alert("오류가 발생했습니다. 다시 시도해 주세요.");
+        alert("??됰슢沅쇿＄??癲ル슪?ｇ몭??濚?????곸씔??좊읈? ?袁⑸즵獒뺣뎾????怨?????덊렡.");
       });
   }
 </script>
+<script>
+  // ???쒓낮?꾬┼??넊???癲ル슢?꾤땟????熬곣뫕??????? ?棺??짆?삠궘????????덈틖??筌뤾퍓???
+  document.addEventListener("DOMContentLoaded", function () {
+    // 'explanation_'???⑥????筌믨퀣援??嚥▲꺂痢?癲ル슢?꾤땟??????⑤똾留??袁⑸즴甕???뽧걫?癲ル슓??젆?????덊렡.
+    const explanationBoxes = document.querySelectorAll(
+      'div[id^="explanation_"]'
+    );
+
+    explanationBoxes.forEach((box) => {
+      // ???⑤똾留??袁⑸즴甕????????癲ル슢?꾤땟??????筌???釉먯뒠??????ャ뀕???筌뤾퍓???(p, ul, li ??.
+      const allChildren = box.querySelectorAll(".markdown-content *");
+
+      allChildren.forEach((child) => {
+        // ?????筌???釉먯뒠????嶺뚮ㅎ?붼???????繹먮끏援?癲ル슣????'left'?????源놁젳??筌뚯슦肉???????ㅿ폍???
+        child.style.textAlign = "left";
+      });
+    });
+  });
+</script>
 {% endblock %}
+
+
+<style>
+  /* Uniform question card height across all questions */
+  .questions-section .question-card { min-height: 620px; display: flex; flex-direction: column; }
+  .questions-section .question-content { flex: 1 1 auto; }
+  @media (max-width: 992px) { .questions-section .question-card { min-height: 540px; } }
+  @media (max-width: 576px) { .questions-section .question-card { min-height: 460px; } }
+</style>
+
+

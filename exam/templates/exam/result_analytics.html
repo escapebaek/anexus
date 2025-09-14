@@ -1,0 +1,109 @@
+﻿{% extends 'base.html' %}
+{% block page_content %}
+<div class="container mt-5">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <h1 class="section-title mb-0">Attempt Analytics</h1>
+    <div>
+      <a href="{% url 'my_results' %}" class="btn btn-outline-secondary me-2">
+        <i class="fas fa-list"></i> My Results
+      </a>
+      {% if exam %}
+      <a href="{% url 'exam_analytics' exam.id %}" class="btn btn-outline-info me-2">
+        <i class="fas fa-chart-bar"></i> Exam Rollup
+      </a>
+      {% endif %}
+      <a href="{% url 'question_home' %}" class="btn btn-primary">
+        <i class="fas fa-arrow-left"></i> Back to Home
+      </a>
+      <form method="post" action="{% url 'delete_result' result.id %}" style="display:inline" onsubmit="return confirm('?뺣쭚 ??寃곌낵瑜???젣?섏떆寃좎뒿?덇퉴? ??젣 ???듦퀎?먯꽌 ?쒖쇅?⑸땲??');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger ms-2">
+          <i class="fas fa-trash"></i> Delete
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div><strong>Title:</strong> {% if exam %}{{ exam.title }}{% else %}{{ result.category_name|default:'N/A' }}{% endif %}</div>
+          <div><strong>Date:</strong> {{ result.date_taken }}</div>
+        </div>
+        <div class="col-md-6">
+          <div><strong>Total Questions (attempt):</strong> {{ total }}</div>
+          <div><strong>Score:</strong> {{ result.num_correct }} / {{ total }} ({{ pct_total }}%)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-7">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Category Breakdown (this attempt)</h5>
+          <div class="chart-container">
+            <canvas id="countsChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">Category Accuracy (%)</h5>
+          <div class="chart-container">
+            <canvas id="accChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>.chart-container{position:relative;height:420px}</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const labels = {{ labels|safe }};
+  const correctData = {{ correct_data|safe }};
+  const incorrectData = {{ incorrect_data|safe }};
+  const unansweredData = {{ unanswered_data|safe }};
+  const noanswerData = {{ noanswer_data|safe }};
+  const accuracyPct = {{ accuracy_pct|safe }};
+
+  new Chart(document.getElementById('countsChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Correct', data: correctData, backgroundColor: '#2ecc71' },
+        { label: 'Incorrect', data: incorrectData, backgroundColor: '#e74c3c' },
+        { label: 'Unanswered', data: unansweredData, backgroundColor: '#f1c40f' },
+        { label: 'No Answer', data: noanswerData, backgroundColor: '#95a5a6' },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      indexAxis: 'y',
+      scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true, ticks: { autoSkip: false, font: { size: 12 } } } }
+    }
+  });
+
+  new Chart(document.getElementById('accChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Accuracy %', data: accuracyPct, backgroundColor: '#3498db' }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      indexAxis: 'y',
+      scales: { x: { beginAtZero: true, max: 100 }, y: { ticks: { autoSkip: false, font: { size: 12 } } } }
+    }
+  });
+</script>
+{% endblock %}
+

@@ -1,0 +1,98 @@
+﻿{% load static %}
+{% load markdown_extras %}
+
+<div class="question-card text-start" style="box-shadow:none; border:none;">
+  <div class="question-content">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      {% if question.category %}
+      <div class="question-category-box" style="margin:0;">
+        <i class="fas fa-tags"></i>
+        <span>{{ question.category.name }}</span>
+      </div>
+      {% endif %}
+
+      <div
+        class="bookmark-button {% if is_bookmarked %}bookmarked{% endif %}"
+        data-question-id="{{ question.id }}"
+        onclick="toggleBookmark({{ question.id }}, this)"
+        title="遺곷쭏???꾪솚"
+        style="margin-left: auto;"
+      >
+        <i class="fas fa-star"></i>
+      </div>
+    </div>
+
+    <div class="question-text">{{ question.question_text|safe }}</div>
+
+    {% if question.image %}
+    <div class="question-image mt-3">
+      <img src="{{ question.image.url }}" alt="Question Image" class="img-fluid rounded" />
+    </div>
+    {% endif %}
+
+    {% if question.get_youtube_embed_id %}
+    <div class="question-video mt-3">
+      <div class="video-container" style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%;">
+        <iframe
+          src="https://www.youtube.com/embed/{{ question.get_youtube_embed_id }}?rel=0"
+          frameborder="0"
+          allowfullscreen
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px;"
+        ></iframe>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+      <div class="fw-bold mb-2"><i class="far fa-list-alt me-2"></i>蹂닿린</div>
+      <ul class="list-unstyled ms-1">
+        {% if question.option1 and question.option1 != 'default' %}<li class="mb-1">??{{ question.option1 }}</li>{% endif %}
+        {% if question.option2 and question.option2 != 'default' %}<li class="mb-1">??{{ question.option2 }}</li>{% endif %}
+        {% if question.option3 and question.option3 != 'default' %}<li class="mb-1">??{{ question.option3 }}</li>{% endif %}
+        {% if question.option4 and question.option4 != 'default' %}<li class="mb-1">??{{ question.option4 }}</li>{% endif %}
+        {% if question.option5 and question.option5 != 'default' %}<li class="mb-1">??{{ question.option5 }}</li>{% endif %}
+      </ul>
+    </div>
+
+    <div class="answer-display-box mt-3" style="display:block;">
+      <div class="answer-display-title">
+        <i class="fas fa-check-circle"></i> ?뺣떟
+      </div>
+      <div class="answer-display-content">{{ question.correct_option }}</div>
+    </div>
+
+    <div class="explanation-display-box mt-3" style="display:block;">
+      <div class="explanation-display-title">
+        <i class="fas fa-info-circle"></i> ?댁꽕
+      </div>
+      <div class="explanation-display-content markdown-content">
+        {{ question.comment|markdown }}
+      </div>
+    </div>
+
+    {% if question.comment_image %}
+    <div class="image-display-box mt-3" style="display:block;">
+      <div class="image-display-title">
+        <i class="fas fa-image"></i> 愿???대?吏
+      </div>
+      <img src="{{ question.comment_image.url }}" alt="Explanation Image" class="img-fluid rounded" />
+    </div>
+    {% endif %}
+
+    {% if question.get_comment_youtube_embed_id %}
+    <div class="video-explanation-box mt-3" style="display:block;">
+      <div class="video-explanation-title">
+        <i class="fas fa-video"></i> ?댁꽕 ?숈쁺??      </div>
+      <div class="video-container" style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%;">
+        <iframe
+          src="https://www.youtube.com/embed/{{ question.get_comment_youtube_embed_id }}?rel=0"
+          frameborder="0"
+          allowfullscreen
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px;"
+        ></iframe>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+

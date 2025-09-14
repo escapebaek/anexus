@@ -1,10 +1,10 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load exam_filters %}
 {% load markdown_extras %}
 
 {% block extra_css %}
 <style>
-  /* Markdown 스타일링 */
+  /* Markdown ?ㅽ??쇰쭅 */
   .markdown-content {
     line-height: 1.6;
     color: #333;
@@ -119,7 +119,7 @@
     text-decoration: underline;
   }
 
-  /* 코드 하이라이팅 기본 스타일 */
+  /* 肄붾뱶 ?섏씠?쇱씠??湲곕낯 ?ㅽ???*/
   .markdown-content .highlight {
     background-color: #f8f9fa;
     border-radius: 5px;
@@ -153,9 +153,9 @@
 >
   <div class="hero-overlay"></div>
   <div class="hero-content text-center">
-    <h1 class="hero-title animate-fade-in">북마크된 문제</h1>
+    <h1 class="hero-title animate-fade-in">遺곷쭏?щ맂 臾몄젣</h1>
     <p class="hero-subtitle animate-fade-in-delayed">
-      저장된 문제들을 다시 복습해보세요.
+      ??λ맂 臾몄젣?ㅼ쓣 ?ㅼ떆 蹂듭뒿?대낫?몄슂.
     </p>
   </div>
   <div class="hero-wave">
@@ -178,7 +178,7 @@
           class="question-card animate-fade-in"
           data-correct-option="{{ question.correct_option }}"
         >
-          <!-- 북마크 버튼 -->
+          <!-- 遺곷쭏??踰꾪듉 -->
           <div
             class="bookmark-button bookmarked"
             data-question-id="{{ question.id }}"
@@ -188,7 +188,7 @@
           </div>
 
           <div class="question-content">
-            <!-- 카테고리 표시 -->
+            <!-- 移댄뀒怨좊━ ?쒖떆 -->
             {% if question.category %}
             <div class="question-category-box">
               <i class="fas fa-tags"></i>
@@ -196,7 +196,7 @@
             </div>
             {% endif %}
 
-            <!-- 시험 제목 표시 -->
+            <!-- ?쒗뿕 ?쒕ぉ ?쒖떆 -->
             {% if question.exam %}
             <div class="question-exam-box">
               <i class="fas fa-file-alt"></i>
@@ -206,7 +206,7 @@
 
             <div class="question-text">{{ question.question_text|safe }}</div>
 
-            <!-- 기존 이미지 표시 -->
+            <!-- 湲곗〈 ?대?吏 ?쒖떆 -->
             {% if question.image %}
             <div class="question-image">
               <img
@@ -217,7 +217,7 @@
             </div>
             {% endif %}
 
-            <!-- 새로 추가: 유튜브 동영상 표시 -->
+            <!-- ?덈줈 異붽?: ?좏뒠釉??숈쁺???쒖떆 -->
             {% if question.get_youtube_embed_id %}
             <div class="question-video">
               <div
@@ -254,21 +254,21 @@
                   class="btn-action-glass"
                   onclick="playYouTube('{{ question.id }}')"
                 >
-                  <i class="fas fa-play"></i> 재생
+                  <i class="fas fa-play"></i> ?ъ깮
                 </button>
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="pauseYouTube('{{ question.id }}')"
                 >
-                  <i class="fas fa-pause"></i> 일시정지
+                  <i class="fas fa-pause"></i> ?쇱떆?뺤?
                 </button>
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="stopYouTube('{{ question.id }}')"
                 >
-                  <i class="fas fa-stop"></i> 정지
+                  <i class="fas fa-stop"></i> ?뺤?
                 </button>
               </div>
             </div>
@@ -356,14 +356,14 @@
                 class="btn-action-glass"
                 onclick="toggleDisplay('answer_{{ question.id }}')"
               >
-                <i class="fas fa-check-circle"></i> 정답 보기
+                <i class="fas fa-check-circle"></i> ?뺣떟 蹂닿린
               </button>
               <button
                 type="button"
                 class="btn-action-glass"
                 onclick="toggleDisplay('explanation_{{ question.id }}')"
               >
-                <i class="fas fa-info-circle"></i> 해설 보기
+                <i class="fas fa-info-circle"></i> ?댁꽕 蹂닿린
               </button>
               {% if question.comment_image %}
               <button
@@ -371,55 +371,55 @@
                 class="btn-action-glass"
                 onclick="toggleDisplay('image_{{ question.id }}')"
               >
-                <i class="fas fa-image"></i> 이미지 보기
+                <i class="fas fa-image"></i> ?대?吏 蹂닿린
               </button>
               {% endif %}
-              <!-- 새로 추가: 해설 동영상 버튼 -->
+              <!-- ?덈줈 異붽?: ?댁꽕 ?숈쁺??踰꾪듉 -->
               {% if question.get_comment_youtube_embed_id %}
               <button
                 type="button"
                 class="btn-action-glass"
                 onclick="toggleDisplay('video_explanation_{{ question.id }}')"
               >
-                <i class="fas fa-video"></i> 해설 영상
+                <i class="fas fa-video"></i> ?댁꽕 ?곸긽
               </button>
               {% endif %}
             </div>
 
-            <!-- 정답 표시 박스 -->
+            <!-- ?뺣떟 ?쒖떆 諛뺤뒪 -->
             <div
               id="answer_{{ question.id }}"
               class="answer-display-box hidden"
             >
               <div class="answer-display-title">
-                <i class="fas fa-check-circle"></i> 정답
+                <i class="fas fa-check-circle"></i> ?뺣떟
               </div>
               <div class="answer-display-content">
                 {{ question.correct_option }}
               </div>
             </div>
 
-            <!-- 해설 표시 박스 (Markdown 지원 추가) -->
+            <!-- ?댁꽕 ?쒖떆 諛뺤뒪 (Markdown 吏??異붽?) -->
             <div
               id="explanation_{{ question.id }}"
               class="explanation-display-box hidden"
             >
               <div class="explanation-display-title">
-                <i class="fas fa-info-circle"></i> 해설
+                <i class="fas fa-info-circle"></i> ?댁꽕
               </div>
               <div class="explanation-display-content markdown-content">
                 {{ question.comment|markdown }}
               </div>
             </div>
 
-            <!-- 이미지 표시 박스 -->
+            <!-- ?대?吏 ?쒖떆 諛뺤뒪 -->
             {% if question.comment_image %}
             <div
               id="image_{{ question.id }}"
               class="image-display-box hidden"
             >
               <div class="image-display-title">
-                <i class="fas fa-image"></i> 관련 이미지
+                <i class="fas fa-image"></i> 愿???대?吏
               </div>
               <img
                 src="{{ question.comment_image.url }}"
@@ -429,15 +429,14 @@
             </div>
             {% endif %}
 
-            <!-- 새로 추가: 해설 동영상 표시 박스 -->
+            <!-- ?덈줈 異붽?: ?댁꽕 ?숈쁺???쒖떆 諛뺤뒪 -->
             {% if question.get_comment_youtube_embed_id %}
             <div
               id="video_explanation_{{ question.id }}"
               class="video-explanation-box hidden"
             >
               <div class="video-explanation-title">
-                <i class="fas fa-video"></i> 해설 동영상
-              </div>
+                <i class="fas fa-video"></i> ?댁꽕 ?숈쁺??              </div>
               <div
                 class="video-container"
                 style="
@@ -472,21 +471,21 @@
                   class="btn-action-glass"
                   onclick="playCommentYouTube('{{ question.id }}')"
                 >
-                  <i class="fas fa-play"></i> 재생
+                  <i class="fas fa-play"></i> ?ъ깮
                 </button>
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="pauseCommentYouTube('{{ question.id }}')"
                 >
-                  <i class="fas fa-pause"></i> 일시정지
+                  <i class="fas fa-pause"></i> ?쇱떆?뺤?
                 </button>
                 <button
                   type="button"
                   class="btn-action-glass"
                   onclick="stopCommentYouTube('{{ question.id }}')"
                 >
-                  <i class="fas fa-stop"></i> 정지
+                  <i class="fas fa-stop"></i> ?뺤?
                 </button>
               </div>
             </div>
@@ -499,9 +498,9 @@
         <div class="no-bookmarks-message text-center py-5">
           <div class="empty-state">
             <i class="fas fa-bookmark fa-4x mb-4 empty-state-icon"></i>
-            <h3 class="empty-state-title">아직 북마크된 문제가 없습니다</h3>
+            <h3 class="empty-state-title">?꾩쭅 遺곷쭏?щ맂 臾몄젣媛 ?놁뒿?덈떎</h3>
             <p class="empty-state-description">
-              시험을 보면서 문제를 북마크하여 나중에 다시 복습해보세요.
+              ?쒗뿕??蹂대㈃??臾몄젣瑜?遺곷쭏?ы븯???섏쨷???ㅼ떆 蹂듭뒿?대낫?몄슂.
             </p>
           </div>
         </div>
@@ -513,16 +512,15 @@
 
 {% csrf_token %}
 
-<!-- YouTube API 로드 -->
+<!-- YouTube API 濡쒕뱶 -->
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
-  let youtubePlayers = {}; // YouTube 플레이어들을 저장할 객체
+  let youtubePlayers = {}; // YouTube ?뚮젅?댁뼱?ㅼ쓣 ??ν븷 媛앹껜
 
-  // YouTube API 준비 완료 콜백
+  // YouTube API 以鍮??꾨즺 肄쒕갚
   function onYouTubeIframeAPIReady() {
-    // 모든 YouTube iframe을 플레이어로 초기화
-    {% for question in questions %}
+    // 紐⑤뱺 YouTube iframe???뚮젅?댁뼱濡?珥덇린??    {% for question in questions %}
       {% if question.get_youtube_embed_id %}
         youtubePlayers['youtube_{{ question.id }}'] = new YT.Player('youtube_{{ question.id }}');
       {% endif %}
@@ -532,8 +530,7 @@
     {% endfor %}
   }
 
-  // YouTube 동영상 제어 함수들
-  function playYouTube(questionId) {
+  // YouTube ?숈쁺???쒖뼱 ?⑥닔??  function playYouTube(questionId) {
     const player = youtubePlayers['youtube_' + questionId];
     if (player && player.playVideo) {
       player.playVideo();
@@ -599,13 +596,13 @@
             button.classList.add("bookmarked");
           } else {
             button.classList.remove("bookmarked");
-            // 북마크가 해제되면 카드를 부드럽게 제거
+            // 遺곷쭏?ш? ?댁젣?섎㈃ 移대뱶瑜?遺?쒕읇寃??쒓굅
             const questionCard = button.closest(".col-12");
             if (questionCard) {
               questionCard.style.animation = "fadeOut 0.3s ease-out";
               setTimeout(() => {
                 questionCard.remove();
-                // 모든 문제가 제거되면 페이지 새로고침
+                // 紐⑤뱺 臾몄젣媛 ?쒓굅?섎㈃ ?섏씠吏 ?덈줈怨좎묠
                 if (document.querySelectorAll(".question-card").length === 0) {
                   location.reload();
                 }
@@ -613,12 +610,12 @@
             }
           }
         } else {
-          alert("북마크 처리 중 오류가 발생했습니다.");
+          alert("遺곷쭏??泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.");
         }
       })
       .catch((error) => {
         console.error("Error:", error);
-        alert("북마크 처리 중 오류가 발생했습니다.");
+        alert("遺곷쭏??泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.");
       });
   }
 </script>
