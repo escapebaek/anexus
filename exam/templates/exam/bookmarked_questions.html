@@ -1228,6 +1228,7 @@
                   id="youtube_{{ question.id }}"
                   src="https://www.youtube.com/embed/{{ question.get_youtube_embed_id }}?enablejsapi=1&rel=0"
                   frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowfullscreen
                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px;"
                 ></iframe>
@@ -1325,6 +1326,7 @@
                   id="comment_youtube_{{ question.id }}"
                   src="https://www.youtube.com/embed/{{ question.get_comment_youtube_embed_id }}?enablejsapi=1&rel=0"
                   frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowfullscreen
                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px;"
                 ></iframe>
@@ -1376,56 +1378,92 @@
   // YouTube players
   var youtubePlayers = {};
 
+  function sendCommandToIframe(iframeId, command, args = []) {
+    var iframe = document.getElementById(iframeId);
+    if (!iframe || !iframe.contentWindow) {
+      return false;
+    }
+    iframe.contentWindow.postMessage(
+      JSON.stringify({ event: "command", func: command, args: args }),
+      "*"
+    );
+    return true;
+  }
+
   function onYouTubeIframeAPIReady() {
     {% for question in questions %}
       {% if question.get_youtube_embed_id %}
-        youtubePlayers['youtube_{{ question.id }}'] = new YT.Player('youtube_{{ question.id }}');
+        youtubePlayers['youtube_{{ question.id }}'] = new YT.Player('youtube_{{ question.id }}', {
+          events: {
+            onReady: function (event) {
+              youtubePlayers['youtube_{{ question.id }}'] = event.target;
+            },
+          },
+        });
       {% endif %}
       {% if question.get_comment_youtube_embed_id %}
-        youtubePlayers['comment_youtube_{{ question.id }}'] = new YT.Player('comment_youtube_{{ question.id }}');
+        youtubePlayers['comment_youtube_{{ question.id }}'] = new YT.Player('comment_youtube_{{ question.id }}', {
+          events: {
+            onReady: function (event) {
+              youtubePlayers['comment_youtube_{{ question.id }}'] = event.target;
+            },
+          },
+        });
       {% endif %}
     {% endfor %}
   }
 
   function playYouTube(questionId) {
     var player = youtubePlayers['youtube_' + questionId];
-    if (player && player.playVideo) {
+    if (player && typeof player.playVideo === "function") {
       player.playVideo();
+    } else {
+      sendCommandToIframe('youtube_' + questionId, 'playVideo');
     }
   }
 
   function pauseYouTube(questionId) {
     var player = youtubePlayers['youtube_' + questionId];
-    if (player && player.pauseVideo) {
+    if (player && typeof player.pauseVideo === "function") {
       player.pauseVideo();
+    } else {
+      sendCommandToIframe('youtube_' + questionId, 'pauseVideo');
     }
   }
 
   function stopYouTube(questionId) {
     var player = youtubePlayers['youtube_' + questionId];
-    if (player && player.stopVideo) {
+    if (player && typeof player.stopVideo === "function") {
       player.stopVideo();
+    } else if (sendCommandToIframe('youtube_' + questionId, 'stopVideo')) {
+      sendCommandToIframe('youtube_' + questionId, 'seekTo', [0, true]);
     }
   }
 
   function playCommentYouTube(questionId) {
     var player = youtubePlayers['comment_youtube_' + questionId];
-    if (player && player.playVideo) {
+    if (player && typeof player.playVideo === "function") {
       player.playVideo();
+    } else {
+      sendCommandToIframe('comment_youtube_' + questionId, 'playVideo');
     }
   }
 
   function pauseCommentYouTube(questionId) {
     var player = youtubePlayers['comment_youtube_' + questionId];
-    if (player && player.pauseVideo) {
+    if (player && typeof player.pauseVideo === "function") {
       player.pauseVideo();
+    } else {
+      sendCommandToIframe('comment_youtube_' + questionId, 'pauseVideo');
     }
   }
 
   function stopCommentYouTube(questionId) {
     var player = youtubePlayers['comment_youtube_' + questionId];
-    if (player && player.stopVideo) {
+    if (player && typeof player.stopVideo === "function") {
       player.stopVideo();
+    } else if (sendCommandToIframe('comment_youtube_' + questionId, 'stopVideo')) {
+      sendCommandToIframe('comment_youtube_' + questionId, 'seekTo', [0, true]);
     }
   }
 
