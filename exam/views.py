@@ -303,15 +303,56 @@ def category_questions(request, category_name):
 @login_required
 @user_is_specially_approved
 def bookmarked_questions(request):
-    # ?꾩옱 ?ъ슜?먯쓽 遺곷쭏?щ맂 吏덈Ц?ㅼ쓣 媛?몄샂
-    bookmarked = Question.objects.filter(
+    # Get all bookmarked questions for the user
+    bookmarked_queryset = Question.objects.filter(
         bookmark__user=request.user
-    ).select_related('exam', 'category').order_by('exam__title', 'order')
-    
+    ).select_related('exam', 'category').order_by('exam__title', 'order', 'id')
+
+    # Get filter parameters from GET request
+    selected_exam_ids = [int(x) for x in request.GET.getlist('exam') if x.isdigit()]
+    selected_category_ids = [int(x) for x in request.GET.getlist('category') if x.isdigit()]
+
+    # Count total bookmarked questions before filtering
+    total_bookmarked_count = bookmarked_queryset.count()
+
+    # Apply filters
+    filtered_bookmarks = bookmarked_queryset
+    if selected_exam_ids:
+        filtered_bookmarks = filtered_bookmarks.filter(exam_id__in=selected_exam_ids)
+    if selected_category_ids:
+        filtered_bookmarks = filtered_bookmarks.filter(category_id__in=selected_category_ids)
+
+    # Get available filters (only exams/categories that have bookmarked questions)
+    available_exam_filters = Exam.objects.filter(
+        questions__bookmark__user=request.user
+    ).order_by('title').distinct()
+
+    available_category_filters = Category.objects.filter(
+        question__bookmark__user=request.user
+    ).order_by('name').distinct()
+
+    # Get selected objects for display
+    selected_exam_objects = Exam.objects.filter(id__in=selected_exam_ids).order_by('title') if selected_exam_ids else []
+    selected_category_objects = Category.objects.filter(id__in=selected_category_ids).order_by('name') if selected_category_ids else []
+
+    # Convert to list and count
+    filtered_bookmarks_list = list(filtered_bookmarks)
+    filtered_count = len(filtered_bookmarks_list)
+    has_active_filters = bool(selected_exam_ids or selected_category_ids)
+
     return render(request, 'exam/bookmarked_questions.html', {
-        'questions': bookmarked
+        'questions': filtered_bookmarks_list,
+        'exam_filters': available_exam_filters,
+        'category_filters': available_category_filters,
+        'selected_exam_ids': selected_exam_ids,
+        'selected_category_ids': selected_category_ids,
+        'selected_exam_objects': selected_exam_objects,
+        'selected_category_objects': selected_category_objects,
+        'filtered_count': filtered_count,
+        'total_bookmarked_count': total_bookmarked_count,
+        'has_active_filters': has_active_filters,
     })
-    
+
 @require_POST
 @login_required
 @user_is_specially_approved

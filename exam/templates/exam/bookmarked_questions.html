@@ -2,9 +2,550 @@
 {% load exam_filters %}
 {% load markdown_extras %}
 
-{% block extra_css %}
+{% block custom_css %}
 <style>
-  /* Markdown ?ㅽ??쇰쭅 */
+  /* CRITICAL: Override for bookmark filter with highest specificity */
+  form#filterForm.bookmark-filter-custom {
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%) !important;
+    border-radius: 18px !important;
+    padding: 1.6rem !important;
+    margin-bottom: 1.4rem !important;
+    box-shadow: 
+      0 10px 40px rgba(43, 88, 118, 0.08),
+      0 2px 8px rgba(43, 88, 118, 0.04) !important;
+    border: 1px solid rgba(43, 88, 118, 0.08) !important;
+    isolation: isolate !important;
+    backdrop-filter: blur(10px) !important;
+    overflow: hidden !important;
+  }
+
+  form#filterForm.bookmark-filter-custom::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 4px !important;
+    background: linear-gradient(90deg, 
+      #2b5876 0%, 
+      #4e4376 50%, 
+      #2b5876 100%) !important;
+    background-size: 200% 100% !important;
+    animation: gradientShift 3s ease infinite !important;
+  }
+
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .bookmark-filter-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 1.4rem !important;
+    flex-wrap: wrap !important;
+    gap: 1.2rem !important;
+  }
+
+  .bookmark-filter-header .filter-header-left {
+    flex: 1 !important;
+    min-width: 250px !important;
+  }
+
+  .bookmark-filter-header .filter-header-left h2 {
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    margin: 0 0 0.5rem 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+
+  .bookmark-filter-header .filter-header-left h2 i {
+    background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    font-size: 1.5rem !important;
+  }
+
+  .bookmark-filter-header .filter-header-left p {
+    color: #6c757d !important;
+    margin: 0 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+  }
+
+  .bookmark-filter-header .filter-count-badge {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%) !important;
+    color: #ffffff !important;
+    padding: 0.7rem 1.3rem !important;
+    border-radius: 50px !important;
+    font-weight: 600 !important;
+    font-size: 1.05rem !important;
+    box-shadow: 0 4px 15px rgba(43, 88, 118, 0.25) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .bookmark-filter-header .filter-count-badge:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(43, 88, 118, 0.35) !important;
+  }
+
+  .bookmark-filter-header .filter-count-badge i {
+    font-size: 1.1rem !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .active-filters-display {
+    background: linear-gradient(135deg, 
+      rgba(43, 88, 118, 0.05) 0%, 
+      rgba(78, 67, 118, 0.05) 100%) !important;
+    border: 2px solid rgba(43, 88, 118, 0.15) !important;
+    border-radius: 16px !important;
+    padding: 0.9rem !important;
+    margin-bottom: 1.4rem !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+    animation: fadeIn 0.4s ease !important;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  form#filterForm.bookmark-filter-custom .active-filters-label {
+    font-weight: 700 !important;
+    color: #2b5876 !important;
+    font-size: 0.95rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .active-filters-label i {
+    color: #4e4376 !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .active-filter-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%) !important;
+    color: #ffffff !important;
+    border-radius: 50px !important;
+    padding: 0.45rem 1.1rem !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(43, 88, 118, 0.2) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .active-filter-chip:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(43, 88, 118, 0.3) !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .active-filter-chip i {
+    font-size: 0.85rem !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-section {
+    margin-bottom: 1.4rem !important;
+    padding-bottom: 1.6rem !important;
+    border-bottom: 1px solid rgba(43, 88, 118, 0.1) !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-section:last-of-type {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-section-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 1.1rem !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-section-title {
+    font-weight: 700 !important;
+    font-size: 1.2rem !important;
+    color: #2b5876 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    margin: 0 !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-section-title i {
+    color: #4e4376 !important;
+    font-size: 1.1rem !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-section-count {
+    font-size: 0.85rem !important;
+    color: #6c757d !important;
+    font-weight: 500 !important;
+    background: rgba(43, 88, 118, 0.08) !important;
+    padding: 0.35rem 0.85rem !important;
+    border-radius: 50px !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-options-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+    gap: 0.9rem !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-wrapper {
+    position: relative !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-input {
+    position: absolute !important;
+    opacity: 0 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.7rem !important;
+    padding: 0.9rem 1.1rem !important;
+    background: #ffffff !important;
+    border: 2px solid #e9ecef !important;
+    border-radius: 12px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    user-select: none !important;
+    position: relative !important;
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+    overflow: hidden !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-label::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(135deg, 
+      rgba(43, 88, 118, 0.03) 0%, 
+      rgba(78, 67, 118, 0.03) 100%) !important;
+    opacity: 0 !important;
+    transition: opacity 0.3s ease !important;
+    z-index: -1 !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-label:hover::before {
+    opacity: 1 !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-label:hover {
+    border-color: #2b5876 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(43, 88, 118, 0.15) !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-input:checked + .filter-checkbox-label {
+    background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%) !important;
+    border-color: #2b5876 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(43, 88, 118, 0.3) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-input:checked + .filter-checkbox-label::before {
+    opacity: 0 !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-input:checked + .filter-checkbox-label .filter-checkbox-icon {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-icon {
+    flex-shrink: 0 !important;
+    width: 1.9rem !important;
+    height: 1.9rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: linear-gradient(135deg, 
+      rgba(43, 88, 118, 0.1) 0%, 
+      rgba(78, 67, 118, 0.1) 100%) !important;
+    border-radius: 8px !important;
+    color: #2b5876 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-checkbox-text {
+    flex: 1 !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.4 !important;
+    word-break: break-word !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-empty-state {
+    text-align: center !important;
+    padding: 3rem 2rem !important;
+    color: #6c757d !important;
+    font-size: 0.95rem !important;
+    background: rgba(43, 88, 118, 0.02) !important;
+    border-radius: 12px !important;
+    border: 2px dashed rgba(43, 88, 118, 0.15) !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-empty-state i {
+    font-size: 3rem !important;
+    color: rgba(43, 88, 118, 0.3) !important;
+    margin-bottom: 1rem !important;
+    display: block !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .filter-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.8rem !important;
+    margin-top: 1.6rem !important;
+    padding-top: 1.2rem !important;
+    border-top: 2px solid rgba(43, 88, 118, 0.1) !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-apply {
+    flex: 1 !important;
+    min-width: 180px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.7rem !important;
+    background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 1.05rem !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 1rem 2rem !important;
+    box-shadow: 0 4px 15px rgba(43, 88, 118, 0.3) !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    z-index: 1001 !important;
+    pointer-events: auto !important;
+    overflow: hidden !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-apply::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, 
+      transparent, 
+      rgba(255, 255, 255, 0.2), 
+      transparent) !important;
+    transition: left 0.5s ease !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-apply:hover::before {
+    left: 100% !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-apply:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 6px 20px rgba(43, 88, 118, 0.4) !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-apply:active {
+    transform: translateY(-1px) !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-apply i {
+    font-size: 1.2rem !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-reset {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    background: #ffffff !important;
+    color: #dc3545 !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    border: 2px solid #dc3545 !important;
+    border-radius: 12px !important;
+    padding: 1rem 1.75rem !important;
+    text-decoration: none !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    z-index: 1001 !important;
+    pointer-events: auto !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-reset:hover {
+    background: #dc3545 !important;
+    color: #ffffff !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3) !important;
+    text-decoration: none !important;
+  }
+
+  form#filterForm.bookmark-filter-custom .btn-filter-reset i {
+    font-size: 1.1rem !important;
+  }
+
+  @media (max-width: 767.98px) {
+    form#filterForm.bookmark-filter-custom {
+      padding: 1.75rem !important;
+      border-radius: 18px !important;
+    }
+
+    .bookmark-filter-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 0.9rem !important;
+    }
+
+    .bookmark-filter-header .filter-header-left h2 {
+      font-size: 1.5rem !important;
+    }
+
+    .bookmark-filter-header .filter-count-badge {
+      align-self: stretch !important;
+      justify-content: center !important;
+    }
+
+    form#filterForm.bookmark-filter-custom .filter-options-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    form#filterForm.bookmark-filter-custom .filter-actions {
+      flex-direction: column !important;
+    }
+
+    form#filterForm.bookmark-filter-custom .btn-filter-apply,
+    form#filterForm.bookmark-filter-custom .btn-filter-reset {
+      width: 100% !important;
+    }
+  }
+  /* CRITICAL FIX: Disable ALL pseudo-elements that might block clicks */
+  .questions-section::before,
+  .questions-section::after,
+  .container::before,
+  .container::after {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  /* Remove any transforms or filters that might affect click detection */
+  .questions-section,
+  .questions-section .container,
+  .filter-panel {
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+  }
+
+  /* Hero Section Override - Fix z-index issues */
+  .hero-section {
+    position: relative;
+    z-index: 1 !important;
+  }
+
+  .hero-overlay {
+    z-index: 1 !important;
+    pointer-events: none !important;
+  }
+
+  .hero-wave {
+    z-index: 2 !important;
+    pointer-events: none !important;
+  }
+
+  .hero-content {
+    z-index: 3 !important;
+    pointer-events: none !important;
+  }
+
+  /* Questions Section - Create new stacking context */
+  .questions-section {
+    position: relative;
+    z-index: 100 !important;
+    background: #ffffff;
+    margin-top: -50px;
+    isolation: isolate;
+  }
+
+  /* Container needs to be above everything */
+  .questions-section .container {
+    position: relative;
+    z-index: 101 !important;
+    isolation: isolate;
+  }
+
+  /* Filter panel with maximum priority */
+  .filter-panel {
+    position: relative;
+    z-index: 999 !important;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    isolation: isolate;
+  }
+
+  /* Make EVERYTHING in the filter panel clickable */
+  .filter-panel,
+  .filter-panel *,
+  .filter-header,
+  .filter-header *,
+  .filter-section,
+  .filter-section *,
+  .filter-checkbox-wrapper,
+  .filter-checkbox-input,
+  .filter-checkbox-label,
+  .filter-checkbox-icon,
+  .filter-checkbox-text,
+  .btn-filter-apply,
+  .btn-filter-reset {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
+
+  /* Specific z-index for interactive elements */
+  .filter-checkbox-label {
+    position: relative;
+    z-index: 1000 !important;
+  }
+
+  .btn-filter-apply,
+  .btn-filter-reset {
+    position: relative;
+    z-index: 1001 !important;
+  }
+
   .markdown-content {
     line-height: 1.6;
     color: #333;
@@ -21,15 +562,9 @@
     color: #2c3e50;
   }
 
-  .markdown-content h1 {
-    font-size: 1.5em;
-  }
-  .markdown-content h2 {
-    font-size: 1.3em;
-  }
-  .markdown-content h3 {
-    font-size: 1.1em;
-  }
+  .markdown-content h1 { font-size: 1.5em; }
+  .markdown-content h2 { font-size: 1.3em; }
+  .markdown-content h3 { font-size: 1.1em; }
 
   .markdown-content p {
     margin: 0.8em 0;
@@ -119,43 +654,375 @@
     text-decoration: underline;
   }
 
-  /* 肄붾뱶 ?섏씠?쇱씠??湲곕낯 ?ㅽ???*/
-  .markdown-content .highlight {
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    padding: 1em;
-    margin: 1em 0;
+  /* Filter Section Styling */
+  .filter-panel {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
   }
 
-  .markdown-content .highlight .c {
-    color: #8e908c;
-  } /* Comment */
-  .markdown-content .highlight .k {
-    color: #8959a8;
-  } /* Keyword */
-  .markdown-content .highlight .s {
-    color: #718c00;
-  } /* String */
-  .markdown-content .highlight .nf {
-    color: #4271ae;
-  } /* Name.Function */
-  .markdown-content .highlight .nb {
-    color: #f5871f;
-  } /* Name.Builtin */
+  .filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+
+  .filter-header-left h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .filter-header-left h2 i {
+    color: #0d6efd;
+  }
+
+  .filter-header-left p {
+    color: #6c757d;
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .filter-count-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: #ffffff;
+    padding: 0.6rem 1.2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 1rem;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+  }
+
+  .filter-count-badge i {
+    font-size: 1rem;
+  }
+
+  .active-filters-display {
+    background: linear-gradient(135deg, #e7f3ff 0%, #f0f7ff 100%);
+    border: 2px solid #b3d9ff;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .active-filters-label {
+    font-weight: 700;
+    color: #212529;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .active-filters-label i {
+    color: #0d6efd;
+  }
+
+  .active-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: #ffffff;
+    border-radius: 50px;
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+  }
+
+  .active-filter-chip i {
+    font-size: 0.8rem;
+  }
+
+  .filter-section {
+    margin-bottom: 2rem;
+  }
+
+  .filter-section:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .filter-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .filter-section-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #212529;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+  }
+
+  .filter-section-title i {
+    color: #0d6efd;
+    font-size: 1rem;
+  }
+
+  .filter-section-count {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+  }
+
+  .filter-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .filter-checkbox-wrapper {
+    position: relative;
+  }
+
+  .filter-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .filter-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .filter-checkbox-label:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+  }
+
+  .filter-checkbox-input:checked + .filter-checkbox-label {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border-color: #0d6efd;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+  }
+
+  .filter-checkbox-input:checked + .filter-checkbox-label .filter-checkbox-icon {
+    color: #ffffff;
+  }
+
+  .filter-checkbox-icon {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border-radius: 6px;
+    color: #0d6efd;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+
+  .filter-checkbox-input:checked + .filter-checkbox-label .filter-checkbox-icon {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+  }
+
+  .filter-checkbox-text {
+    flex: 1;
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 1.3;
+    word-break: break-word;
+  }
+
+  .filter-empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+    font-size: 0.95rem;
+  }
+
+  .filter-empty-state i {
+    font-size: 2.5rem;
+    color: #adb5bd;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-top: 1.6rem;
+    padding-top: 1.2rem;
+    border-top: 2px solid #e9ecef;
+  }
+
+  .btn-filter-apply {
+    flex: 1;
+    min-width: 180px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1rem;
+    border: none;
+    border-radius: 10px;
+    padding: 0.8rem 1.4rem;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-filter-apply:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(13, 110, 253, 0.4);
+  }
+
+  .btn-filter-apply:active {
+    transform: translateY(0);
+  }
+
+  .btn-filter-apply i {
+    font-size: 1.1rem;
+  }
+
+  .btn-filter-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #ffffff;
+    color: #dc3545;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 2px solid #dc3545;
+    border-radius: 10px;
+    padding: 0.8rem 1.4rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn-filter-reset:hover {
+    background: #dc3545;
+    color: #ffffff;
+    transform: translateY(-2px);
+  }
+
+  .btn-filter-reset i {
+    font-size: 1rem;
+  }
+
+  @media (max-width: 767.98px) {
+    .filter-panel {
+      padding: 1.5rem;
+    }
+
+    .filter-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .filter-count-badge {
+      align-self: stretch;
+      justify-content: center;
+    }
+
+    .filter-options-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .filter-actions {
+      flex-direction: column;
+    }
+
+    .btn-filter-apply,
+    .btn-filter-reset {
+      width: 100%;
+    }
+  }
+  .question-content .question-meta-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    flex-wrap: wrap !important;
+    margin-bottom: 1.4rem !important;
+  }
+
+  .question-meta-group .question-category-box,
+  .question-meta-group .question-exam-box {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    background: linear-gradient(135deg, rgba(43, 88, 118, 0.12), rgba(78, 67, 118, 0.12)) !important;
+    border: 1px solid rgba(43, 88, 118, 0.2) !important;
+    color: #2b5876 !important;
+    padding: 0.65rem 1.2rem !important;
+    border-radius: 999px !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    box-shadow: 0 8px 20px rgba(43, 88, 118, 0.12) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .question-meta-group .question-category-box,
+  .question-meta-group .question-exam-box {
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+  }
+
+  .question-meta-group .question-category-box i,
+  .question-meta-group .question-exam-box i {
+    color: #4e4376 !important;
+    font-size: 1rem !important;
+  }
+
+  .question-meta-group .question-category-box:hover,
+  .question-meta-group .question-exam-box:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 12px 24px rgba(43, 88, 118, 0.18) !important;
+  }
+
 </style>
 {% endblock %}
 
 {% block page_content %}
 
-<!-- Hero Section -->
-<div
-  class="hero-section position-relative d-flex flex-column justify-content-center align-items-center"
->
+<div class="hero-section position-relative d-flex flex-column justify-content-center align-items-center">
   <div class="hero-overlay"></div>
   <div class="hero-content text-center">
-    <h1 class="hero-title animate-fade-in">遺곷쭏?щ맂 臾몄젣</h1>
+    <h1 class="hero-title animate-fade-in">북마크된 문제</h1>
     <p class="hero-subtitle animate-fade-in-delayed">
-      ??λ맂 臾몄젣?ㅼ쓣 ?ㅼ떆 蹂듭뒿?대낫?몄슂.
+      저장된 문제들을 다시 복습해보세요.
     </p>
   </div>
   <div class="hero-wave">
@@ -168,17 +1035,158 @@
   </div>
 </div>
 
-<!-- Questions Section -->
-<div class="questions-section questions-left-align">
-  <div class="container">
+<div class="questions-section questions-left-align" style="position: relative; z-index: 100;">
+  <div class="container" style="position: relative; z-index: 101;">
+    
+    <!-- Filter Panel -->
+    <form id="filterForm" class="filter-panel bookmark-filter-custom" method="get" action="{% url 'bookmarked_questions' %}" style="position: relative; z-index: 999;">
+      
+      <!-- Header -->
+      <div class="filter-header bookmark-filter-header">
+        <div class="filter-header-left">
+          <h2>
+            <i class="fas fa-filter"></i>
+            필터 설정
+          </h2>
+          <p>원하는 시험이나 카테고리를 선택하여 문제를 필터링하세요</p>
+        </div>
+        <div class="filter-count-badge">
+          <i class="fas fa-list-ol"></i>
+          <span>
+            {% if total_bookmarked_count %}
+              {{ filtered_count }} / {{ total_bookmarked_count }}개
+            {% else %}
+              0개
+            {% endif %}
+          </span>
+        </div>
+      </div>
+
+      <!-- Active Filters Display -->
+      {% if selected_exam_objects or selected_category_objects %}
+      <div class="active-filters-display">
+        <span class="active-filters-label">
+          <i class="fas fa-check-circle"></i>
+          적용된 필터
+        </span>
+        {% for exam in selected_exam_objects %}
+        <span class="active-filter-chip">
+          <i class="fas fa-file-alt"></i>
+          {{ exam.title }}
+        </span>
+        {% endfor %}
+        {% for category in selected_category_objects %}
+        <span class="active-filter-chip">
+          <i class="fas fa-tag"></i>
+          {{ category.name }}
+        </span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Exam Filters -->
+      <div class="filter-section">
+        <div class="filter-section-header">
+          <h3 class="filter-section-title">
+            <i class="fas fa-file-alt"></i>
+            시험 선택
+          </h3>
+          {% if exam_filters %}
+          <span class="filter-section-count">{{ exam_filters|length }}개 항목</span>
+          {% endif %}
+        </div>
+        
+        {% if exam_filters %}
+        <div class="filter-options-grid">
+          {% for exam in exam_filters %}
+          <div class="filter-checkbox-wrapper">
+            <input 
+              type="checkbox" 
+              class="filter-checkbox-input" 
+              name="exam" 
+              value="{{ exam.id }}" 
+              id="exam_{{ exam.id }}"
+              {% if exam.id in selected_exam_ids %}checked{% endif %}
+            >
+            <label for="exam_{{ exam.id }}" class="filter-checkbox-label">
+              <span class="filter-checkbox-icon">
+                <i class="fas fa-file-alt"></i>
+              </span>
+              <span class="filter-checkbox-text">{{ exam.title }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="filter-empty-state">
+          <i class="fas fa-inbox"></i>
+          <p>북마크된 시험이 없습니다</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Category Filters -->
+      <div class="filter-section">
+        <div class="filter-section-header">
+          <h3 class="filter-section-title">
+            <i class="fas fa-tags"></i>
+            카테고리 선택
+          </h3>
+          {% if category_filters %}
+          <span class="filter-section-count">{{ category_filters|length }}개 항목</span>
+          {% endif %}
+        </div>
+        
+        {% if category_filters %}
+        <div class="filter-options-grid">
+          {% for category in category_filters %}
+          <div class="filter-checkbox-wrapper">
+            <input 
+              type="checkbox" 
+              class="filter-checkbox-input" 
+              name="category" 
+              value="{{ category.id }}" 
+              id="category_{{ category.id }}"
+              {% if category.id in selected_category_ids %}checked{% endif %}
+            >
+            <label for="category_{{ category.id }}" class="filter-checkbox-label">
+              <span class="filter-checkbox-icon">
+                <i class="fas fa-tag"></i>
+              </span>
+              <span class="filter-checkbox-text">{{ category.name }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="filter-empty-state">
+          <i class="fas fa-inbox"></i>
+          <p>북마크된 카테고리가 없습니다</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="filter-actions">
+        <button type="submit" class="btn-filter-apply">
+          <i class="fas fa-check"></i>
+          필터 적용
+        </button>
+        {% if has_active_filters %}
+        <a href="{% url 'bookmarked_questions' %}" class="btn-filter-reset">
+          <i class="fas fa-redo"></i>
+          필터 초기화
+        </a>
+        {% endif %}
+      </div>
+
+    </form>
+
+    <!-- Questions List -->
     <div class="row g-4">
       {% for question in questions %}
       <div class="col-12">
-        <div
-          class="question-card animate-fade-in"
-          data-correct-option="{{ question.correct_option }}"
-        >
-          <!-- 遺곷쭏??踰꾪듉 -->
+        <div class="question-card animate-fade-in" data-correct-option="{{ question.correct_option }}">
           <div
             class="bookmark-button bookmarked"
             data-question-id="{{ question.id }}"
@@ -188,87 +1196,51 @@
           </div>
 
           <div class="question-content">
-            <!-- 移댄뀒怨좊━ ?쒖떆 -->
-            {% if question.category %}
-            <div class="question-category-box">
-              <i class="fas fa-tags"></i>
-              <span>{{ question.category.name }}</span>
-            </div>
-            {% endif %}
-
-            <!-- ?쒗뿕 ?쒕ぉ ?쒖떆 -->
-            {% if question.exam %}
-            <div class="question-exam-box">
-              <i class="fas fa-file-alt"></i>
-              <span>{{ question.exam.title }}</span>
+            {% if question.category or question.exam %}
+            <div class="question-meta-group">
+              {% if question.category %}
+              <div class="question-category-box">
+                <i class="fas fa-tags"></i>
+                <span>{{ question.category.name }}</span>
+              </div>
+              {% endif %}
+              {% if question.exam %}
+              <div class="question-exam-box">
+                <i class="fas fa-file-alt"></i>
+                <span>{{ question.exam.title }}</span>
+              </div>
+              {% endif %}
             </div>
             {% endif %}
 
             <div class="question-text">{{ question.question_text|safe }}</div>
 
-            <!-- 湲곗〈 ?대?吏 ?쒖떆 -->
             {% if question.image %}
             <div class="question-image">
-              <img
-                src="{{ question.image.url }}"
-                alt="Question Image"
-                class="img-fluid"
-              />
+              <img src="{{ question.image.url }}" alt="Question Image" class="img-fluid" />
             </div>
             {% endif %}
 
-            <!-- ?덈줈 異붽?: ?좏뒠釉??숈쁺???쒖떆 -->
             {% if question.get_youtube_embed_id %}
             <div class="question-video">
-              <div
-                class="video-container"
-                style="
-                  position: relative;
-                  width: 100%;
-                  height: 0;
-                  padding-bottom: 56.25%;
-                  margin: 15px 0;
-                "
-              >
+              <div class="video-container" style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; margin: 15px 0;">
                 <iframe
                   id="youtube_{{ question.id }}"
                   src="https://www.youtube.com/embed/{{ question.get_youtube_embed_id }}?enablejsapi=1&rel=0"
                   frameborder="0"
                   allowfullscreen
-                  style="
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    border-radius: 8px;
-                  "
+                  style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px;"
                 ></iframe>
               </div>
-              <div
-                class="video-controls"
-                style="text-align: center; margin-top: 10px"
-              >
-                <button
-                  type="button"
-                  class="btn-action-glass"
-                  onclick="playYouTube('{{ question.id }}')"
-                >
-                  <i class="fas fa-play"></i> ?ъ깮
+              <div class="video-controls" style="text-align: center; margin-top: 10px">
+                <button type="button" class="btn-action-glass" onclick="playYouTube('{{ question.id }}')">
+                  <i class="fas fa-play"></i> 재생
                 </button>
-                <button
-                  type="button"
-                  class="btn-action-glass"
-                  onclick="pauseYouTube('{{ question.id }}')"
-                >
-                  <i class="fas fa-pause"></i> ?쇱떆?뺤?
+                <button type="button" class="btn-action-glass" onclick="pauseYouTube('{{ question.id }}')">
+                  <i class="fas fa-pause"></i> 일시정지
                 </button>
-                <button
-                  type="button"
-                  class="btn-action-glass"
-                  onclick="stopYouTube('{{ question.id }}')"
-                >
-                  <i class="fas fa-stop"></i> ?뺤?
+                <button type="button" class="btn-action-glass" onclick="stopYouTube('{{ question.id }}')">
+                  <i class="fas fa-stop"></i> 정지
                 </button>
               </div>
             </div>
@@ -276,216 +1248,96 @@
 
             <div class="options-grid">
               <div class="form-check">
-                <input
-                  type="radio"
-                  id="option1_{{ question.id }}"
-                  name="question_{{ question.id }}"
-                  value="{{ question.option1 }}"
-                  class="form-check-input"
-                />
-                <label
-                  for="option1_{{ question.id }}"
-                  class="form-check-label"
-                  >{{ question.option1 }}</label
-                >
+                <input type="radio" id="option1_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option1 }}" class="form-check-input" />
+                <label for="option1_{{ question.id }}" class="form-check-label">{{ question.option1 }}</label>
               </div>
               <div class="form-check">
-                <input
-                  type="radio"
-                  id="option2_{{ question.id }}"
-                  name="question_{{ question.id }}"
-                  value="{{ question.option2 }}"
-                  class="form-check-input"
-                />
-                <label
-                  for="option2_{{ question.id }}"
-                  class="form-check-label"
-                  >{{ question.option2 }}</label
-                >
+                <input type="radio" id="option2_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option2 }}" class="form-check-input" />
+                <label for="option2_{{ question.id }}" class="form-check-label">{{ question.option2 }}</label>
               </div>
               <div class="form-check">
-                <input
-                  type="radio"
-                  id="option3_{{ question.id }}"
-                  name="question_{{ question.id }}"
-                  value="{{ question.option3 }}"
-                  class="form-check-input"
-                />
-                <label
-                  for="option3_{{ question.id }}"
-                  class="form-check-label"
-                  >{{ question.option3 }}</label
-                >
+                <input type="radio" id="option3_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option3 }}" class="form-check-input" />
+                <label for="option3_{{ question.id }}" class="form-check-label">{{ question.option3 }}</label>
               </div>
               <div class="form-check">
-                <input
-                  type="radio"
-                  id="option4_{{ question.id }}"
-                  name="question_{{ question.id }}"
-                  value="{{ question.option4 }}"
-                  class="form-check-input"
-                />
-                <label
-                  for="option4_{{ question.id }}"
-                  class="form-check-label"
-                  >{{ question.option4 }}</label
-                >
+                <input type="radio" id="option4_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option4 }}" class="form-check-input" />
+                <label for="option4_{{ question.id }}" class="form-check-label">{{ question.option4 }}</label>
               </div>
               {% if question.option5 %}
               <div class="form-check">
-                <input
-                  type="radio"
-                  id="option5_{{ question.id }}"
-                  name="question_{{ question.id }}"
-                  value="{{ question.option5 }}"
-                  class="form-check-input"
-                />
-                <label
-                  for="option5_{{ question.id }}"
-                  class="form-check-label"
-                  >{{ question.option5 }}</label
-                >
+                <input type="radio" id="option5_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option5 }}" class="form-check-input" />
+                <label for="option5_{{ question.id }}" class="form-check-label">{{ question.option5 }}</label>
               </div>
               {% endif %}
             </div>
 
-            <!-- Action Buttons -->
             <div class="action-buttons">
-              <button
-                type="button"
-                class="btn-action-glass"
-                onclick="toggleDisplay('answer_{{ question.id }}')"
-              >
-                <i class="fas fa-check-circle"></i> ?뺣떟 蹂닿린
+              <button type="button" class="btn-action-glass" onclick="toggleDisplay('answer_{{ question.id }}')">
+                <i class="fas fa-check-circle"></i> 정답 보기
               </button>
-              <button
-                type="button"
-                class="btn-action-glass"
-                onclick="toggleDisplay('explanation_{{ question.id }}')"
-              >
-                <i class="fas fa-info-circle"></i> ?댁꽕 蹂닿린
+              <button type="button" class="btn-action-glass" onclick="toggleDisplay('explanation_{{ question.id }}')">
+                <i class="fas fa-info-circle"></i> 해설 보기
               </button>
               {% if question.comment_image %}
-              <button
-                type="button"
-                class="btn-action-glass"
-                onclick="toggleDisplay('image_{{ question.id }}')"
-              >
-                <i class="fas fa-image"></i> ?대?吏 蹂닿린
+              <button type="button" class="btn-action-glass" onclick="toggleDisplay('image_{{ question.id }}')">
+                <i class="fas fa-image"></i> 이미지 보기
               </button>
               {% endif %}
-              <!-- ?덈줈 異붽?: ?댁꽕 ?숈쁺??踰꾪듉 -->
               {% if question.get_comment_youtube_embed_id %}
-              <button
-                type="button"
-                class="btn-action-glass"
-                onclick="toggleDisplay('video_explanation_{{ question.id }}')"
-              >
-                <i class="fas fa-video"></i> ?댁꽕 ?곸긽
+              <button type="button" class="btn-action-glass" onclick="toggleDisplay('video_explanation_{{ question.id }}')">
+                <i class="fas fa-video"></i> 동영상 보기
               </button>
               {% endif %}
             </div>
 
-            <!-- ?뺣떟 ?쒖떆 諛뺤뒪 -->
-            <div
-              id="answer_{{ question.id }}"
-              class="answer-display-box hidden"
-            >
+            <div id="answer_{{ question.id }}" class="answer-display-box hidden">
               <div class="answer-display-title">
-                <i class="fas fa-check-circle"></i> ?뺣떟
+                <i class="fas fa-check-circle"></i> 정답
               </div>
-              <div class="answer-display-content">
-                {{ question.correct_option }}
-              </div>
+              <div class="answer-display-content">{{ question.correct_option }}</div>
             </div>
 
-            <!-- ?댁꽕 ?쒖떆 諛뺤뒪 (Markdown 吏??異붽?) -->
-            <div
-              id="explanation_{{ question.id }}"
-              class="explanation-display-box hidden"
-            >
+            <div id="explanation_{{ question.id }}" class="explanation-display-box hidden">
               <div class="explanation-display-title">
-                <i class="fas fa-info-circle"></i> ?댁꽕
+                <i class="fas fa-info-circle"></i> 해설
               </div>
               <div class="explanation-display-content markdown-content">
                 {{ question.comment|markdown }}
               </div>
             </div>
 
-            <!-- ?대?吏 ?쒖떆 諛뺤뒪 -->
             {% if question.comment_image %}
-            <div
-              id="image_{{ question.id }}"
-              class="image-display-box hidden"
-            >
+            <div id="image_{{ question.id }}" class="image-display-box hidden">
               <div class="image-display-title">
-                <i class="fas fa-image"></i> 愿???대?吏
+                <i class="fas fa-image"></i> 관련 이미지
               </div>
-              <img
-                src="{{ question.comment_image.url }}"
-                alt="Explanation Image"
-                class="img-fluid rounded"
-              />
+              <img src="{{ question.comment_image.url }}" alt="Explanation Image" class="img-fluid rounded" />
             </div>
             {% endif %}
 
-            <!-- ?덈줈 異붽?: ?댁꽕 ?숈쁺???쒖떆 諛뺤뒪 -->
             {% if question.get_comment_youtube_embed_id %}
-            <div
-              id="video_explanation_{{ question.id }}"
-              class="video-explanation-box hidden"
-            >
+            <div id="video_explanation_{{ question.id }}" class="video-explanation-box hidden">
               <div class="video-explanation-title">
-                <i class="fas fa-video"></i> ?댁꽕 ?숈쁺??              </div>
-              <div
-                class="video-container"
-                style="
-                  position: relative;
-                  width: 100%;
-                  height: 0;
-                  padding-bottom: 56.25%;
-                  margin: 15px 0;
-                "
-              >
+                <i class="fas fa-video"></i> 해설 동영상
+              </div>
+              <div class="video-container" style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; margin: 15px 0;">
                 <iframe
                   id="comment_youtube_{{ question.id }}"
                   src="https://www.youtube.com/embed/{{ question.get_comment_youtube_embed_id }}?enablejsapi=1&rel=0"
                   frameborder="0"
                   allowfullscreen
-                  style="
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    border-radius: 8px;
-                  "
+                  style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px;"
                 ></iframe>
               </div>
-              <div
-                class="video-controls"
-                style="text-align: center; margin-top: 10px"
-              >
-                <button
-                  type="button"
-                  class="btn-action-glass"
-                  onclick="playCommentYouTube('{{ question.id }}')"
-                >
-                  <i class="fas fa-play"></i> ?ъ깮
+              <div class="video-controls" style="text-align: center; margin-top: 10px">
+                <button type="button" class="btn-action-glass" onclick="playCommentYouTube('{{ question.id }}')">
+                  <i class="fas fa-play"></i> 재생
                 </button>
-                <button
-                  type="button"
-                  class="btn-action-glass"
-                  onclick="pauseCommentYouTube('{{ question.id }}')"
-                >
-                  <i class="fas fa-pause"></i> ?쇱떆?뺤?
+                <button type="button" class="btn-action-glass" onclick="pauseCommentYouTube('{{ question.id }}')">
+                  <i class="fas fa-pause"></i> 일시정지
                 </button>
-                <button
-                  type="button"
-                  class="btn-action-glass"
-                  onclick="stopCommentYouTube('{{ question.id }}')"
-                >
-                  <i class="fas fa-stop"></i> ?뺤?
+                <button type="button" class="btn-action-glass" onclick="stopCommentYouTube('{{ question.id }}')">
+                  <i class="fas fa-stop"></i> 정지
                 </button>
               </div>
             </div>
@@ -498,10 +1350,16 @@
         <div class="no-bookmarks-message text-center py-5">
           <div class="empty-state">
             <i class="fas fa-bookmark fa-4x mb-4 empty-state-icon"></i>
-            <h3 class="empty-state-title">?꾩쭅 遺곷쭏?щ맂 臾몄젣媛 ?놁뒿?덈떎</h3>
-            <p class="empty-state-description">
-              ?쒗뿕??蹂대㈃??臾몄젣瑜?遺곷쭏?ы븯???섏쨷???ㅼ떆 蹂듭뒿?대낫?몄슂.
-            </p>
+            {% if has_active_filters %}
+            <h3 class="empty-state-title">선택한 조건에 맞는 문제가 없습니다</h3>
+            <p class="empty-state-description">다른 시험이나 카테고리를 선택하거나 필터를 초기화해 보세요.</p>
+            <a href="{% url 'bookmarked_questions' %}" class="btn btn-outline-primary mt-3">
+              <i class="fas fa-redo"></i> 필터 초기화
+            </a>
+            {% else %}
+            <h3 class="empty-state-title">아직 북마크한 문제가 없습니다</h3>
+            <p class="empty-state-description">연습 중 중요한 문제를 북마크하면 이곳에서 빠르게 복습할 수 있어요.</p>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -512,15 +1370,14 @@
 
 {% csrf_token %}
 
-<!-- YouTube API 濡쒕뱶 -->
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
-  let youtubePlayers = {}; // YouTube ?뚮젅?댁뼱?ㅼ쓣 ??ν븷 媛앹껜
+  // YouTube players
+  var youtubePlayers = {};
 
-  // YouTube API 以鍮??꾨즺 肄쒕갚
   function onYouTubeIframeAPIReady() {
-    // 紐⑤뱺 YouTube iframe???뚮젅?댁뼱濡?珥덇린??    {% for question in questions %}
+    {% for question in questions %}
       {% if question.get_youtube_embed_id %}
         youtubePlayers['youtube_{{ question.id }}'] = new YT.Player('youtube_{{ question.id }}');
       {% endif %}
@@ -530,79 +1387,79 @@
     {% endfor %}
   }
 
-  // YouTube ?숈쁺???쒖뼱 ?⑥닔??  function playYouTube(questionId) {
-    const player = youtubePlayers['youtube_' + questionId];
+  function playYouTube(questionId) {
+    var player = youtubePlayers['youtube_' + questionId];
     if (player && player.playVideo) {
       player.playVideo();
     }
   }
 
   function pauseYouTube(questionId) {
-    const player = youtubePlayers['youtube_' + questionId];
+    var player = youtubePlayers['youtube_' + questionId];
     if (player && player.pauseVideo) {
       player.pauseVideo();
     }
   }
 
   function stopYouTube(questionId) {
-    const player = youtubePlayers['youtube_' + questionId];
+    var player = youtubePlayers['youtube_' + questionId];
     if (player && player.stopVideo) {
       player.stopVideo();
     }
   }
 
   function playCommentYouTube(questionId) {
-    const player = youtubePlayers['comment_youtube_' + questionId];
+    var player = youtubePlayers['comment_youtube_' + questionId];
     if (player && player.playVideo) {
       player.playVideo();
     }
   }
 
   function pauseCommentYouTube(questionId) {
-    const player = youtubePlayers['comment_youtube_' + questionId];
+    var player = youtubePlayers['comment_youtube_' + questionId];
     if (player && player.pauseVideo) {
       player.pauseVideo();
     }
   }
 
   function stopCommentYouTube(questionId) {
-    const player = youtubePlayers['comment_youtube_' + questionId];
+    var player = youtubePlayers['comment_youtube_' + questionId];
     if (player && player.stopVideo) {
       player.stopVideo();
     }
   }
 
   function toggleDisplay(id) {
-    const element = document.getElementById(id);
+    var element = document.getElementById(id);
     if (element) {
       element.classList.toggle("hidden");
     }
   }
 
   function toggleBookmark(questionId, button) {
-    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    var csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
-    fetch(`/exam/bookmark/${questionId}/`, {
+    fetch('/exam/bookmark/' + questionId + '/', {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": csrfToken,
       },
     })
-      .then((response) => response.json())
-      .then((data) => {
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
         if (data.status === "ok") {
           if (data.is_bookmarked) {
             button.classList.add("bookmarked");
           } else {
             button.classList.remove("bookmarked");
-            // 遺곷쭏?ш? ?댁젣?섎㈃ 移대뱶瑜?遺?쒕읇寃??쒓굅
-            const questionCard = button.closest(".col-12");
+            var questionCard = button.closest(".col-12");
             if (questionCard) {
-              questionCard.style.animation = "fadeOut 0.3s ease-out";
-              setTimeout(() => {
+              questionCard.style.transition = "opacity 0.3s ease-out, transform 0.3s ease-out";
+              questionCard.style.opacity = '0';
+              questionCard.style.transform = 'scale(0.95)';
+              setTimeout(function() {
                 questionCard.remove();
-                // 紐⑤뱺 臾몄젣媛 ?쒓굅?섎㈃ ?섏씠吏 ?덈줈怨좎묠
                 if (document.querySelectorAll(".question-card").length === 0) {
                   location.reload();
                 }
@@ -610,12 +1467,12 @@
             }
           }
         } else {
-          alert("遺곷쭏??泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.");
+          alert("북마크 처리 중 오류가 발생했습니다.");
         }
       })
-      .catch((error) => {
+      .catch(function(error) {
         console.error("Error:", error);
-        alert("遺곷쭏??泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.");
+        alert("북마크 처리 중 오류가 발생했습니다.");
       });
   }
 </script>
