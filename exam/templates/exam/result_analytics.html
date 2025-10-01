@@ -1,8 +1,157 @@
 ﻿{% extends 'base.html' %}
 {% block page_content %}
+<style>
+  :root {
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --gradient-danger: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+    --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+  .stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+    border: none;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+  }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+  }
+  .stat-card.success::before { background: var(--gradient-success); }
+  .stat-card.danger::before { background: var(--gradient-danger); }
+  .stat-card.info::before { background: var(--gradient-info); }
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+  }
+  .stat-value.success-grad { background: var(--gradient-success); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-value.info-grad { background: var(--gradient-info); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-value.danger-grad { background: var(--gradient-danger); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .chart-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+  }
+  .chart-card h5 {
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.125rem;
+  }
+  .chart-container { position: relative; height: 350px; }
+  .chart-container-tall { height: 450px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 32px 0 20px;
+  }
+  .section-header h3 {
+    margin: 0;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+  .section-header i {
+    font-size: 1.5rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .category-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 4px;
+  }
+  .category-badge.strong { background: #d4edda; color: #155724; }
+  .category-badge.weak { background: #f8d7da; color: #721c24; }
+  .performance-indicator {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .performance-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .performance-text h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .performance-text p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.875rem;
+  }
+  .score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  @media (max-width: 768px) {
+    .stat-value { font-size: 2rem; }
+    .chart-container { height: 280px; }
+    .score-circle { width: 90px; height: 90px; font-size: 1.5rem; }
+  }
+</style>
+
 <div class="container mt-5">
-  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-    <h1 class="section-title mb-0">Attempt Analytics</h1>
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h1 class="mb-1" style="font-weight: 800; color: #2c3e50;">Attempt Analytics</h1>
+      <p class="text-muted mb-0">
+        {% if exam %}{{ exam.title }}{% else %}{{ result.category_name|default:'N/A' }}{% endif %}
+      </p>
+    </div>
     <div>
       <a href="{% url 'my_results' %}" class="btn btn-outline-secondary me-2">
         <i class="fas fa-list"></i> My Results
@@ -15,55 +164,159 @@
       <a href="{% url 'question_home' %}" class="btn btn-primary">
         <i class="fas fa-arrow-left"></i> Back to Home
       </a>
-      <form method="post" action="{% url 'delete_result' result.id %}" style="display:inline" onsubmit="return confirm('?뺣쭚 ??寃곌낵瑜???젣?섏떆寃좎뒿?덇퉴? ??젣 ???듦퀎?먯꽌 ?쒖쇅?⑸땲??');">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-outline-danger ms-2">
-          <i class="fas fa-trash"></i> Delete
-        </button>
-      </form>
     </div>
   </div>
 
-  <div class="card mb-4">
-    <div class="card-body">
-      <div class="row g-3">
-        <div class="col-md-6">
-          <div><strong>Title:</strong> {% if exam %}{{ exam.title }}{% else %}{{ result.category_name|default:'N/A' }}{% endif %}</div>
-          <div><strong>Date:</strong> {{ result.date_taken }}</div>
+  <!-- Performance Overview -->
+  <div class="performance-indicator">
+    <div class="score-circle" style="background: {% if pct_total >= 85 %}linear-gradient(135deg, #11998e 0%, #38ef7d 100%){% elif pct_total >= 70 %}linear-gradient(135deg, #4facfe 0%, #00f2fe 100%){% elif pct_total >= 60 %}linear-gradient(135deg, #f39c12 0%, #f7b733 100%){% else %}linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%){% endif %};">
+      {{ pct_total }}%
+    </div>
+    <div class="performance-text flex-grow-1">
+      <h3>
+        {% if pct_total >= 85 %}
+        Excellent Performance!
+        {% elif pct_total >= 70 %}
+        Good Result
+        {% elif pct_total >= 60 %}
+        Room for Improvement
+        {% else %}
+        Keep Practicing
+        {% endif %}
+      </h3>
+      <p>
+        <strong>Date:</strong> {{ result.date_taken|date:"Y-m-d H:i" }} | 
+        <strong>Score:</strong> {{ result.num_correct }} / {{ total }} questions
+      </p>
+    </div>
+  </div>
+
+  <!-- Key Stats -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card success">
+        <div class="stat-label">Correct</div>
+        <h2 class="stat-value success-grad">{{ result.num_correct }}</h2>
+        <div class="text-muted small mt-2">
+          <i class="fas fa-check-circle"></i> Right answers
         </div>
-        <div class="col-md-6">
-          <div><strong>Total Questions (attempt):</strong> {{ total }}</div>
-          <div><strong>Score:</strong> {{ result.num_correct }} / {{ total }} ({{ pct_total }}%)</div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card danger">
+        <div class="stat-label">Incorrect</div>
+        <h2 class="stat-value danger-grad">{{ result.num_incorrect }}</h2>
+        <div class="text-muted small mt-2">
+          <i class="fas fa-times-circle"></i> Wrong answers
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card info">
+        <div class="stat-label">Unanswered</div>
+        <h2 class="stat-value info-grad">{{ result.num_unanswered }}</h2>
+        <div class="text-muted small mt-2">
+          <i class="fas fa-question-circle"></i> Skipped
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card">
+        <div class="stat-label">No Answer</div>
+        <h2 class="stat-value">{{ result.num_noanswer }}</h2>
+        <div class="text-muted small mt-2">
+          <i class="fas fa-minus-circle"></i> Not attempted
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Category Insights -->
+  {% if weak_categories or strong_categories %}
+  <div class="chart-card mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="mb-0">Category Insights</h5>
+      <div>
+        {% if strong_categories %}
+        <span class="category-badge strong">
+          <i class="fas fa-star"></i> {{ strong_categories|length }} Strong
+        </span>
+        {% endif %}
+        {% if weak_categories %}
+        <span class="category-badge weak">
+          <i class="fas fa-flag"></i> {{ weak_categories|length }} Need Focus
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="row mt-3">
+      {% if strong_categories %}
+      <div class="col-md-6">
+        <h6 class="text-success"><i class="fas fa-check-circle"></i> Strong Performance (≥85%)</h6>
+        <div class="mt-2">
+          {% for cat in strong_categories %}
+          <span class="category-badge strong">{{ cat.name }}: {{ cat.accuracy }}%</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if weak_categories %}
+      <div class="col-md-6">
+        <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Areas to Review (<70%)</h6>
+        <div class="mt-2">
+          {% for cat in weak_categories %}
+          <span class="category-badge weak">{{ cat.name }}: {{ cat.accuracy }}%</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Category Analysis -->
+  <div class="section-header">
+    <i class="fas fa-layer-group"></i>
+    <h3>Category Breakdown</h3>
+  </div>
   <div class="row g-4">
-    <div class="col-12 col-lg-7">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5 class="card-title">Category Breakdown (this attempt)</h5>
-          <div class="chart-container">
-            <canvas id="countsChart"></canvas>
-          </div>
+    <div class="col-lg-7">
+      <div class="chart-card">
+        <h5>Question Distribution by Category</h5>
+        <div class="chart-container chart-container-tall">
+          <canvas id="countsChart"></canvas>
         </div>
       </div>
     </div>
-    <div class="col-12 col-lg-5">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5 class="card-title">Category Accuracy (%)</h5>
-          <div class="chart-container">
-            <canvas id="accChart"></canvas>
-          </div>
+    <div class="col-lg-5">
+      <div class="chart-card">
+        <h5>Accuracy by Category</h5>
+        <div class="chart-container chart-container-tall">
+          <canvas id="accChart"></canvas>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="text-center mt-4 mb-4">
+    <a href="{% url 'exam_results' %}?result_id={{ result.id }}" class="btn btn-success btn-lg me-2">
+      <i class="fas fa-eye"></i> View Detailed Results
+    </a>
+    {% if exam %}
+    <a href="{% url 'exam_analytics' exam.id %}" class="btn btn-outline-info btn-lg me-2">
+      <i class="fas fa-chart-bar"></i> Exam Analytics
+    </a>
+    {% endif %}
+    <form method="post" action="{% url 'delete_result' result.id %}" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this result? This will remove it from your statistics.');">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-danger btn-lg">
+        <i class="fas fa-trash"></i> Delete Result
+      </button>
+    </form>
   </div>
 </div>
 
-<style>.chart-container{position:relative;height:420px}</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   const labels = {{ labels|safe }};
@@ -73,6 +326,7 @@
   const noanswerData = {{ noanswer_data|safe }};
   const accuracyPct = {{ accuracy_pct|safe }};
 
+  // Stacked bar chart for counts
   new Chart(document.getElementById('countsChart'), {
     type: 'bar',
     data: {
@@ -87,23 +341,81 @@
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: { 
+        legend: { position: 'bottom' },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12
+        }
+      },
       indexAxis: 'y',
-      scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true, ticks: { autoSkip: false, font: { size: 12 } } } }
+      scales: {
+        x: { 
+          stacked: true, 
+          beginAtZero: true,
+          grid: { color: 'rgba(0, 0, 0, 0.05)' }
+        },
+        y: { 
+          stacked: true, 
+          ticks: { autoSkip: false, font: { size: 12 } },
+          grid: { display: false }
+        }
+      }
     }
   });
 
+  // Horizontal bar chart for accuracy
   new Chart(document.getElementById('accChart'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Accuracy %', data: accuracyPct, backgroundColor: '#3498db' }] },
+    data: {
+      labels,
+      datasets: [{
+        label: 'Accuracy %',
+        data: accuracyPct,
+        backgroundColor: accuracyPct.map(v => 
+          v >= 85 ? '#2ecc71' : 
+          v >= 70 ? '#3498db' : 
+          v >= 60 ? '#f39c12' : 
+          '#e74c3c'
+        ),
+        borderRadius: 8
+      }]
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: { 
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return 'Accuracy: ' + context.parsed.x + '%';
+            }
+          },
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12
+        }
+      },
       indexAxis: 'y',
-      scales: { x: { beginAtZero: true, max: 100 }, y: { ticks: { autoSkip: false, font: { size: 12 } } } }
+      scales: {
+        x: { 
+          beginAtZero: true, 
+          max: 100,
+          grid: { color: 'rgba(0, 0, 0, 0.05)' },
+          ticks: {
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        },
+        y: { 
+          ticks: { autoSkip: false, font: { size: 12 } },
+          grid: { display: false }
+        }
+      }
     }
   });
 </script>
 {% endblock %}
-

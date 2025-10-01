@@ -1,8 +1,171 @@
 ﻿{% extends 'base.html' %}
 {% block page_content %}
+<style>
+  :root {
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --gradient-danger: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+    --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+  .stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+  }
+  .stat-card.success::before { background: var(--gradient-success); }
+  .stat-card.danger::before { background: var(--gradient-danger); }
+  .stat-card.info::before { background: var(--gradient-info); }
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+  }
+  .stat-value.success-grad { background: var(--gradient-success); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-value.info-grad { background: var(--gradient-info); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-value.danger-grad { background: var(--gradient-danger); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .stat-change {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .stat-change.positive { background: #d4edda; color: #155724; }
+  .stat-change.negative { background: #f8d7da; color: #721c24; }
+  .stat-change.neutral { background: #e7f3ff; color: #004085; }
+  .chart-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+  }
+  .chart-card h5 {
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.125rem;
+  }
+  .chart-container { position: relative; height: 350px; }
+  .chart-container-tall { height: 450px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 32px 0 20px;
+  }
+  .section-header h3 {
+    margin: 0;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+  .section-header i {
+    font-size: 1.5rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .category-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 4px;
+  }
+  .category-badge.strong { background: #d4edda; color: #155724; }
+  .category-badge.weak { background: #f8d7da; color: #721c24; }
+  .performance-indicator {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .performance-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .performance-text h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .performance-text p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.875rem;
+  }
+  .exam-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: all 0.2s;
+    cursor: pointer;
+    border-left: 4px solid #667eea;
+  }
+  .exam-card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  }
+  .exam-card.selected {
+    background: #f8f9ff;
+    border-left-color: #38ef7d;
+  }
+  @media (max-width: 768px) {
+    .stat-value { font-size: 2rem; }
+    .chart-container { height: 280px; }
+  }
+</style>
+
 <div class="container mt-5">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="section-title mb-0">Overall Analytics</h1>
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h1 class="mb-1" style="font-weight: 800; color: #2c3e50;">Overall Analytics</h1>
+      <p class="text-muted mb-0">Comprehensive performance insights across all exams</p>
+    </div>
     <div>
       <a href="{% url 'my_results' %}" class="btn btn-outline-secondary me-2">
         <i class="fas fa-list"></i> My Results
@@ -14,87 +177,236 @@
   </div>
 
   {% if has_data %}
-  <div class="card mb-4">
-    <div class="card-body">
-      <div class="d-flex align-items-center justify-content-between flex-wrap">
-        <div>
-          <div class="text-muted">Attempts: {{ attempts }} | Avg: {{ avg_pct }}% | Best: {{ best_pct }}%</div>
-        </div>
-      </div>
+  <!-- Performance Overview -->
+  <div class="performance-indicator">
+    <div class="performance-icon">
+      {% if avg_pct >= 85 %}
+      <i class="fas fa-trophy" style="color: #f39c12;"></i>
+      {% elif avg_pct >= 70 %}
+      <i class="fas fa-chart-line" style="color: #667eea;"></i>
+      {% else %}
+      <i class="fas fa-graduation-cap" style="color: #3498db;"></i>
+      {% endif %}
+    </div>
+    <div class="performance-text flex-grow-1">
+      <h3>
+        {% if avg_pct >= 85 %}
+        Outstanding Progress!
+        {% elif avg_pct >= 70 %}
+        Steady Improvement
+        {% else %}
+        Building Foundation
+        {% endif %}
+      </h3>
+      <p>
+        {% if improvement_rate > 5 %}
+        You're improving rapidly by {{ improvement_rate }}% - Excellent work!
+        {% elif improvement_rate > 0 %}
+        Consistent improvement of {{ improvement_rate }}% - Keep it up!
+        {% elif improvement_rate < 0 %}
+        Recent performance dip - Consider reviewing weak areas
+        {% else %}
+        Maintaining stable performance across attempts
+        {% endif %}
+      </p>
     </div>
   </div>
 
-  <h4 class="mt-2">All Exams Combined</h4>
+  <!-- Key Stats -->
   <div class="row g-4 mb-4">
-    <div class="col-12 col-lg-7">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5 class="card-title">Category Breakdown (counts)</h5>
-          <div class="chart-container">
-            <canvas id="allCountsChart"></canvas>
-          </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card">
+        <div class="stat-label">Total Attempts</div>
+        <h2 class="stat-value">{{ attempts }}</h2>
+        <span class="stat-change neutral">
+          <i class="fas fa-layer-group"></i> All exams
+        </span>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card success">
+        <div class="stat-label">Average Score</div>
+        <h2 class="stat-value success-grad">{{ avg_pct }}%</h2>
+        {% if improvement_rate > 0 %}
+        <span class="stat-change positive">
+          <i class="fas fa-arrow-up"></i> +{{ improvement_rate }}% trend
+        </span>
+        {% elif improvement_rate < 0 %}
+        <span class="stat-change negative">
+          <i class="fas fa-arrow-down"></i> {{ improvement_rate }}% trend
+        </span>
+        {% else %}
+        <span class="stat-change neutral">
+          <i class="fas fa-minus"></i> Stable
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card info">
+        <div class="stat-label">Best Score</div>
+        <h2 class="stat-value info-grad">{{ best_pct }}%</h2>
+        <span class="stat-change positive">
+          <i class="fas fa-trophy"></i> Personal record
+        </span>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card danger">
+        <div class="stat-label">Categories</div>
+        <h2 class="stat-value danger-grad">{{ labels_all|length }}</h2>
+        <span class="stat-change neutral">
+          <i class="fas fa-folder"></i> Total categories
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Strengths & Weaknesses -->
+  {% if strong_categories or weak_categories %}
+  <div class="chart-card mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="mb-0"><i class="fas fa-lightbulb text-warning"></i> Performance Insights</h5>
+      <div>
+        {% if strong_categories %}
+        <span class="category-badge strong">
+          <i class="fas fa-star"></i> {{ strong_categories|length }} Strong
+        </span>
+        {% endif %}
+        {% if weak_categories %}
+        <span class="category-badge weak">
+          <i class="fas fa-flag"></i> {{ weak_categories|length }} Need Focus
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="row mt-3">
+      {% if strong_categories %}
+      <div class="col-md-6">
+        <h6 class="text-success"><i class="fas fa-check-circle"></i> Strong Categories (>=85%)</h6>
+        <div class="mt-2">
+          {% for cat in strong_categories %}
+          <span class="category-badge strong">{{ cat.name }}: {{ cat.accuracy }}%</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if weak_categories %}
+      <div class="col-md-6">
+        <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Areas to Strengthen (<70%)</h6>
+        <div class="mt-2">
+          {% for cat in weak_categories %}
+          <span class="category-badge weak">{{ cat.name }}: {{ cat.accuracy }}%</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Progress Over Time -->
+  <div class="section-header">
+    <i class="fas fa-chart-line"></i>
+    <h3>Progress Timeline</h3>
+  </div>
+  <div class="chart-card">
+    <h5>Score Trends Across All Attempts</h5>
+    <div class="chart-container">
+      <canvas id="progressChart"></canvas>
+    </div>
+  </div>
+
+  <!-- All Exams Combined -->
+  <div class="section-header">
+    <i class="fas fa-globe"></i>
+    <h3>Combined Performance</h3>
+  </div>
+  <div class="row g-4 mb-4">
+    <div class="col-lg-7">
+      <div class="chart-card">
+        <h5>Category Breakdown (All Exams)</h5>
+        <div class="chart-container chart-container-tall">
+          <canvas id="allCountsChart"></canvas>
         </div>
       </div>
     </div>
-    <div class="col-12 col-lg-5">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5 class="card-title">Category Accuracy (%)</h5>
-          <div class="chart-container">
-            <canvas id="allAccChart"></canvas>
-          </div>
+    <div class="col-lg-5">
+      <div class="chart-card">
+        <h5>Category Accuracy</h5>
+        <div class="chart-container chart-container-tall">
+          <canvas id="allAccChart"></canvas>
         </div>
       </div>
     </div>
   </div>
 
-  <h4 class="mt-2">Per Exam (all attempts)</h4>
-  <div class="card mb-3">
-    <div class="card-body d-flex flex-wrap align-items-center gap-2">
-      <label class="me-2 mb-0">Exam:</label>
-      <select id="examSelect" class="form-select" style="max-width: 360px;">
-        {% for ex in exam_cards %}
-        <option value="{{ ex.id }}">{{ ex.title }} ({{ ex.attempts }} attempts, avg {{ ex.avg_pct }}%)</option>
-        {% endfor %}
-      </select>
-      <a id="examRollupLink" href="#" class="btn btn-outline-info btn-sm ms-auto"><i class="fas fa-chart-bar"></i> Open Exam Analytics</a>
+  <!-- Per Exam Analysis -->
+  <div class="section-header">
+    <i class="fas fa-book-open"></i>
+    <h3>Individual Exam Performance</h3>
+  </div>
+  <div class="chart-card mb-3">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <label class="fw-bold mb-2"><i class="fas fa-filter"></i> Select Exam:</label>
+        <select id="examSelect" class="form-select">
+          {% for ex in exam_cards %}
+          <option value="{{ ex.id }}">
+            {{ ex.title }} ({{ ex.attempts }} attempts, avg {{ ex.avg_pct }}%, best {{ ex.best_pct }}%)
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4 text-end mt-3 mt-md-0">
+        <a id="examRollupLink" href="#" class="btn btn-outline-info">
+          <i class="fas fa-chart-bar"></i> Open Exam Analytics
+        </a>
+      </div>
     </div>
   </div>
   <div class="row g-4">
-    <div class="col-12 col-lg-7">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5 class="card-title">Category Breakdown (counts)</h5>
-          <div class="chart-container">
-            <canvas id="examCountsChart"></canvas>
-          </div>
+    <div class="col-lg-7">
+      <div class="chart-card">
+        <h5>Category Breakdown</h5>
+        <div class="chart-container chart-container-tall">
+          <canvas id="examCountsChart"></canvas>
         </div>
       </div>
     </div>
-    <div class="col-12 col-lg-5">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5 class="card-title">Category Accuracy (%)</h5>
-          <div class="chart-container">
-            <canvas id="examAccChart"></canvas>
-          </div>
+    <div class="col-lg-5">
+      <div class="chart-card">
+        <h5>Category Accuracy</h5>
+        <div class="chart-container chart-container-tall">
+          <canvas id="examAccChart"></canvas>
         </div>
       </div>
     </div>
   </div>
+
   {% else %}
-  <div class="text-center py-5 text-muted">
-    <i class="fas fa-chart-bar fa-3x mb-3"></i>
-    <div>No data yet. Take an exam to see analytics.</div>
+  <div class="text-center py-5">
+    <div class="performance-indicator d-inline-flex">
+      <div class="performance-icon">
+        <i class="fas fa-chart-bar" style="color: #95a5a6;"></i>
+      </div>
+      <div class="performance-text">
+        <h3>No Data Available</h3>
+        <p>Take your first exam to see comprehensive analytics and insights</p>
+      </div>
+    </div>
+    <div class="mt-4">
+      <a href="{% url 'exam_list' %}" class="btn btn-primary btn-lg">
+        <i class="fas fa-play"></i> Browse Exams
+      </a>
+    </div>
   </div>
   {% endif %}
 </div>
 
 {% if has_data %}
-<style>.chart-container{position:relative;height:420px}</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-  // All exams combined
   const labelsAll = {{ labels_all|safe }};
   const correctAll = {{ correct_all|safe }};
   const incorrectAll = {{ incorrect_all|safe }};
@@ -102,79 +414,222 @@
   const noanswerAll = {{ noanswer_all|safe }};
   const accAll = {{ acc_all|safe }};
 
-  new Chart(document.getElementById('allCountsChart'), {
-    type: 'bar',
-    data: {
-      labels: labelsAll,
-      datasets: [
-        { label: 'Correct', data: correctAll, backgroundColor: '#2ecc71' },
-        { label: 'Incorrect', data: incorrectAll, backgroundColor: '#e74c3c' },
-        { label: 'Unanswered', data: unansweredAll, backgroundColor: '#f1c40f' },
-        { label: 'No Answer', data: noanswerAll, backgroundColor: '#95a5a6' },
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
-      indexAxis: 'y',
-      scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true, ticks: { autoSkip: false, font: { size: 12 } } } }
-    }
-  });
+  const progressData = {
+    labels: {{ attempt_dates|safe }},
+    datasets: [
+      {
+        label: 'Score (%)',
+        data: {{ attempt_scores|safe }},
+        borderColor: '#667eea',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        pointBackgroundColor: '#667eea',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2
+      },
+      {
+        label: 'Moving Average',
+        data: {{ moving_avg|safe }},
+        borderColor: '#38ef7d',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.4
+      }
+    ]
+  };
 
-  new Chart(document.getElementById('allAccChart'), {
-    type: 'bar',
-    data: {
-      labels: labelsAll,
-      datasets: [
-        { label: 'Accuracy %', data: accAll, backgroundColor: '#3498db' },
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      indexAxis: 'y',
-      scales: { x: { beginAtZero: true, max: 100 }, y: { ticks: { autoSkip: false, font: { size: 12 } } } }
-    }
-  });
+  const progressCtx = document.getElementById('progressChart');
+  if (progressCtx) {
+    new Chart(progressCtx, {
+      type: 'line',
+      data: progressData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 12,
+            titleFont: { size: 14 },
+            bodyFont: { size: 13 },
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': ' + context.parsed.y + '%';
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: {
+              callback: function(value) { return value + '%'; }
+            }
+          },
+          x: {
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
 
-  // Per-exam charts
+  const allCountsCtx = document.getElementById('allCountsChart');
+  if (allCountsCtx) {
+    new Chart(allCountsCtx, {
+      type: 'bar',
+      data: {
+        labels: labelsAll,
+        datasets: [
+          { label: 'Correct', data: correctAll, backgroundColor: '#2ecc71' },
+          { label: 'Incorrect', data: incorrectAll, backgroundColor: '#e74c3c' },
+          { label: 'Unanswered', data: unansweredAll, backgroundColor: '#f1c40f' },
+          { label: 'No Answer', data: noanswerAll, backgroundColor: '#95a5a6' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        indexAxis: 'y',
+        scales: {
+          x: { stacked: true, beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+          y: { stacked: true, ticks: { autoSkip: false, font: { size: 12 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  const allAccCtx = document.getElementById('allAccChart');
+  if (allAccCtx) {
+    new Chart(allAccCtx, {
+      type: 'bar',
+      data: {
+        labels: labelsAll,
+        datasets: [{
+          label: 'Accuracy %',
+          data: accAll,
+          backgroundColor: accAll.map(function(v) {
+            return v >= 85 ? '#2ecc71' : v >= 70 ? '#3498db' : v >= 60 ? '#f39c12' : '#e74c3c';
+          }),
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return 'Accuracy: ' + context.parsed.x + '%';
+              }
+            }
+          }
+        },
+        indexAxis: 'y',
+        scales: {
+          x: { beginAtZero: true, max: 100, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+          y: { ticks: { autoSkip: false, font: { size: 12 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
   const examData = {{ exam_data|safe }};
   const examSelect = document.getElementById('examSelect');
   const examCountsCtx = document.getElementById('examCountsChart');
   const examAccCtx = document.getElementById('examAccChart');
+  const rollupLink = document.getElementById('examRollupLink');
 
   let examCountsChart = null;
   let examAccChart = null;
 
   function renderExamCharts(examId) {
-    const data = examData[String(examId)] || {labels:[],correct:[],incorrect:[],unanswered:[],noanswer:[],accuracy:[]};
+    const data = examData[String(examId)] || {labels: [], correct: [], incorrect: [], unanswered: [], noanswer: [], accuracy: []};
+
     if (examCountsChart) examCountsChart.destroy();
     if (examAccChart) examAccChart.destroy();
-    examCountsChart = new Chart(examCountsCtx, {
-      type: 'bar',
-      data: { labels: data.labels, datasets: [
-        { label: 'Correct', data: data.correct, backgroundColor: '#2ecc71' },
-        { label: 'Incorrect', data: data.incorrect, backgroundColor: '#e74c3c' },
-        { label: 'Unanswered', data: data.unanswered, backgroundColor: '#f1c40f' },
-        { label: 'No Answer', data: data.noanswer, backgroundColor: '#95a5a6' },
-      ] },
-      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } }, indexAxis:'y', scales:{ x:{ stacked:true, beginAtZero:true }, y:{ stacked:true, ticks:{ autoSkip:false, font:{ size:12 } } } } }
-    });
-    examAccChart = new Chart(examAccCtx, {
-      type: 'bar',
-      data: { labels: data.labels, datasets: [{ label: 'Accuracy %', data: data.accuracy, backgroundColor: '#3498db' }] },
-      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, indexAxis:'y', scales:{ x:{ beginAtZero:true, max:100 }, y:{ ticks:{ autoSkip:false, font:{ size:12 } } } } }
-    });
+
+    if (examCountsCtx) {
+      examCountsChart = new Chart(examCountsCtx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [
+            { label: 'Correct', data: data.correct, backgroundColor: '#2ecc71' },
+            { label: 'Incorrect', data: data.incorrect, backgroundColor: '#e74c3c' },
+            { label: 'Unanswered', data: data.unanswered, backgroundColor: '#f1c40f' },
+            { label: 'No Answer', data: data.noanswer, backgroundColor: '#95a5a6' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } },
+          indexAxis: 'y',
+          scales: {
+            x: { stacked: true, beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+            y: { stacked: true, ticks: { autoSkip: false, font: { size: 12 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    if (examAccCtx) {
+      examAccChart = new Chart(examAccCtx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: 'Accuracy %',
+            data: data.accuracy,
+            backgroundColor: data.accuracy.map(function(v) {
+              return v >= 85 ? '#2ecc71' : v >= 70 ? '#3498db' : v >= 60 ? '#f39c12' : '#e74c3c';
+            }),
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return 'Accuracy: ' + context.parsed.x + '%';
+                }
+              }
+            }
+          },
+          indexAxis: 'y',
+          scales: {
+            x: { beginAtZero: true, max: 100, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+            y: { ticks: { autoSkip: false, font: { size: 12 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
   }
 
   if (examSelect && examSelect.options.length > 0) {
     renderExamCharts(examSelect.value);
-    const rollupLink = document.getElementById('examRollupLink');
+
     if (rollupLink) {
       rollupLink.href = `/exam/analytics/exam/${examSelect.value}/`;
     }
+
     examSelect.addEventListener('change', function() {
       renderExamCharts(this.value);
       if (rollupLink) {
@@ -185,4 +640,3 @@
 </script>
 {% endif %}
 {% endblock %}
-

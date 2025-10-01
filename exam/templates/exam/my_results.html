@@ -1,11 +1,65 @@
 {% extends 'base.html' %}
+
+{% block custom_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    body { background: #f8f9fa; }
+    .card.table-card {
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: none;
+        overflow: hidden;
+    }
+    .table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.8rem;
+    }
+    .table tbody tr {
+        transition: background-color 0.2s;
+    }
+    .table tbody tr:hover {
+        background-color: #f1f3f5;
+    }
+    .table td, .table th {
+        vertical-align: middle;
+        padding: 1rem;
+    }
+    .table .score-bar {
+        width: 100%;
+        background-color: #e9ecef;
+        border-radius: .25rem;
+        overflow: hidden;
+        height: 24px;
+        position: relative;
+    }
+    .table .score-bar-fill {
+        height: 100%;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: width 0.5s ease-in-out;
+    }
+</style>
+{% endblock %}
+
 {% block page_content %}
 <div class="container mt-5">
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-    <h1 class="section-title mb-0">My Results</h1>
+    <h1 style="font-weight: 800; color: #2c3e50;">My Results</h1>
     <div>
-      <a href="{% url 'analytics_overview' %}" class="btn btn-outline-info me-2">
-        <i class="fas fa-chart-bar"></i> Overall Analytics
+      <a href="{% url 'analytics_overview' %}" class="btn btn-info text-white me-2">
+        <i class="fas fa-chart-pie"></i> Overall Analytics
       </a>
       <a href="{% url 'question_home' %}" class="btn btn-primary">
         <i class="fas fa-arrow-left"></i> Back to Home
@@ -14,45 +68,53 @@
   </div>
 
   {% if results %}
-  <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle">
-      <thead class="thead-dark">
-        <tr>
-          <th>Title</th>
-          <th>Date</th>
-          <th>Score</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in results %}
-        <tr>
-          <td>{{ r.title }}</td>
-          <td>{{ r.date_taken }}</td>
-          <td>{{ r.score_text }}</td>
-          <td>
-            <a href="{% url 'exam_results' %}?result_id={{ r.id }}" class="btn btn-sm btn-outline-primary">
-              <i class="fas fa-eye"></i> View
-            </a>
-            <a href="{% url 'result_analytics' r.id %}" class="btn btn-sm btn-outline-success">
-              <i class="fas fa-chart-bar"></i> Attempt Analytics
-            </a>
-            {% if r.is_exam and r.exam_id %}
-            <a href="{% url 'exam_analytics' r.exam_id %}" class="btn btn-sm btn-outline-secondary">
-              Rollup
-            </a>
-            {% endif %}
-            <form method="post" action="{% url 'delete_result' r.id %}" style="display:inline" onsubmit="return confirm('정말 이 결과를 삭제하시겠습니까? 삭제 시 통계에서 제외됩니다.');">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-outline-danger">
-                <i class="fas fa-trash"></i> Delete
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="card table-card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Date</th>
+            <th style="min-width: 200px;">Score</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+          <tr>
+            <td><strong>{{ r.title }}</strong></td>
+            <td>{{ r.date_taken|date:"Y-m-d P" }}</td>
+            <td>
+              <div class="score-bar" title="{{ r.score_text }}">
+                {% with pct=r.score_percent %}
+                <div class="score-bar-fill 
+                            {% if pct >= 80 %}bg-success{% elif pct >= 60 %}bg-info{% elif pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                     style="width: {{ pct }}%;">
+                  {{ r.score_text }}
+                </div>
+                {% endwith %}
+              </div>
+            </td>
+            <td class="text-end">
+              <a href="{% url 'exam_results' %}?result_id={{ r.id }}" class="btn btn-sm btn-outline-primary" title="View Details"><i class="fas fa-eye"></i></a>
+              <a href="{% url 'result_analytics' r.id %}" class="btn btn-sm btn-outline-success" title="Attempt Analytics"><i class="fas fa-chart-bar"></i></a>
+              {% if r.is_exam and r.exam_id %}
+              <a href="{% url 'exam_analytics' r.exam_id %}" class="btn btn-sm btn-outline-secondary" title="Exam Rollup">
+                <i class="fas fa-chart-line"></i>
+              </a>
+              {% endif %}
+              <form method="post" action="{% url 'delete_result' r.id %}" style="display:inline" onsubmit="return confirm('Are you sure?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Result">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
   {% else %}
   <div class="text-center py-5 text-muted">
@@ -62,4 +124,3 @@
   {% endif %}
 </div>
 {% endblock %}
-

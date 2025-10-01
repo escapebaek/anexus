@@ -1,8 +1,188 @@
 ﻿{% extends 'base.html' %}
 {% block page_content %}
+<style>
+  :root {
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --gradient-danger: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+    --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+  .stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+  }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+  }
+  .stat-card.success::before { background: var(--gradient-success); }
+  .stat-card.danger::before { background: var(--gradient-danger); }
+  .stat-card.info::before { background: var(--gradient-info); }
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+  }
+  .stat-value.success-grad {
+    background: var(--gradient-success);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-value.info-grad {
+    background: var(--gradient-info);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-value.danger-grad {
+    background: var(--gradient-danger);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .stat-change {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .stat-change.positive {
+    background: #d4edda;
+    color: #155724;
+  }
+  .stat-change.negative {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  .stat-change.neutral {
+    background: #e7f3ff;
+    color: #004085;
+  }
+  .chart-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+  }
+  .chart-card h5 {
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.125rem;
+  }
+  .chart-container {
+    position: relative;
+    height: 350px;
+  }
+  .chart-container-tall {
+    height: 450px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 32px 0 20px;
+  }
+  .section-header h3 {
+    margin: 0;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+  .section-header i {
+    font-size: 1.5rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .category-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 4px;
+  }
+  .category-badge.strong {
+    background: #d4edda;
+    color: #155724;
+  }
+  .category-badge.weak {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  .performance-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .performance-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .performance-text h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .performance-text p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.875rem;
+  }
+  @media (max-width: 768px) {
+    .stat-value { font-size: 2rem; }
+    .chart-container { height: 280px; }
+  }
+</style>
+
 <div class="container mt-5">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="section-title mb-0">Exam Analytics</h1>
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h1 class="mb-1" style="font-weight: 800; color: #2c3e50;">Exam Analytics</h1>
+      <p class="text-muted mb-0">{{ exam.title }}</p>
+    </div>
     <div>
       <a href="{% url 'my_results' %}" class="btn btn-outline-secondary me-2">
         <i class="fas fa-list"></i> My Results
@@ -13,56 +193,258 @@
     </div>
   </div>
 
-  <div class="card mb-4">
-    <div class="card-body">
-      <div class="d-flex align-items-center justify-content-between flex-wrap">
-        <div>
-          <h5 class="mb-1">{{ exam.title }}</h5>
-          {% if has_data %}
-          <div class="text-muted">Attempts: {{ attempts }} | Avg: {{ avg_pct }}% | Best: {{ best_pct }}%</div>
-          {% else %}
-          <div class="text-muted">No attempts yet.</div>
-          {% endif %}
-        </div>
-        {% if has_data %}
-        <a class="btn btn-success" href="{% url 'exam_results' %}?result_id={{ latest_result_id }}">
-          <i class="fas fa-eye"></i> View Latest Result
-        </a>
+  {% if has_data %}
+  <!-- Performance Overview -->
+  <div class="performance-indicator">
+    <div class="performance-icon">
+      {% if avg_pct >= 85 %}
+      <i class="fas fa-trophy" style="color: #f39c12;"></i>
+      {% elif avg_pct >= 70 %}
+      <i class="fas fa-chart-line" style="color: #667eea;"></i>
+      {% else %}
+      <i class="fas fa-graduation-cap" style="color: #3498db;"></i>
+      {% endif %}
+    </div>
+    <div class="performance-text">
+      <h3>
+        {% if avg_pct >= 85 %}
+        Excellent Performance!
+        {% elif avg_pct >= 70 %}
+        Good Progress
+        {% else %}
+        Keep Practicing
         {% endif %}
+      </h3>
+      <p>
+        {% if improvement_rate > 0 %}
+        You're improving by {{ improvement_rate }}% - Keep up the great work!
+        {% elif improvement_rate < 0 %}
+        Recent scores are lower - Consider reviewing weak categories
+        {% else %}
+        Maintaining steady performance across attempts
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <!-- Key Stats -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card">
+        <div class="stat-label">Total Attempts</div>
+        <h2 class="stat-value">{{ attempts }}</h2>
+        <span class="stat-change neutral">
+          <i class="fas fa-layer-group"></i> Exam attempts
+        </span>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card success">
+        <div class="stat-label">Average Score</div>
+        <h2 class="stat-value success-grad">{{ avg_pct }}%</h2>
+        {% if improvement_rate > 0 %}
+        <span class="stat-change positive">
+          <i class="fas fa-arrow-up"></i> +{{ improvement_rate }}% improvement
+        </span>
+        {% elif improvement_rate < 0 %}
+        <span class="stat-change negative">
+          <i class="fas fa-arrow-down"></i> {{ improvement_rate }}% change
+        </span>
+        {% else %}
+        <span class="stat-change neutral">
+          <i class="fas fa-minus"></i> Stable
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card info">
+        <div class="stat-label">Best Score</div>
+        <h2 class="stat-value info-grad">{{ best_pct }}%</h2>
+        <span class="stat-change positive">
+          <i class="fas fa-trophy"></i> Personal best
+        </span>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="stat-card danger">
+        <div class="stat-label">Categories</div>
+        <h2 class="stat-value danger-grad">{{ labels|length }}</h2>
+        <span class="stat-change neutral">
+          <i class="fas fa-folder"></i> Total categories
+        </span>
       </div>
     </div>
   </div>
 
-  {% if has_data %}
+  <!-- Strengths & Weaknesses -->
+  {% if strong_categories or weak_categories %}
+  <div class="chart-card mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="mb-0">Performance Insights</h5>
+      <div>
+        {% if strong_categories %}
+        <span class="category-badge strong">
+          <i class="fas fa-star"></i> {{ strong_categories|length }} Strong
+        </span>
+        {% endif %}
+        {% if weak_categories %}
+        <span class="category-badge weak">
+          <i class="fas fa-exclamation-triangle"></i> {{ weak_categories|length }} Needs Work
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="row mt-3">
+      {% if strong_categories %}
+      <div class="col-md-6">
+        <h6 class="text-success"><i class="fas fa-check-circle"></i> Strong Categories (≥85%)</h6>
+        <div class="mt-2">
+          {% for cat in strong_categories %}
+          <span class="category-badge strong">{{ cat.name }}: {{ cat.accuracy }}%</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if weak_categories %}
+      <div class="col-md-6">
+        <h6 class="text-danger"><i class="fas fa-flag"></i> Focus Areas (<70%)</h6>
+        <div class="mt-2">
+          {% for cat in weak_categories %}
+          <span class="category-badge weak">{{ cat.name }}: {{ cat.accuracy }}%</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Progress Over Time -->
+  <div class="section-header">
+    <i class="fas fa-chart-line"></i>
+    <h3>Progress Tracking</h3>
+  </div>
+  <div class="chart-card">
+    <h5>Score Trends Across Attempts</h5>
+    <div class="chart-container">
+      <canvas id="progressChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Category Analysis -->
+  <div class="section-header">
+    <i class="fas fa-layer-group"></i>
+    <h3>Category Performance</h3>
+  </div>
   <div class="row g-4">
-    <div class="col-12 col-lg-7">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5 class="card-title">Category Breakdown (counts)</h5>
-          <div class="chart-container">
-            <canvas id="catCountsChart"></canvas>
-          </div>
+    <div class="col-lg-7">
+      <div class="chart-card">
+        <h5>Category Breakdown (All Attempts)</h5>
+        <div class="chart-container chart-container-tall">
+          <canvas id="catCountsChart"></canvas>
         </div>
       </div>
     </div>
-    <div class="col-12 col-lg-5">
-      <div class="card h-100">
-        <div class="card-body">
-          <h5 class="card-title">Category Accuracy (%)</h5>
-          <div class="chart-container">
-            <canvas id="catAccuracyChart"></canvas>
-          </div>
+    <div class="col-lg-5">
+      <div class="chart-card">
+        <h5>Accuracy by Category</h5>
+        <div class="chart-container chart-container-tall">
+          <canvas id="catAccuracyChart"></canvas>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="text-center mt-4 mb-4">
+    <a class="btn btn-success btn-lg me-2" href="{% url 'exam_results' %}?result_id={{ latest_result_id }}">
+      <i class="fas fa-eye"></i> View Latest Result
+    </a>
+    <a href="{% url 'analytics_overview' %}" class="btn btn-outline-info btn-lg">
+      <i class="fas fa-chart-bar"></i> Overall Analytics
+    </a>
+  </div>
+
+  {% else %}
+  <div class="text-center py-5">
+    <div class="performance-indicator d-inline-flex">
+      <div class="performance-icon">
+        <i class="fas fa-clipboard-list" style="color: #95a5a6;"></i>
+      </div>
+      <div class="performance-text">
+        <h3>No Data Yet</h3>
+        <p>Take this exam to see your analytics and progress tracking</p>
+      </div>
+    </div>
+    <div class="mt-4">
+      <a href="{% url 'exam_detail' exam.id %}" class="btn btn-primary btn-lg">
+        <i class="fas fa-play"></i> Start Exam
+      </a>
     </div>
   </div>
   {% endif %}
 </div>
 
 {% if has_data %}
-<style>.chart-container{position:relative;height:420px}</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+  // Progress over time
+  const progressData = {
+    labels: {{ attempt_dates|safe }},
+    datasets: [{
+      label: 'Score (%)',
+      data: {{ attempt_scores|safe }},
+      borderColor: '#667eea',
+      backgroundColor: 'rgba(102, 126, 234, 0.1)',
+      tension: 0.4,
+      fill: true,
+      pointRadius: 6,
+      pointHoverRadius: 8,
+      pointBackgroundColor: '#667eea',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2
+    }, {
+      label: 'Moving Average',
+      data: {{ moving_avg|safe }},
+      borderColor: '#38ef7d',
+      borderDash: [5, 5],
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.4
+    }]
+  };
+
+  new Chart(document.getElementById('progressChart'), {
+    type: 'line',
+    data: progressData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top' },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 14 },
+          bodyFont: { size: 13 }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          grid: { color: 'rgba(0, 0, 0, 0.05)' },
+          ticks: { callback: function(value) { return value + '%'; } }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Category counts
   const labels = {{ labels|safe }};
   const correctData = {{ correct_data|safe }};
   const incorrectData = {{ incorrect_data|safe }};
@@ -70,8 +452,7 @@
   const noanswerData = {{ noanswer_data|safe }};
   const accuracyPct = {{ accuracy_pct|safe }};
 
-  const ctx1 = document.getElementById('catCountsChart');
-  new Chart(ctx1, {
+  new Chart(document.getElementById('catCountsChart'), {
     type: 'bar',
     data: {
       labels,
@@ -94,19 +475,31 @@
     }
   });
 
-  const ctx2 = document.getElementById('catAccuracyChart');
-  new Chart(ctx2, {
+  // Category accuracy
+  new Chart(document.getElementById('catAccuracyChart'), {
     type: 'bar',
     data: {
       labels,
-      datasets: [
-        { label: 'Accuracy %', data: accuracyPct, backgroundColor: '#3498db' },
-      ]
+      datasets: [{
+        label: 'Accuracy %',
+        data: accuracyPct,
+        backgroundColor: accuracyPct.map(v => v >= 85 ? '#2ecc71' : v >= 70 ? '#3498db' : v >= 60 ? '#f39c12' : '#e74c3c'),
+        borderRadius: 8
+      }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: { 
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.parsed.x + '%';
+            }
+          }
+        }
+      },
       indexAxis: 'y',
       scales: {
         x: { beginAtZero: true, max: 100 },
@@ -117,4 +510,3 @@
 </script>
 {% endif %}
 {% endblock %}
-
