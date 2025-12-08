@@ -3,9 +3,6 @@
 # Ignore the virtual environment
 venv/
 
-# Ignore collected static files (Vercel handles this)
-staticfiles/
-
 # Ignore Git directory
 .git/
 
