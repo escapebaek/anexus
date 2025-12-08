@@ -1,0 +1,66 @@
+/* Extracted from board/templates/board/board_index.html */
+
+/* 공지사항 스타일 */
+.notice-item {
+  background: linear-gradient(135deg, #fff8e1 0%, #fff3c4 100%);
+  border-left: 4px solid #ff9800;
+  position: relative;
+  animation: subtle-glow 2s ease-in-out infinite alternate;
+}
+
+.notice-item:hover {
+  background: linear-gradient(135deg, #fff6e0 0%, #fff1c0 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.15);
+}
+
+.notice-badge {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+}
+
+.notice-title {
+  font-weight: 600;
+  color: #e65100 !important;
+}
+
+.notice-title:hover {
+  color: #bf360c !important;
+}
+
+@keyframes subtle-glow {
+  0% {
+    box-shadow: 0 2px 5px rgba(255, 152, 0, 0.1);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2);
+  }
+}
+
+/* 다크모드 대응 */
+@media (prefers-color-scheme: dark) {
+  .notice-item {
+    background: linear-gradient(135deg, #2d2416 0%, #3d3020 100%);
+    border-left-color: #ff9800;
+  }
+  
+  .notice-item:hover {
+    background: linear-gradient(135deg, #332718 0%, #433224 100%);
+  }
+  
+  .notice-title {
+    color: #ffb74d !important;
+  }
+  
+  .notice-title:hover {
+    color: #ffa726 !important;
+  }
+}

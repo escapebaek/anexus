@@ -4057,3 +4057,13 @@ input[type="text"]:focus {
     color: #555 !important;
   }
 } /*# sourceMappingURL=components.css.map */
+/* Footer social icons: tidy proportions and spacing */
+.social-icons{display:flex;justify-content:center;gap:12px}
+.social-icons a{width:44px;height:44px;margin:0;padding:0;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.social-icons i{line-height:1;font-size:1.25rem}
+
+/* Footer text style */
+.footer-text {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}

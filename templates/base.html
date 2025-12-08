@@ -27,9 +27,7 @@
     />
 
     <!-- Project CSS -->
-    <link href="{% static 'css/components.css' %}" rel="stylesheet" />
-    <!-- Small overrides for visual polish -->
-    <link href="{% static 'css/overrides.css' %}" rel="stylesheet" />
+    <link href="{% static 'css/main.css' %}" rel="stylesheet" />
 
     <script
       async
@@ -92,7 +90,7 @@
     </nav>
 
     <!-- Optimized Messages -->
-    <div class="container-fluid" style="margin-top: 1rem">
+    <div class="container-fluid mt-3">
       {% if messages %} {% for message in messages %}
       <div
         class="alert alert-{{ message.tags|default:'secondary' }}"
@@ -113,7 +111,7 @@
     <footer>
       <div class="container-fluid">
         <p>&copy; 2024-2025 ANExuS. All rights reserved.</p>
-        <p style="font-size: 0.9rem; opacity: 0.8">
+        <p class="footer-text">
           Empowering healthcare professionals with advanced anesthesia solutions
         </p>
         <div class="social-icons">
