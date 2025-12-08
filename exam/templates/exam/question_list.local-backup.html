@@ -1,145 +1,8 @@
-﻿{% extends 'base.html' %} {% load exam_filters %} 
+{% extends 'base.html' %}
+{% load static %} {% load exam_filters %} 
 {% load markdown_extras %} 
-{% block extra_css %}
-<style>
-  .markdown-content {
-    line-height: 1.6;
-    color: #333;
-  }
-
-  .markdown-content h1,
-  .markdown-content h2,
-  .markdown-content h3,
-  .markdown-content h4,
-  .markdown-content h5,
-  .markdown-content h6 {
-    margin: 1em 0 0.5em 0;
-    font-weight: bold;
-    color: #2c3e50;
-  }
-
-  .markdown-content h1 {
-    font-size: 1.5em;
-  }
-  .markdown-content h2 {
-    font-size: 1.3em;
-  }
-  .markdown-content h3 {
-    font-size: 1.1em;
-  }
-
-  .markdown-content p {
-    margin: 0.8em 0;
-  }
-
-  .markdown-content strong {
-    font-weight: bold;
-    color: #2c3e50;
-  }
-
-  .markdown-content em {
-    font-style: italic;
-    color: #555;
-  }
-
-  .markdown-content code {
-    background-color: #f8f9fa;
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-family: "Monaco", "Consolas", "Courier New", monospace;
-    font-size: 0.9em;
-    color: #d63384;
-  }
-
-  .markdown-content pre {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 5px;
-    padding: 1em;
-    overflow-x: auto;
-    margin: 1em 0;
-  }
-
-  .markdown-content pre code {
-    background: none;
-    padding: 0;
-    color: #333;
-  }
-
-  .markdown-content blockquote {
-    border-left: 4px solid #007bff;
-    background-color: #f8f9fa;
-    margin: 1em 0;
-    padding: 0.8em 1em;
-    font-style: italic;
-  }
-
-  .markdown-content ul,
-  .markdown-content ol {
-    margin: 0.8em 0;
-    padding-left: 2em;
-  }
-
-  .markdown-content li {
-    margin: 0.3em 0;
-  }
-
-  .markdown-content table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1em 0;
-    font-size: 0.9em;
-  }
-
-  .markdown-content table th,
-  .markdown-content table td {
-    border: 1px solid #dee2e6;
-    padding: 0.6em;
-    text-align: left;
-  }
-
-  .markdown-content table th {
-    background-color: #e9ecef;
-    font-weight: bold;
-  }
-
-  .markdown-content table tbody tr:nth-child(even) {
-    background-color: #f8f9fa;
-  }
-
-  .markdown-content a {
-    color: #007bff;
-    text-decoration: none;
-  }
-
-  .markdown-content a:hover {
-    text-decoration: underline;
-  }
-
-  /* ?熬곣뫀??????쒓낮???繹먮끏?????れ삀????????*/
-  .markdown-content .highlight {
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    padding: 1em;
-    margin: 1em 0;
-  }
-
-  .markdown-content .highlight .c {
-    color: #8e908c;
-  } /* Comment */
-  .markdown-content .highlight .k {
-    color: #8959a8;
-  } /* Keyword */
-  .markdown-content .highlight .s {
-    color: #718c00;
-  } /* String */
-  .markdown-content .highlight .nf {
-    color: #4271ae;
-  } /* Name.Function */
-  .markdown-content .highlight .nb {
-    color: #f5871f;
-  } /* Name.Builtin */
-</style>
+{% block custom_css %}
+  <link href="{% static 'css/pages/exam_question_list_local_backup.css' %}" rel="stylesheet" />
 {% endblock %} {% block page_content %}
 <!-- ?棺??짆?승?????곷츉???源낇꼧 -->
 <div
@@ -539,15 +402,6 @@
     </form>
   </div>
 </div>
-
-<style>
-  .options-grid .form-check { cursor: pointer; }
-  .options-grid .form-check-label { cursor: pointer; display: block; }
-  .options-grid .form-check-input { cursor: pointer; }
-  /* Ensure no overlay blocks clicks in options grid */
-  .options-grid * { pointer-events: auto; }
-</style>
-
 <!-- YouTube API ?棺??짆?삠궘?-->
 <!-- Floating panel: Temporary Bookmarks -->
 <div id=\"tempBookmarkPanel\" class=\"temp-bookmark-panel\">
@@ -579,64 +433,6 @@
     });
   });
 </script>
-
-<style>
-  /* Temp bookmark button sits next to the permanent star */
-  .temp-bookmark-button {
-    position: absolute;
-    top: 1.25rem;
-    left: 1.25rem;
-    background: rgba(255,255,255,0.9);
-    border: 1px solid rgba(0,0,0,0.1);
-    padding: 8px;
-    border-radius: 50%;
-    cursor: pointer;
-    z-index: 4;
-    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-  }
-  .temp-bookmark-button i { color: var(--text-muted); }
-  .temp-bookmark-button.active i { color: var(--primary-dark); }
-  .temp-bookmark-button:hover { transform: scale(1.08); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-
-  /* Floating panel */
-  .temp-bookmark-panel {
-    position: fixed;
-    right: 16px;
-    top: 110px;
-    width: 260px;
-    background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.25);
-    border: 1px solid rgba(255,255,255,0.25);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    z-index: 1051;
-    overflow: hidden;
-  }
-  /* 癲ル슔?됭짆??????ㅺ컼?? ????밸쭬癲???影??탿???袁⑸즴???????????? */
-  .temp-bookmark-panel.collapsed { width: 56px; }
-  .temp-bookmark-panel.collapsed .panel-header span { display:none; }
-  .temp-bookmark-panel.collapsed .panel-body,
-  .temp-bookmark-panel.collapsed .panel-footer,
-  .temp-bookmark-panel.collapsed .panel-actions .btn-outline-danger { display:none; }
-  .temp-bookmark-panel .panel-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.06);
-    font-weight: 600;
-  }
-  .temp-bookmark-panel .panel-body { padding: 10px 12px; max-height: 320px; overflow: auto; }
-  .temp-bookmark-panel .panel-footer { padding: 6px 12px; border-top: 1px solid rgba(0,0,0,0.06); background: #fafafa; }
-  .temp-bookmark-panel .bookmark-list { display: flex; flex-wrap: wrap; gap: 6px; }
-  .temp-bookmark-panel .bookmark-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 32px; padding: 0 10px; border-radius: 16px; background: var(--primary-alpha); border: 1px solid var(--primary-alpha); color: var(--primary-dark); font-weight: 600; cursor: pointer; text-decoration: none; }
-  .temp-bookmark-panel .bookmark-chip:hover { background: #ffe9c7; }
-  .temp-bookmark-panel .panel-fab { position: absolute; right: 12px; bottom: 12px; display: none; }
-
-  @media (max-width: 992px) {
-    .temp-bookmark-panel { width: 210px; }
-  }
-  @media (max-width: 768px) {
-    .temp-bookmark-panel { right: 8px; width: 190px; }
-  }
-</style>
-
 <script>
   // Temporary bookmark (session-only) logic
 (function(){
@@ -1020,14 +816,3 @@
   });
 </script>
 {% endblock %}
-
-
-<style>
-  /* Uniform question card height across all questions */
-  .questions-section .question-card { min-height: 620px; display: flex; flex-direction: column; }
-  .questions-section .question-content { flex: 1 1 auto; }
-  @media (max-width: 992px) { .questions-section .question-card { min-height: 540px; } }
-  @media (max-width: 576px) { .questions-section .question-card { min-height: 460px; } }
-</style>
-
-

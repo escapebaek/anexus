@@ -1,0 +1,141 @@
+:root {
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --gradient-danger: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+    --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+  .stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+    border: none;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+  }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+  }
+  .stat-card.success::before { background: var(--gradient-success); }
+  .stat-card.danger::before { background: var(--gradient-danger); }
+  .stat-card.info::before { background: var(--gradient-info); }
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+  }
+  .stat-value.success-grad { background: var(--gradient-success); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-value.info-grad { background: var(--gradient-info); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-value.danger-grad { background: var(--gradient-danger); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .chart-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+  }
+  .chart-card h5 {
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.125rem;
+  }
+  .chart-container { position: relative; height: 350px; }
+  .chart-container-tall { height: 450px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 32px 0 20px;
+  }
+  .section-header h3 {
+    margin: 0;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+  .section-header i {
+    font-size: 1.5rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .category-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 4px;
+  }
+  .category-badge.strong { background: #d4edda; color: #155724; }
+  .category-badge.weak { background: #f8d7da; color: #721c24; }
+  .performance-indicator {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .performance-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .performance-text h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .performance-text p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.875rem;
+  }
+  .score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  @media (max-width: 768px) {
+    .stat-value { font-size: 2rem; }
+    .chart-container { height: 280px; }
+    .score-circle { width: 90px; height: 90px; font-size: 1.5rem; }
+  }

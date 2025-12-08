@@ -1,61 +1,8 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block custom_css %}
-<style>
-  /* Ensure Bootstrap modal stacks above its backdrop and avoid double-dimming */
-  #questionModal.modal { z-index: 1055 !important; background: transparent !important; }
-  .modal-backdrop { z-index: 1050 !important; }
-  /* Optional: make question cell look clickable */
-  td.question-cell[data-question-id] { cursor: pointer; }
-  td.question-cell.text-muted { cursor: default; }
-  /* Improve modal body spacing */
-  #questionModal .modal-body { padding: 1rem 1.25rem; }
-  #questionModal .bookmark-button { cursor: pointer; }
-  #questionModal .bookmark-button.bookmarked i { color: #f0ad4e; }
-  #questionModal .bookmark-button i { color: #bbb; }
-  /* Force left alignment for all modal text content */
-  #questionModal .question-card,
-  #questionModal .question-text,
-  #questionModal .answer-display-title,
-  #questionModal .answer-display-content,
-  #questionModal .explanation-display-title,
-  #questionModal .explanation-display-content,
-  #questionModal .video-explanation-title,
-  #questionModal .image-display-title,
-  #questionModal ul,
-  #questionModal ol,
-  #questionModal li,
-  #questionModal p {
-    text-align: left !important;
-  }
-</style>
-<style>
-  /* Ensure bookmark icon in results table is always visible */
-  table .bookmark-icon {
-    position: static !important;
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    padding: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
-  table .bookmark-icon i {
-    color: #bbb !important;
-    opacity: 1 !important;
-    transition: color .2s ease;
-  }
-  table .bookmark-icon.bookmarked i {
-    color: #ffc107 !important; /* Bootstrap warning color */
-    opacity: 1 !important;
-    text-shadow: none !important;
-    filter: none !important;
-    transform: none !important;
-  }
-</style>
+  <link href="{% static 'css/pages/exam_results.css' %}" rel="stylesheet" />
 {% endblock %}
 
 {% block page_content %}

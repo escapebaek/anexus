@@ -1,0 +1,542 @@
+.markdown-content {
+    line-height: 1.6;
+    color: #333;
+  }
+
+  .markdown-content h1,
+  .markdown-content h2,
+  .markdown-content h3,
+  .markdown-content h4,
+  .markdown-content h5,
+  .markdown-content h6 {
+    margin: 1em 0 0.5em 0;
+    font-weight: bold;
+    color: #2c3e50;
+  }
+
+  .markdown-content h1 {
+    font-size: 1.5em;
+  }
+  .markdown-content h2 {
+    font-size: 1.3em;
+  }
+  .markdown-content h3 {
+    font-size: 1.1em;
+  }
+
+  .markdown-content p {
+    margin: 0.8em 0;
+  }
+
+  .markdown-content strong {
+    font-weight: bold;
+    color: #2c3e50;
+  }
+
+  .markdown-content em {
+    font-style: italic;
+    color: #555;
+  }
+
+  .markdown-content code {
+    background-color: #f8f9fa;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: "Monaco", "Consolas", "Courier New", monospace;
+    font-size: 0.9em;
+    color: #d63384;
+  }
+
+  .markdown-content pre {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 1em 0;
+  }
+
+  .markdown-content pre code {
+    background: none;
+    padding: 0;
+    color: #333;
+  }
+
+  .markdown-content blockquote {
+    border-left: 4px solid #007bff;
+    background-color: #f8f9fa;
+    margin: 1em 0;
+    padding: 0.8em 1em;
+    font-style: italic;
+  }
+
+  .markdown-content ul,
+  .markdown-content ol {
+    margin: 0.8em 0;
+    padding-left: 2em;
+  }
+
+  .markdown-content li {
+    margin: 0.3em 0;
+  }
+
+  .markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.9em;
+  }
+
+  .markdown-content table th,
+  .markdown-content table td {
+    border: 1px solid #dee2e6;
+    padding: 0.6em;
+    text-align: left;
+  }
+
+  .markdown-content table th {
+    background-color: #e9ecef;
+    font-weight: bold;
+  }
+
+  .markdown-content table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+  }
+
+  .markdown-content a {
+    color: #007bff;
+    text-decoration: none;
+  }
+
+  .markdown-content a:hover {
+    text-decoration: underline;
+  }
+
+  /* 코드 하이라이팅 기본 스타일 */
+  .markdown-content .highlight {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 1em;
+    margin: 1em 0;
+  }
+
+  .markdown-content .highlight .c {
+    color: #8e908c;
+  } /* Comment */
+  .markdown-content .highlight .k {
+    color: #8959a8;
+  } /* Keyword */
+  .markdown-content .highlight .s {
+    color: #718c00;
+  } /* String */
+  .markdown-content .highlight .nf {
+    color: #4271ae;
+  } /* Name.Function */
+  .markdown-content .highlight .nb {
+    color: #f5871f;
+  } /* Name.Builtin */
+
+/* Consistent horizontal width for question boxes */
+  .question-card {
+    max-width: 960px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative; /* anchors absolute controls inside */
+  }
+
+  /* Optional: slightly tighter on medium screens */
+  @media (max-width: 992px) {
+    .question-card { max-width: 860px; }
+  }
+  @media (max-width: 768px) {
+    .question-card { max-width: 100%; }
+  }
+
+/* ======================================
+   QUESTION META GROUP - 카테고리와 시험 제목
+   ====================================== */
+
+.question-meta-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+/* 시험 제목 박스 - 카테고리와 비슷한 스타일 */
+.question-exam-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.1),
+    rgba(118, 75, 162, 0.08)
+  );
+  backdrop-filter: blur(15px);
+  padding: 0.7rem 1.2rem;
+  border-radius: 20px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  color: #5a6fd6;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+  transition: all 0.3s ease;
+}
+
+.question-exam-box:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.18);
+  border-color: rgba(102, 126, 234, 0.35);
+}
+
+.question-exam-box i {
+  font-size: 0.95rem;
+  color: #667eea;
+}
+
+/* 카테고리 박스도 동일한 크기로 조정 */
+.question-meta-group .question-category-box {
+  margin-bottom: 0;
+  padding: 0.7rem 1.2rem;
+  font-size: 0.85rem;
+  border-radius: 20px;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .question-meta-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .question-exam-box,
+  .question-meta-group .question-category-box {
+    font-size: 0.8rem;
+    padding: 0.6rem 1rem;
+  }
+}
+
+/* ======================================
+   TEMP BOOKMARK - 타이머와 통일된 디자인
+   ====================================== */
+
+@keyframes floatGlow {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+/* Temp bookmark button sits next to the permanent star */
+.temp-bookmark-button {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #6c7c93;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  z-index: 4;
+}
+
+.temp-bookmark-button.active {
+  background: linear-gradient(135deg, #89f7fe, #66a6ff);
+  color: #0e1629;
+  box-shadow: 0 12px 28px rgba(102, 166, 255, 0.45);
+}
+
+.temp-bookmark-button:hover {
+  transform: translateY(-3px) scale(1.02);
+}
+
+/* Floating panel - 좁고 세로로 긴 디자인 */
+.temp-bookmark-panel {
+  position: fixed;
+  top: 100px;
+  right: 12px;
+  width: 180px; /* 가로 너비 축소 */
+  max-height: calc(100vh - 140px); /* 세로 최대 높이 확장 */
+  padding: 1rem 1rem;
+  border-radius: 24px;
+  background: linear-gradient(165deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  box-shadow: 0 25px 55px rgba(6, 8, 20, 0.55);
+  backdrop-filter: blur(20px);
+  z-index: 1051;
+  transition: width 0.25s ease, padding 0.25s ease, transform 0.25s ease, max-height 0.25s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.temp-bookmark-panel::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(145, 234, 228, 0.2), transparent 70%);
+  filter: blur(40px);
+  animation: floatGlow 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.temp-bookmark-panel.collapsed {
+  width: 70px;
+  padding: 0.5rem;
+  max-height: auto;
+}
+
+.temp-bookmark-panel.collapsed .panel-body,
+.temp-bookmark-panel.collapsed .panel-footer,
+.temp-bookmark-panel.collapsed .panel-actions .btn-outline-danger {
+  display: none !important;
+}
+
+.temp-bookmark-panel.collapsed .panel-header {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.temp-bookmark-panel.collapsed .panel-header span {
+  display: none;
+}
+
+.temp-bookmark-panel.collapsed .panel-actions {
+  width: 100%;
+  justify-content: center;
+}
+
+.temp-bookmark-panel.collapsed .panel-actions .btn {
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* collapsed 상태에서 버튼 텍스트 숨기기 */
+.temp-bookmark-panel.collapsed .panel-actions .btn .btn-text {
+  display: none;
+}
+
+/* expanded 상태에서 버튼 아이콘과 텍스트 간격 */
+.temp-bookmark-panel .panel-actions .btn i {
+  margin-right: 0.3rem;
+}
+
+.temp-bookmark-panel.collapsed .panel-actions .btn i {
+  margin-right: 0;
+}
+
+.temp-bookmark-panel .panel-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.temp-bookmark-panel .panel-header span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.temp-bookmark-panel .panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.temp-bookmark-panel .panel-actions .btn {
+  border: none;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  padding: 0.35rem 0.6rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-transform: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.temp-bookmark-panel .panel-actions .btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.temp-bookmark-panel .panel-actions .btn-outline-danger {
+  background: rgba(255, 99, 132, 0.15);
+  border: 1px solid rgba(255, 99, 132, 0.3);
+  color: #ff6384;
+}
+
+.temp-bookmark-panel .panel-actions .btn-outline-danger:hover {
+  background: rgba(255, 99, 132, 0.25);
+}
+
+.temp-bookmark-panel .panel-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.25rem;
+  position: relative;
+  z-index: 1;
+  min-height: 100px;
+}
+
+.temp-bookmark-panel .panel-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.temp-bookmark-panel .panel-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.temp-bookmark-panel .panel-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.temp-bookmark-panel .panel-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.temp-bookmark-panel .bookmark-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.temp-bookmark-panel .bookmark-chip {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.temp-bookmark-panel .bookmark-chip:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(145, 234, 228, 0.3), rgba(127, 127, 213, 0.3));
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25);
+}
+
+.temp-bookmark-panel .panel-footer {
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.7);
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.temp-bookmark-panel .panel-fab {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  border-radius: 50%;
+  border: none;
+  width: 44px;
+  height: 44px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #7f7fd5, #86a8e7);
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.temp-bookmark-panel .panel-fab:hover {
+  transform: scale(1.05);
+}
+
+/* 반응형 */
+@media (max-width: 992px) {
+  .temp-bookmark-panel {
+    width: 160px;
+    right: 10px;
+  }
+  
+  .temp-bookmark-panel .bookmark-chip {
+    width: 38px;
+    height: 38px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .temp-bookmark-panel {
+    right: 8px;
+    width: 140px;
+    max-height: calc(100vh - 120px);
+    padding: 0.75rem;
+  }
+  
+  .temp-bookmark-panel .panel-fab {
+    display: inline-flex;
+  }
+  
+  .temp-bookmark-panel .bookmark-chip {
+    width: 34px;
+    height: 34px;
+    font-size: 0.8rem;
+  }
+}

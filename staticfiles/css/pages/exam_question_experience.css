@@ -1,0 +1,535 @@
+:root {
+  --qa-surface: rgba(255, 255, 255, 0.72);
+  --qa-surface-soft: rgba(255, 255, 255, 0.55);
+  --qa-border: rgba(255, 255, 255, 0.35);
+  --qa-shadow: 0 15px 45px rgba(15, 60, 90, 0.25);
+  --qa-gradient: linear-gradient(135deg, #7f7fd5 0%, #86a8e7 50%, #91eae4 100%);
+  --qa-chip-gradient: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  --qa-hero-overlay: linear-gradient(135deg, rgba(7, 11, 23, 0.72), rgba(20, 24, 38, 0.25));
+  --qa-text-strong: #0f172a;
+  --qa-text-muted: #6c7c93;
+  --qa-success: #21d4a7;
+  --qa-danger: #ff5f6d;
+}
+
+body {
+  background: radial-gradient(circle at top, rgba(126, 214, 223, 0.25), rgba(79, 99, 149, 0.35)),
+    radial-gradient(circle at 20% 20%, rgba(127, 127, 213, 0.45), transparent 55%),
+    #0e1629;
+  min-height: 100vh;
+  color: var(--qa-text-strong);
+}
+
+.hero-section {
+  width: 100%;
+  padding: 5rem 1rem 7rem;
+  color: #fff;
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+  overflow: hidden;
+  position: relative;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--qa-hero-overlay);
+  backdrop-filter: blur(12px);
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hero-title {
+  font-size: clamp(2.4rem, 4vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-bottom: 0.75rem;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.82);
+  margin-bottom: 2.5rem;
+}
+
+.hero-wave svg {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+@keyframes timerPulse {
+  0%, 100% {
+    transform: scale(0.98);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes floatGlow {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+/* 타이머 컨테이너 - 2열 그리드 레이아웃 */
+.exam-timer {
+  width: min(900px, 95%);
+  margin: 0 auto;
+  padding: 2.5rem;
+  border-radius: 32px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 25px 70px rgba(5, 9, 20, 0.6);
+  backdrop-filter: blur(24px);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2.5rem;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  color: #f8fbff;
+}
+
+/* 배경 글로우 효과 */
+.exam-timer::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(145, 234, 228, 0.4), transparent 70%);
+  filter: blur(60px);
+  animation: floatGlow 8s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.exam-timer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 20%;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(127, 127, 213, 0.35), transparent 70%);
+  filter: blur(60px);
+  animation: floatGlow 10s ease-in-out infinite reverse;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 타이머 디스플레이 영역 */
+.timer-face {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.timer-ring {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    inset 0 0 40px rgba(0, 0, 0, 0.6),
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    0 0 0 8px rgba(255, 255, 255, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: visible;
+}
+
+/* 타이머 링 외곽 글로우 */
+.timer-ring::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(145, 234, 228, 0.6),
+    rgba(127, 127, 213, 0.6),
+    rgba(145, 234, 228, 0.6)
+  );
+  filter: blur(12px);
+  animation: timerPulse 3s ease-in-out infinite;
+  z-index: -1;
+}
+
+.timer-digits {
+  font-size: 4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  color: #fff;
+  text-shadow: 0 4px 20px rgba(145, 234, 228, 0.5);
+  position: relative;
+  z-index: 1;
+}
+
+.timer-label {
+  margin: 0;
+  padding: 0.5rem 1.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 컨트롤 패널 영역 */
+.timer-console {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* 시간 입력 필드 */
+.timer-input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.timer-input span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.05em;
+}
+
+.timer-input input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 0.25rem 0;
+  outline: none;
+  text-align: center;
+  width: 100%;
+}
+
+.timer-input input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.timer-input::after {
+  content: "MIN";
+  position: absolute;
+  right: 1.5rem;
+  bottom: 50%;
+  transform: translateY(50%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* 버튼 그룹 */
+.timer-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-timer {
+  flex: 1;
+  padding: 0.85rem 1.5rem;
+  border-radius: 16px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-timer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.btn-timer:hover::before {
+  opacity: 1;
+}
+
+.btn-timer.primary {
+  background: linear-gradient(135deg, #7f7fd5, #91eae4);
+  color: #0e1629;
+  box-shadow: 0 10px 30px rgba(127, 127, 213, 0.4);
+}
+
+.btn-timer.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(127, 127, 213, 0.5);
+}
+
+.btn-timer.ghost {
+  background: rgba(255, 99, 132, 0.15);
+  border: 1px solid rgba(255, 99, 132, 0.3);
+  color: #ff6384;
+  box-shadow: 0 8px 20px rgba(255, 99, 132, 0.2);
+}
+
+.btn-timer.ghost:hover {
+  background: rgba(255, 99, 132, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(255, 99, 132, 0.3);
+}
+
+.btn-timer.secondary {
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: #ffc107;
+  box-shadow: 0 8px 20px rgba(255, 193, 7, 0.2);
+}
+
+.btn-timer.secondary:hover {
+  background: rgba(255, 193, 7, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(255, 193, 7, 0.3);
+}
+
+/* 힌트 텍스트 */
+.timer-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 213, 79, 0.1);
+  border: 1px solid rgba(255, 213, 79, 0.2);
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.timer-hint i {
+  color: #ffd54f;
+  font-size: 1.1rem;
+}
+
+/* 고정 타이머 (시험 시작 후) - 좌측 상단 컴팩트 버전 */
+.fixed-timer {
+  position: fixed !important;
+  top: 100px !important;
+  left: 24px !important;
+  right: auto !important;
+  z-index: 1050 !important;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 20px !important;
+  padding: 0.75rem 1rem !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  cursor: move !important;
+  user-select: none !important;
+  width: auto !important;
+  max-width: fit-content !important;
+}
+
+.fixed-timer.dragging {
+  cursor: grabbing !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.5) !important;
+}
+
+.fixed-timer .timer-display {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: #fff !important;
+  text-shadow: 0 2px 8px rgba(145, 234, 228, 0.5) !important;
+  letter-spacing: 0.08em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: nowrap !important;
+}
+
+.fixed-timer-end-btn {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  border-radius: 10px !important;
+  border: none !important;
+  background: rgba(255, 99, 132, 0.2) !important;
+  color: #ff6384 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0 !important;
+  font-size: 0.9rem !important;
+}
+
+.fixed-timer-end-btn:hover {
+  background: rgba(255, 99, 132, 0.3) !important;
+  transform: scale(1.05) !important;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .exam-timer {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 2rem 1.5rem;
+  }
+
+  .timer-face {
+    justify-self: center;
+  }
+
+  .timer-ring {
+    width: 180px;
+    height: 180px;
+  }
+
+  .timer-digits {
+    font-size: 3rem;
+  }
+
+  .timer-buttons {
+    flex-direction: column;
+  }
+
+  .fixed-timer {
+    top: 80px !important;
+    left: 16px !important;
+    padding: 0.6rem 0.85rem !important;
+  }
+
+  .fixed-timer .timer-display {
+    font-size: 1.25rem !important;
+  }
+
+  .temp-bookmark-panel {
+    width: 280px;
+    right: 16px;
+  }
+
+  .temp-bookmark-panel .panel-fab {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 576px) {
+  .exam-timer {
+    padding: 1.5rem 1rem;
+  }
+
+  .timer-ring {
+    width: 160px;
+    height: 160px;
+  }
+
+  .timer-digits {
+    font-size: 2.5rem;
+  }
+
+  .timer-input input {
+    font-size: 1.75rem;
+  }
+}
+
+/* 나머지 페이지 스타일은 기존 유지 */
+.questions-section {
+  margin-top: -4rem;
+  padding-bottom: 4rem;
+  position: relative;
+  z-index: 5;
+}
+
+.question-card {
+  background: var(--qa-surface);
+  border: 1px solid var(--qa-border);
+  border-radius: 28px;
+  padding: 2rem;
+  box-shadow: var(--qa-shadow);
+  backdrop-filter: blur(22px);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  max-width: 980px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 2rem;
+}
+
+.question-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 60px rgba(9, 28, 48, 0.25);
+}
+
+/* 애니메이션 */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-fade-in-delayed {
+  animation: fadeIn 0.6s ease-out 0.2s backwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

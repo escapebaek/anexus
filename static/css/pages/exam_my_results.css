@@ -1,0 +1,47 @@
+body { background: #f8f9fa; }
+    .card.table-card {
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: none;
+        overflow: hidden;
+    }
+    .table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.8rem;
+    }
+    .table tbody tr {
+        transition: background-color 0.2s;
+    }
+    .table tbody tr:hover {
+        background-color: #f1f3f5;
+    }
+    .table td, .table th {
+        vertical-align: middle;
+        padding: 1rem;
+    }
+    .table .score-bar {
+        width: 100%;
+        background-color: #e9ecef;
+        border-radius: .25rem;
+        overflow: hidden;
+        height: 24px;
+        position: relative;
+    }
+    .table .score-bar-fill {
+        height: 100%;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: width 0.5s ease-in-out;
+    }

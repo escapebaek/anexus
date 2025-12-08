@@ -1,6 +1,10 @@
 {% extends 'base.html' %} 
 {% load static %} 
 
+
+{% block custom_css %}
+  <link href="{% static 'css/pages/board_detail.css' %}" rel="stylesheet" />
+{% endblock %}
 {% block page_content %}
 <div class="board-container">
   <div class="board-wrapper">
@@ -115,78 +119,4 @@
 
   </div>
 </div>
-
-<style>
-/* 공지사항 게시글 스타일 */
-.notice-post {
-  background: linear-gradient(135deg, #fff8e1 0%, #fff3c4 100%);
-  border: 1px solid #ffcc02;
-  border-radius: 12px;
-  position: relative;
-  overflow: hidden;
-}
-
-.notice-post::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #ff9800, #f57c00, #ff9800);
-  animation: shimmer 2s linear infinite;
-}
-
-.notice-badge {
-  background: linear-gradient(135deg, #ff9800, #f57c00);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 15px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 6px rgba(255, 152, 0, 0.3);
-  animation: pulse-glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-@keyframes pulse-glow {
-  0% {
-    box-shadow: 0 2px 6px rgba(255, 152, 0, 0.3);
-  }
-  100% {
-    box-shadow: 0 2px 10px rgba(255, 152, 0, 0.5);
-  }
-}
-
-/* 다크모드 대응 */
-@media (prefers-color-scheme: dark) {
-  .notice-post {
-    background: linear-gradient(135deg, #2d2416 0%, #3d3020 100%);
-    border-color: #ff9800;
-  }
-  
-  .notice-post::before {
-    background: linear-gradient(90deg, #ff9800, #f57c00, #ff9800);
-  }
-}
-
-/* 모바일 반응형 */
-@media (max-width: 768px) {
-  .notice-badge {
-    font-size: 0.7rem;
-    padding: 4px 8px;
-  }
-}
-</style>
 {% endblock page_content %}
