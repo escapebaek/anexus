@@ -365,6 +365,102 @@ def calculate_moving_average(scores, window=3):
             moving_avg.append(round(avg, 1))
     return moving_avg
 
+def calculate_recent_vs_overall(scores, recent_count=3):
+    """Compare recent N attempts average vs overall average"""
+    if len(scores) < 2:
+        return {'recent_avg': scores[0] if scores else 0, 'overall_avg': scores[0] if scores else 0, 'diff': 0}
+    overall_avg = sum(scores) / len(scores) if scores else 0
+    recent = scores[-recent_count:] if len(scores) >= recent_count else scores
+    recent_avg = sum(recent) / len(recent) if recent else 0
+    return {
+        'recent_avg': round(recent_avg, 1),
+        'overall_avg': round(overall_avg, 1),
+        'diff': round(recent_avg - overall_avg, 1)
+    }
+
+def calculate_target_gap(avg_pct, target=85):
+    """Calculate gap to target score"""
+    gap = target - avg_pct
+    return {
+        'target': target,
+        'gap': round(max(0, gap), 1),
+        'reached': avg_pct >= target,
+        'progress_pct': round(min(100, (avg_pct / target) * 100), 1) if target > 0 else 100
+    }
+
+def generate_study_recommendation(weak_categories, avg_pct, target=85):
+    """Generate personalized study recommendation"""
+    # Filter out N/A categories as they can't be linked
+    valid_weak_categories = [c for c in weak_categories if c.get('name') and c.get('name') != 'N/A']
+    
+    if not valid_weak_categories:
+        if avg_pct >= target:
+            return {
+                'message': '축하합니다! 목표 점수에 도달했습니다. 현재 실력을 유지하세요!',
+                'priority_category': None,
+                'priority_categories': [],
+                'icon': 'trophy',
+                'type': 'success'
+            }
+        return {
+            'message': '훌륭합니다! 모든 카테고리에서 좋은 성적을 보이고 있습니다.',
+            'priority_category': None,
+            'priority_categories': [],
+            'icon': 'star',
+            'type': 'info'
+        }
+    
+    # Sort by accuracy (lowest first) to find the weakest categories
+    sorted_weak = sorted(valid_weak_categories, key=lambda x: x.get('accuracy', 0))
+    
+    # Get top 3 weakest categories for display
+    top_weak = sorted_weak[:3]
+    priority = sorted_weak[0]  # The weakest one
+    
+    gap_to_target = target - avg_pct
+    
+    # Estimate questions needed (rough calculation)
+    estimated_questions = max(5, int(gap_to_target * 2))
+    
+    # Build message with multiple categories if available
+    if len(top_weak) > 1:
+        category_list = ', '.join([f"'{c['name']}' ({c['accuracy']}%)" for c in top_weak])
+        message = f"다음 카테고리들의 정확도가 가장 낮습니다: {category_list}. '{priority['name']}' 카테고리부터 집중 연습해보세요!"
+    else:
+        message = f"'{priority['name']}' 카테고리의 정확도가 {priority['accuracy']}%로 가장 낮습니다. 이 카테고리를 집중 연습해보세요!"
+    
+    return {
+        'message': message,
+        'priority_category': priority['name'],
+        'priority_accuracy': priority['accuracy'],
+        'priority_categories': top_weak,  # List of top 3 weakest categories
+        'estimated_practice': estimated_questions,
+        'icon': 'lightbulb',
+        'type': 'warning'
+    }
+
+def get_performance_grade(pct):
+    """Get grade and color based on percentage"""
+    if pct >= 90:
+        return {'grade': 'A+', 'label': 'Excellent', 'label_kr': '우수', 'color': '#2ecc71'}
+    elif pct >= 85:
+        return {'grade': 'A', 'label': 'Great', 'label_kr': '훌륭', 'color': '#27ae60'}
+    elif pct >= 80:
+        return {'grade': 'B+', 'label': 'Good', 'label_kr': '양호', 'color': '#3498db'}
+    elif pct >= 70:
+        return {'grade': 'B', 'label': 'Fair', 'label_kr': '보통', 'color': '#f39c12'}
+    elif pct >= 60:
+        return {'grade': 'C', 'label': 'Needs Work', 'label_kr': '노력필요', 'color': '#e67e22'}
+    else:
+        return {'grade': 'D', 'label': 'Keep Trying', 'label_kr': '분발', 'color': '#e74c3c'}
+
+def calculate_total_questions_answered(results):
+    """Calculate total number of questions answered across all results"""
+    total = 0
+    for r in results:
+        total += (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
+    return total
+
 # ============ Results History & Analytics ============
 @login_required
 @user_is_specially_approved
@@ -445,6 +541,13 @@ def exam_analytics(request, exam_id:int):
     weak_categories = identify_weak_categories(category_stats)
     strong_categories = identify_strong_categories(category_stats)
     
+    # NEW: Enhanced statistics
+    recent_comparison = calculate_recent_vs_overall(attempt_scores)
+    target_gap = calculate_target_gap(avg_pct)
+    study_recommendation = generate_study_recommendation(weak_categories, avg_pct)
+    performance_grade = get_performance_grade(avg_pct)
+    total_questions = calculate_total_questions_answered(results)
+    
     # Category data
     labels = []
     correct_data = []
@@ -482,13 +585,19 @@ def exam_analytics(request, exam_id:int):
         'attempt_dates': attempt_dates,
         'attempt_scores': attempt_scores,
         'moving_avg': moving_avg,
+        # NEW: Enhanced statistics
+        'recent_comparison': recent_comparison,
+        'target_gap': target_gap,
+        'study_recommendation': study_recommendation,
+        'performance_grade': performance_grade,
+        'total_questions': total_questions,
     })
 
 @login_required
 @user_is_specially_approved
 def analytics_overview(request):
     """Enhanced aggregate analytics across ALL exams"""
-    results = (
+    results = list(
         ExamResult.objects
         .filter(user=request.user)
         .order_by('-date_taken')
@@ -533,6 +642,13 @@ def analytics_overview(request):
     moving_avg = calculate_moving_average(attempt_scores, window=min(3, len(attempt_scores)))
     weak_categories = identify_weak_categories(category_stats)
     strong_categories = identify_strong_categories(category_stats)
+    
+    # NEW: Enhanced statistics
+    recent_comparison = calculate_recent_vs_overall(attempt_scores)
+    target_gap = calculate_target_gap(avg_pct)
+    study_recommendation = generate_study_recommendation(weak_categories, avg_pct)
+    performance_grade = get_performance_grade(avg_pct)
+    total_questions = calculate_total_questions_answered(results)
 
     # Combined dataset
     labels_all = []
@@ -632,6 +748,12 @@ def analytics_overview(request):
         'attempt_dates': attempt_dates,
         'attempt_scores': attempt_scores,
         'moving_avg': moving_avg,
+        # NEW: Enhanced statistics
+        'recent_comparison': recent_comparison,
+        'target_gap': target_gap,
+        'study_recommendation': study_recommendation,
+        'performance_grade': performance_grade,
+        'total_questions': total_questions,
     })
 
 @login_required

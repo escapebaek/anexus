@@ -1,11 +1,152 @@
-/* Extracted from exam/templates/exam/exam_analytics.html */
+/* Dashboard Analytics CSS - Enhanced UI */
 
 :root {
   --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
   --gradient-danger: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
   --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --glass-bg: rgba(255, 255, 255, 0.25);
+  --glass-border: rgba(255, 255, 255, 0.18);
 }
+
+/* ============ Score Gauge (Circular Progress) ============ */
+.score-gauge-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.score-gauge {
+  position: relative;
+  width: 180px;
+  height: 180px;
+}
+
+.score-gauge svg {
+  transform: rotate(-90deg);
+}
+
+.score-gauge .gauge-bg {
+  fill: none;
+  stroke: #e9ecef;
+  stroke-width: 12;
+}
+
+.score-gauge .gauge-fill {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.5s ease-out;
+}
+
+.score-gauge .gauge-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.score-gauge .gauge-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.score-gauge .gauge-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.score-gauge .gauge-grade {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+/* ============ Dashboard Hero Section ============ */
+.dashboard-hero {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 400px;
+  height: 400px;
+  background: var(--gradient-primary);
+  opacity: 0.08;
+  border-radius: 50%;
+}
+
+.dashboard-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-stats {
+  flex: 1;
+  min-width: 200px;
+}
+
+.hero-title {
+  font-size: 1.1rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.hero-main-stat {
+  font-size: 3rem;
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+.hero-sub-stats {
+  display: flex;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.hero-sub-stat {
+  text-align: center;
+}
+
+.hero-sub-stat .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.hero-sub-stat .label {
+  font-size: 0.75rem;
+  color: #95a5a6;
+  text-transform: uppercase;
+}
+
+/* ============ Stat Card Enhanced ============ */
 .stat-card {
   background: white;
   border-radius: 16px;
@@ -17,10 +158,12 @@
   overflow: hidden;
   height: 100%;
 }
+
 .stat-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
+
 .stat-card::before {
   content: '';
   position: absolute;
@@ -30,9 +173,12 @@
   height: 4px;
   background: var(--gradient-primary);
 }
+
 .stat-card.success::before { background: var(--gradient-success); }
 .stat-card.danger::before { background: var(--gradient-danger); }
 .stat-card.info::before { background: var(--gradient-info); }
+.stat-card.warning::before { background: var(--gradient-warning); }
+
 .stat-value {
   font-size: 2.5rem;
   font-weight: 700;
@@ -42,21 +188,25 @@
   background-clip: text;
   margin: 0;
 }
+
 .stat-value.success-grad {
   background: var(--gradient-success);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
 .stat-value.info-grad {
   background: var(--gradient-info);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
 .stat-value.danger-grad {
   background: var(--gradient-danger);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
 .stat-label {
   font-size: 0.875rem;
   color: #6c757d;
@@ -65,6 +215,7 @@
   font-weight: 600;
   margin-bottom: 8px;
 }
+
 .stat-change {
   font-size: 0.875rem;
   font-weight: 600;
@@ -75,18 +226,304 @@
   gap: 4px;
   margin-top: 8px;
 }
+
 .stat-change.positive {
   background: #d4edda;
   color: #155724;
 }
+
 .stat-change.negative {
   background: #f8d7da;
   color: #721c24;
 }
+
 .stat-change.neutral {
   background: #e7f3ff;
   color: #004085;
 }
+
+/* ============ Study Recommendation Box ============ */
+.recommendation-box {
+  background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+  border: 1px solid #ffeeba;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.recommendation-box.success {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-color: #a5d6a7;
+}
+
+.recommendation-box.info {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-color: #90caf9;
+}
+
+.recommendation-box .rec-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.recommendation-box .rec-content h5 {
+  margin: 0 0 8px 0;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #2c3e50;
+}
+
+.recommendation-box .rec-content p {
+  margin: 0;
+  color: #5a6268;
+  line-height: 1.5;
+}
+
+.recommendation-box .rec-action {
+  margin-top: 12px;
+}
+
+/* ============ Strength/Weakness Panel ============ */
+.insights-panel {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  margin-bottom: 24px;
+}
+
+.insights-panel h5 {
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.insight-column h6 {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.insight-column.strengths h6 {
+  color: #155724;
+}
+
+.insight-column.weaknesses h6 {
+  color: #721c24;
+}
+
+.category-progress-item {
+  margin-bottom: 12px;
+}
+
+.category-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.category-progress-header .name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #2c3e50;
+}
+
+.category-progress-header .accuracy {
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.category-progress-bar {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.category-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease-out;
+}
+
+.category-progress-fill.excellent { background: var(--gradient-success); }
+.category-progress-fill.good { background: #3498db; }
+.category-progress-fill.fair { background: #f39c12; }
+.category-progress-fill.poor { background: var(--gradient-danger); }
+
+/* ============ Target Progress ============ */
+.target-progress-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  margin-bottom: 24px;
+}
+
+.target-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.target-header h5 {
+  margin: 0;
+  font-weight: 700;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.target-badge {
+  background: var(--gradient-info);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.target-badge.reached {
+  background: var(--gradient-success);
+}
+
+.target-progress-bar {
+  height: 24px;
+  background: #e9ecef;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.target-progress-fill {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: 12px;
+  transition: width 1.5s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+}
+
+.target-progress-text {
+  color: white;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.target-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #2c3e50;
+  z-index: 1;
+}
+
+.target-marker::after {
+  content: attr(data-label);
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #2c3e50;
+  white-space: nowrap;
+}
+
+/* ============ Recent Trend Card ============ */
+.trend-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.trend-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.trend-icon.up {
+  background: #d4edda;
+  color: #155724;
+}
+
+.trend-icon.down {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.trend-icon.stable {
+  background: #e7f3ff;
+  color: #004085;
+}
+
+.trend-content .trend-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #6c757d;
+  letter-spacing: 0.5px;
+}
+
+.trend-content .trend-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.trend-content .trend-change {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.trend-content .trend-change.positive { color: #155724; }
+.trend-content .trend-change.negative { color: #721c24; }
+
+/* ============ Chart Cards ============ */
 .chart-card {
   background: white;
   border-radius: 16px;
@@ -94,36 +531,45 @@
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   margin-bottom: 24px;
 }
+
 .chart-card h5 {
   font-weight: 700;
   color: #2c3e50;
   margin-bottom: 20px;
   font-size: 1.125rem;
 }
+
 .chart-container {
   position: relative;
   height: 350px;
 }
+
 .chart-container-tall {
   height: 450px;
 }
+
+/* ============ Section Headers ============ */
 .section-header {
   display: flex;
   align-items: center;
   gap: 12px;
   margin: 32px 0 20px;
 }
+
 .section-header h3 {
   margin: 0;
   font-weight: 700;
   color: #2c3e50;
 }
+
 .section-header i {
   font-size: 1.5rem;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+/* ============ Category Badges ============ */
 .category-badge {
   display: inline-block;
   padding: 6px 14px;
@@ -132,14 +578,18 @@
   font-weight: 600;
   margin: 4px;
 }
+
 .category-badge.strong {
   background: #d4edda;
   color: #155724;
 }
+
 .category-badge.weak {
   background: #f8d7da;
   color: #721c24;
 }
+
+/* ============ Performance Indicator ============ */
 .performance-indicator {
   display: flex;
   align-items: center;
@@ -149,6 +599,7 @@
   border-radius: 12px;
   margin-bottom: 24px;
 }
+
 .performance-icon {
   width: 60px;
   height: 60px;
@@ -160,17 +611,25 @@
   background: white;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
+
 .performance-text h3 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
 }
+
 .performance-text p {
   margin: 0;
   color: #6c757d;
   font-size: 0.875rem;
 }
+
+/* ============ Responsive ============ */
 @media (max-width: 768px) {
   .stat-value { font-size: 2rem; }
   .chart-container { height: 280px; }
+  .dashboard-hero-content { flex-direction: column; }
+  .score-gauge { width: 150px; height: 150px; }
+  .score-gauge .gauge-value { font-size: 2rem; }
+  .hero-main-stat { font-size: 2.5rem; }
 }

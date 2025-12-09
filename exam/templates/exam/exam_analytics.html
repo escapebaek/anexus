@@ -10,7 +10,7 @@
 <div class="container mt-5">
   <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
-      <h1 class="mb-1" style="font-weight: 800; color: #2c3e50;">Exam Analytics</h1>
+      <h1 class="mb-1" style="font-weight: 800; color: #2c3e50;">📊 Exam Analytics</h1>
       <p class="text-muted mb-0">{{ exam.title }}</p>
     </div>
     <div>
@@ -24,128 +24,203 @@
   </div>
 
   {% if has_data %}
-  <!-- Performance Overview -->
-  <div class="performance-indicator">
-    <div class="performance-icon">
-      {% if avg_pct >= 85 %}
-      <i class="fas fa-trophy" style="color: #f39c12;"></i>
-      {% elif avg_pct >= 70 %}
-      <i class="fas fa-chart-line" style="color: #667eea;"></i>
+  
+  <!-- Dashboard Hero Section with Score Gauge -->
+  <div class="dashboard-hero">
+    <div class="dashboard-hero-content">
+      <!-- Score Gauge -->
+      <div class="score-gauge-container">
+        <div class="score-gauge">
+          <svg viewBox="0 0 180 180">
+            <circle class="gauge-bg" cx="90" cy="90" r="75"></circle>
+            <circle class="gauge-fill" cx="90" cy="90" r="75"
+              style="stroke: {{ performance_grade.color }}; 
+                     stroke-dasharray: 471; 
+                     stroke-dashoffset: calc(471 - (471 * {{ avg_pct }}) / 100);">
+            </circle>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-value" style="color: {{ performance_grade.color }};">{{ avg_pct }}%</div>
+            <div class="gauge-grade" style="background: {{ performance_grade.color }}; color: white;">
+              {{ performance_grade.grade }} · {{ performance_grade.label_kr }}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Hero Stats -->
+      <div class="hero-stats">
+        <div class="hero-title">Overall Performance</div>
+        <div class="hero-sub-stats">
+          <div class="hero-sub-stat">
+            <div class="value">{{ attempts }}</div>
+            <div class="label">Attempts</div>
+          </div>
+          <div class="hero-sub-stat">
+            <div class="value">{{ best_pct }}%</div>
+            <div class="label">Best Score</div>
+          </div>
+          <div class="hero-sub-stat">
+            <div class="value">{{ total_questions }}</div>
+            <div class="label">Questions</div>
+          </div>
+          <div class="hero-sub-stat">
+            <div class="value">{{ labels|length }}</div>
+            <div class="label">Categories</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Target Progress -->
+  <div class="target-progress-card">
+    <div class="target-header">
+      <h5><i class="fas fa-bullseye text-primary"></i> Target Progress ({{ target_gap.target }}%)</h5>
+      {% if target_gap.reached %}
+      <span class="target-badge reached"><i class="fas fa-check"></i> 목표 달성!</span>
       {% else %}
-      <i class="fas fa-graduation-cap" style="color: #3498db;"></i>
+      <span class="target-badge">{{ target_gap.gap }}% 남음</span>
       {% endif %}
     </div>
-    <div class="performance-text">
-      <h3>
-        {% if avg_pct >= 85 %}
-        Excellent Performance!
-        {% elif avg_pct >= 70 %}
-        Good Progress
-        {% else %}
-        Keep Practicing
-        {% endif %}
-      </h3>
-      <p>
-        {% if improvement_rate > 0 %}
-        You're improving by {{ improvement_rate }}% - Keep up the great work!
-        {% elif improvement_rate < 0 %}
-        Recent scores are lower - Consider reviewing weak categories
-        {% else %}
-        Maintaining steady performance across attempts
-        {% endif %}
-      </p>
+    <div class="target-progress-bar">
+      <div class="target-progress-fill" style="width: {{ target_gap.progress_pct }}%;">
+        <span class="target-progress-text">{{ avg_pct }}%</span>
+      </div>
+      <div class="target-marker" style="left: calc({{ target_gap.target }}% - 1.5px);" data-label="{{ target_gap.target }}%"></div>
     </div>
   </div>
 
-  <!-- Key Stats -->
-  <div class="row g-4 mb-4">
-    <div class="col-md-3 col-sm-6">
-      <div class="stat-card">
-        <div class="stat-label">Total Attempts</div>
-        <h2 class="stat-value">{{ attempts }}</h2>
-        <span class="stat-change neutral">
-          <i class="fas fa-layer-group"></i> Exam attempts
-        </span>
+  <!-- Recent Trend Cards Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="trend-card">
+        <div class="trend-icon {% if improvement_rate > 0 %}up{% elif improvement_rate < 0 %}down{% else %}stable{% endif %}">
+          {% if improvement_rate > 0 %}
+          <i class="fas fa-arrow-up"></i>
+          {% elif improvement_rate < 0 %}
+          <i class="fas fa-arrow-down"></i>
+          {% else %}
+          <i class="fas fa-minus"></i>
+          {% endif %}
+        </div>
+        <div class="trend-content">
+          <div class="trend-label">Improvement Rate</div>
+          <div class="trend-value">
+            {% if improvement_rate > 0 %}+{% endif %}{{ improvement_rate }}%
+          </div>
+          <div class="trend-change {% if improvement_rate > 0 %}positive{% elif improvement_rate < 0 %}negative{% endif %}">
+            {% if improvement_rate > 0 %}성적 향상 중{% elif improvement_rate < 0 %}하락 추세{% else %}안정적{% endif %}
+          </div>
+        </div>
       </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-      <div class="stat-card success">
-        <div class="stat-label">Average Score</div>
-        <h2 class="stat-value success-grad">{{ avg_pct }}%</h2>
-        {% if improvement_rate > 0 %}
-        <span class="stat-change positive">
-          <i class="fas fa-arrow-up"></i> +{{ improvement_rate }}% improvement
-        </span>
-        {% elif improvement_rate < 0 %}
-        <span class="stat-change negative">
-          <i class="fas fa-arrow-down"></i> {{ improvement_rate }}% change
-        </span>
-        {% else %}
-        <span class="stat-change neutral">
-          <i class="fas fa-minus"></i> Stable
-        </span>
-        {% endif %}
+    <div class="col-md-4">
+      <div class="trend-card">
+        <div class="trend-icon {% if recent_comparison.diff > 0 %}up{% elif recent_comparison.diff < 0 %}down{% else %}stable{% endif %}">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="trend-content">
+          <div class="trend-label">Recent 3 Avg</div>
+          <div class="trend-value">{{ recent_comparison.recent_avg }}%</div>
+          <div class="trend-change {% if recent_comparison.diff > 0 %}positive{% elif recent_comparison.diff < 0 %}negative{% endif %}">
+            vs 전체 평균 {% if recent_comparison.diff > 0 %}+{% endif %}{{ recent_comparison.diff }}%
+          </div>
+        </div>
       </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-      <div class="stat-card info">
-        <div class="stat-label">Best Score</div>
-        <h2 class="stat-value info-grad">{{ best_pct }}%</h2>
-        <span class="stat-change positive">
-          <i class="fas fa-trophy"></i> Personal best
-        </span>
-      </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-      <div class="stat-card danger">
-        <div class="stat-label">Categories</div>
-        <h2 class="stat-value danger-grad">{{ labels|length }}</h2>
-        <span class="stat-change neutral">
-          <i class="fas fa-folder"></i> Total categories
-        </span>
+    <div class="col-md-4">
+      <div class="trend-card">
+        <div class="trend-icon stable">
+          <i class="fas fa-trophy"></i>
+        </div>
+        <div class="trend-content">
+          <div class="trend-label">Personal Best</div>
+          <div class="trend-value">{{ best_pct }}%</div>
+          <div class="trend-change">최고 기록</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Strengths & Weaknesses -->
+  <!-- Study Recommendation -->
+  <div class="recommendation-box {{ study_recommendation.type }}">
+    <div class="rec-icon">
+      {% if study_recommendation.icon == 'trophy' %}
+      🏆
+      {% elif study_recommendation.icon == 'star' %}
+      ⭐
+      {% elif study_recommendation.icon == 'lightbulb' %}
+      💡
+      {% else %}
+      📚
+      {% endif %}
+    </div>
+    <div class="rec-content">
+      <h5><i class="fas fa-graduation-cap"></i> 학습 추천</h5>
+      <p>{{ study_recommendation.message }}</p>
+      {% if study_recommendation.priority_categories %}
+      <div class="rec-action" style="display: flex; flex-wrap: wrap; gap: 8px;">
+        {% for cat in study_recommendation.priority_categories %}
+        <a href="{% url 'category_questions' cat.name %}" class="btn btn-sm {% if forloop.first %}btn-warning{% else %}btn-outline-warning{% endif %}">
+          <i class="fas fa-play"></i> {{ cat.name }} ({{ cat.accuracy }}%)
+        </a>
+        {% endfor %}
+      </div>
+      {% elif study_recommendation.priority_category %}
+      <div class="rec-action">
+        <a href="{% url 'category_questions' study_recommendation.priority_category %}" class="btn btn-sm btn-warning">
+          <i class="fas fa-play"></i> {{ study_recommendation.priority_category }} 문제 풀기
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Strengths & Weaknesses Panel -->
   {% if strong_categories or weak_categories %}
-  <div class="chart-card mb-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <h5 class="mb-0">Performance Insights</h5>
-      <div>
+  <div class="insights-panel">
+    <h5><i class="fas fa-lightbulb text-warning"></i> Performance Insights</h5>
+    <div class="insights-grid">
+      <!-- Strengths Column -->
+      <div class="insight-column strengths">
+        <h6><i class="fas fa-check-circle"></i> 강점 카테고리 (≥85%)</h6>
         {% if strong_categories %}
-        <span class="category-badge strong">
-          <i class="fas fa-star"></i> {{ strong_categories|length }} Strong
-        </span>
-        {% endif %}
-        {% if weak_categories %}
-        <span class="category-badge weak">
-          <i class="fas fa-exclamation-triangle"></i> {{ weak_categories|length }} Needs Work
-        </span>
-        {% endif %}
-      </div>
-    </div>
-    <div class="row mt-3">
-      {% if strong_categories %}
-      <div class="col-md-6">
-        <h6 class="text-success"><i class="fas fa-check-circle"></i> Strong Categories (≥85%)</h6>
-        <div class="mt-2">
           {% for cat in strong_categories %}
-          <span class="category-badge strong">{{ cat.name }}: {{ cat.accuracy }}%</span>
+          <div class="category-progress-item">
+            <div class="category-progress-header">
+              <span class="name">{{ cat.name }}</span>
+              <span class="accuracy" style="color: #2ecc71;">{{ cat.accuracy }}%</span>
+            </div>
+            <div class="category-progress-bar">
+              <div class="category-progress-fill excellent" style="width: {{ cat.accuracy }}%;"></div>
+            </div>
+          </div>
           {% endfor %}
-        </div>
+        {% else %}
+          <p class="text-muted small">85% 이상인 카테고리가 없습니다.</p>
+        {% endif %}
       </div>
-      {% endif %}
-      {% if weak_categories %}
-      <div class="col-md-6">
-        <h6 class="text-danger"><i class="fas fa-flag"></i> Focus Areas (<70%)</h6>
-        <div class="mt-2">
+      
+      <!-- Weaknesses Column -->
+      <div class="insight-column weaknesses">
+        <h6><i class="fas fa-exclamation-triangle"></i> 보완 필요 (<70%)</h6>
+        {% if weak_categories %}
           {% for cat in weak_categories %}
-          <span class="category-badge weak">{{ cat.name }}: {{ cat.accuracy }}%</span>
+          <div class="category-progress-item">
+            <div class="category-progress-header">
+              <span class="name">{{ cat.name }}</span>
+              <span class="accuracy" style="color: #e74c3c;">{{ cat.accuracy }}%</span>
+            </div>
+            <div class="category-progress-bar">
+              <div class="category-progress-fill poor" style="width: {{ cat.accuracy }}%;"></div>
+            </div>
+          </div>
           {% endfor %}
-        </div>
+        {% else %}
+          <p class="text-muted small">70% 미만인 카테고리가 없습니다! 🎉</p>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </div>
   {% endif %}
@@ -218,8 +293,9 @@
 
 {% if has_data %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 <script>
-  // Progress over time
+  // Progress over time with target line
   const progressData = {
     labels: {{ attempt_dates|safe }},
     datasets: [{
@@ -260,6 +336,26 @@
           padding: 12,
           titleFont: { size: 14 },
           bodyFont: { size: 13 }
+        },
+        annotation: {
+          annotations: {
+            targetLine: {
+              type: 'line',
+              yMin: 85,
+              yMax: 85,
+              borderColor: '#e74c3c',
+              borderWidth: 2,
+              borderDash: [10, 5],
+              label: {
+                display: true,
+                content: 'Target 85%',
+                position: 'end',
+                backgroundColor: '#e74c3c',
+                color: 'white',
+                font: { size: 11, weight: 'bold' }
+              }
+            }
+          }
         }
       },
       scales: {
