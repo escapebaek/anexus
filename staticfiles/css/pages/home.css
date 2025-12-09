@@ -375,3 +375,62 @@
     border: 2px solid rgba(255, 255, 255, 0.8);
   }
 }
+
+/* Feature Cards - Compact styling for landing page */
+.feature-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.25rem;
+  height: 100%;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+}
+
+.feature-icon {
+  width: 50px;
+  height: 50px;
+  background: var(--primary-gradient);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+  font-size: 1.25rem;
+  color: white;
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+}
+
+.feature-icon i {
+  transform: rotate(-45deg);
+}
+
+.feature-card:hover .feature-icon {
+  transform: rotate(90deg);
+}
+
+.feature-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2b5876;
+  margin-bottom: 0.4rem;
+  line-height: 1.3;
+}
+
+.feature-text {
+  color: #6c757d;
+  margin-bottom: 0.75rem;
+  flex-grow: 1;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}

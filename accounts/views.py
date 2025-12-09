@@ -27,6 +27,9 @@ def register(request):
             user = form.save()
             login(request, user)
             return redirect('home')
+        else:
+            # Form has errors - they will be displayed in template
+            print(f"Registration form errors: {form.errors}")
     else:
         form = CustomUserCreationForm()
     return render(request, 'accounts/register.html', {'form': form})

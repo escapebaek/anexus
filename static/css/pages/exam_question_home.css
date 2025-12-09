@@ -82,8 +82,8 @@
 
   .feature-card {
     background: white;
-    border-radius: 20px;
-    padding: 2.5rem;
+    border-radius: 14px;
+    padding: 1.25rem;
     height: 100%;
     transition: all 0.3s ease;
     border: 1px solid rgba(0, 0, 0, 0.08);
@@ -94,20 +94,20 @@
   }
 
   .feature-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
   }
 
   .feature-icon {
-    width: 80px;
-    height: 80px;
+    width: 48px;
+    height: 48px;
     background: linear-gradient(135deg, #2b5876, #4e4376);
-    border-radius: 20px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 1.5rem;
-    font-size: 2rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.25rem;
     color: white;
     transform: rotate(45deg);
     transition: all 0.3s ease;
@@ -122,32 +122,36 @@
   }
 
   .feature-title {
-    font-size: 1.5rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: #2b5876;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
   }
 
   .feature-text {
     color: #6c757d;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
     flex-grow: 1;
+    font-size: 0.8rem;
+    line-height: 1.4;
   }
 
   .btn-feature {
     background: linear-gradient(135deg, #2b5876, #4e4376);
     color: white;
-    padding: 0.75rem 1.5rem;
+    padding: 0.5rem 1rem;
     border-radius: 50px;
     font-weight: 500;
+    font-size: 0.8rem;
     transition: all 0.3s ease;
     border: none;
   }
 
   .btn-feature:hover {
-    transform: translateX(5px);
+    transform: translateX(3px);
     color: white;
-    box-shadow: 0 5px 15px rgba(43, 88, 118, 0.3);
+    box-shadow: 0 4px 12px rgba(43, 88, 118, 0.3);
   }
 
   .btn-feature.disabled {
@@ -155,6 +159,37 @@
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+  }
+
+  /* Responsive adjustments for smaller screens */
+  @media (max-width: 1200px) {
+    .feature-card {
+      padding: 1rem;
+    }
+    .feature-title {
+      font-size: 0.9rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .feature-card {
+      padding: 1rem;
+    }
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      font-size: 1rem;
+    }
+    .feature-title {
+      font-size: 0.85rem;
+    }
+    .feature-text {
+      font-size: 0.75rem;
+    }
+    .btn-feature {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.75rem;
+    }
   }
 
   /* Animations */

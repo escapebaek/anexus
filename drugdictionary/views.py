@@ -4,7 +4,9 @@ import requests
 from django.shortcuts import render
 from django.conf import settings
 from django.http import JsonResponse
+from accounts.decorators import user_is_approved
 
+@user_is_approved
 def drug_info(request):
     query = request.GET.get('q', '')
     api_key = "LoEIW4vqYgLL9UgbrVwVejEqcA9ubglvfbrTcekh"
@@ -67,6 +69,7 @@ def drug_info(request):
     
     return render(request, 'drugdictionary/drug_info.html', context)
 
+@user_is_approved
 def get_section_content(request):
     """AJAX endpoint to get section content"""
     drug_id = request.GET.get('drug_id')

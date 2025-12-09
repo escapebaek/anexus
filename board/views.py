@@ -6,7 +6,10 @@ from django.contrib import messages
 from .models import Board, Comment
 from .forms import BoardForm, CommentForm
 from django.core.paginator import Paginator
+from accounts.decorators import user_is_specially_approved
 
+@login_required
+@user_is_specially_approved
 def board_index(request):
     # 공지사항과 일반 글을 분리해서 가져오기
     notices = Board.objects.filter(is_notice=True).order_by('-id')
@@ -24,6 +27,7 @@ def board_index(request):
     return render(request, 'board/board_index.html', context)
 
 @login_required
+@user_is_specially_approved
 def board_detail(request, pk):
     board = get_object_or_404(Board, pk=pk)
     comments = board.comments.all()
@@ -51,6 +55,7 @@ def board_detail(request, pk):
     return render(request, 'board/board_detail.html', context)
 
 @login_required
+@user_is_specially_approved
 def comment_edit(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     if request.user != comment.author and not request.user.is_superuser:
@@ -67,6 +72,7 @@ def comment_edit(request, comment_id):
     return render(request, 'board/comment_edit.html', {'form': form})
 
 @login_required
+@user_is_specially_approved
 def comment_delete(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     if request.user == comment.author or request.user.is_superuser:
@@ -74,6 +80,7 @@ def comment_delete(request, comment_id):
     return redirect('board_detail', pk=comment.board.pk)
 
 @login_required
+@user_is_specially_approved
 def board_edit(request, pk):
     board = get_object_or_404(Board, pk=pk)
     
@@ -97,6 +104,7 @@ def board_edit(request, pk):
     return render(request, 'board/board_form.html', {'form': form})
 
 @login_required
+@user_is_specially_approved
 def board_delete(request, pk):
     board = get_object_or_404(Board, pk=pk)
     
@@ -113,6 +121,7 @@ def board_delete(request, pk):
     return render(request, 'board/board_confirm_delete.html', {'board': board})
 
 @login_required
+@user_is_specially_approved
 def board_create(request):
     if request.method == "POST":
         form = BoardForm(request.POST, user=request.user)

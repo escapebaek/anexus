@@ -19,6 +19,14 @@
             <form method="POST">
               {% csrf_token %}
               
+              {% if form.non_field_errors %}
+              <div class="alert alert-danger mb-4">
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+              {% endif %}
+              
               <div class="form-group mb-4">
                 <input type="text" name="{{ form.username.name }}" class="form-control" placeholder="Username" required>
                 {% if form.username.help_text %}
@@ -66,6 +74,13 @@
 
               <div class="form-group mb-4">
                 <input type="password" name="{{ form.password1.name }}" class="form-control" placeholder="Password" required>
+                {% if form.password1.errors %}
+                <div class="error-message">
+                  {% for error in form.password1.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </div>
+                {% endif %}
                 <div class="password-requirements">
                   <h6>Password Requirements:</h6>
                   <ul>
@@ -79,6 +94,13 @@
 
               <div class="form-group mb-5">
                 <input type="password" name="{{ form.password2.name }}" class="form-control" placeholder="Confirm password" required>
+                {% if form.password2.errors %}
+                <div class="error-message">
+                  {% for error in form.password2.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </div>
+                {% endif %}
               </div>
 
               <button type="submit" class="btn btn-register w-100">

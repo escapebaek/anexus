@@ -3,8 +3,10 @@ from .models import AnesthesiaRecord, FreeTextNote
 from .forms import AnesthesiaRecordForm, FreeTextNoteForm
 from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
+from accounts.decorators import user_is_approved
 
 @login_required
+@user_is_approved
 def anesthesia_record_view(request):
     # 현재 로그인한 사용자에 해당하는 Free Text Note 가져오기
     free_text_note = FreeTextNote.objects.filter(user=request.user).first()
@@ -47,12 +49,14 @@ def anesthesia_record_view(request):
     })
 
 @login_required
+@user_is_approved
 def delete_record(request, record_id):
     record = get_object_or_404(AnesthesiaRecord, pk=record_id, user=request.user)
     record.delete()
     return redirect('anesthesia_record')
 
 @login_required
+@user_is_approved
 def reset_all(request):
     if request.method == "POST":
         AnesthesiaRecord.objects.filter(user=request.user).delete()

@@ -5,15 +5,15 @@ from .forms import ExcelUploadForm
 from collections import defaultdict
 import pandas as pd
 from .models import SurgerySchedule, PatientMemo
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 import json
 import logging
-from collections import defaultdict
+from accounts.decorators import user_is_specially_approved
 
 @login_required
+@user_is_specially_approved
 def schedule_dashboard(request):
     form = ExcelUploadForm()
     schedules = SurgerySchedule.objects.filter(user=request.user).order_by("date", "room", "time_slot")
@@ -130,6 +130,8 @@ def update_schedules_from_dataframe(df, user):
     
 logger = logging.getLogger(__name__)
 
+@login_required
+@user_is_specially_approved
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def handle_memo(request, schedule_id):

@@ -720,12 +720,12 @@
         left: 24px;
         right: auto;
         z-index: 1050;
-        background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
         backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 20px;
+        border: 1px solid rgba(43, 88, 118, 0.15);
+        border-radius: 16px;
         padding: 0.75rem 1rem;
-        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 10px 30px rgba(43, 88, 118, 0.15);
         display: inline-flex;
         align-items: center;
         gap: 0.75rem;
@@ -736,67 +736,66 @@
       `;
       fixedTimer.innerHTML = `
         <div id="fixed-timer-display" style="
-          font-size: 1.5rem;
+          font-size: 1.4rem;
           font-weight: 700;
           font-variant-numeric: tabular-nums;
-          color: #fff;
-          text-shadow: 0 2px 8px rgba(145, 234, 228, 0.5);
-          letter-spacing: 0.08em;
+          color: #2b5876;
+          letter-spacing: 0.05em;
           margin: 0;
           padding: 0;
           white-space: nowrap;
         ">00:00</div>
         <button id="fixed-pause-btn" onclick="pauseTimer()" title="일시 정지" style="
-          width: 36px;
-          height: 36px;
-          min-width: 36px;
+          width: 34px;
+          height: 34px;
+          min-width: 34px;
           border-radius: 10px;
           border: none;
-          background: rgba(255, 193, 7, 0.2);
-          color: #ffc107;
+          background: rgba(245, 158, 11, 0.12);
+          color: #d97706;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
           flex-shrink: 0;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
         ">
           <i class="fas fa-pause"></i>
         </button>
         <button id="fixed-resume-btn" onclick="resumeTimer()" title="재시작" style="
-          width: 36px;
-          height: 36px;
-          min-width: 36px;
+          width: 34px;
+          height: 34px;
+          min-width: 34px;
           border-radius: 10px;
           border: none;
-          background: rgba(76, 175, 80, 0.2);
-          color: #4caf50;
+          background: rgba(40, 168, 125, 0.12);
+          color: #28a87d;
           cursor: pointer;
           display: none;
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
           flex-shrink: 0;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
         ">
           <i class="fas fa-play"></i>
         </button>
         <button class="fixed-timer-end-btn" onclick="endExamWithConfirmation()" title="시험 종료" style="
-          width: 36px;
-          height: 36px;
-          min-width: 36px;
+          width: 34px;
+          height: 34px;
+          min-width: 34px;
           border-radius: 10px;
           border: none;
-          background: rgba(255, 99, 132, 0.2);
-          color: #ff6384;
+          background: rgba(220, 79, 90, 0.1);
+          color: #dc4f5a;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
           flex-shrink: 0;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
         ">
           <i class="fas fa-power-off"></i>
         </button>
@@ -826,7 +825,8 @@
 
       const currentFixedTimer = document.querySelector(".fixed-timer");
       if (timeRemaining <= 300 && currentFixedTimer) {
-        currentFixedTimer.style.background = "linear-gradient(135deg, #ff6b6b, #ff4757)";
+        currentFixedTimer.style.background = "linear-gradient(135deg, rgba(220, 79, 90, 0.15), rgba(255, 255, 255, 0.95))";
+        currentFixedTimer.style.borderColor = "rgba(220, 79, 90, 0.3)";
       }
     }, 1000);
   }

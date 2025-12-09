@@ -5,24 +5,13 @@
 {% endblock %}
 {% block page_content %}
 
-<!-- Header Section -->
-<div
-  class="header-section position-relative d-flex flex-column justify-content-center align-items-center"
->
-  <div class="header-overlay"></div>
-  <div class="header-content text-center">
-    <h1 class="header-title animate-fade-in">{{ exam.title }}</h1>
-    <p class="header-subtitle animate-fade-in-delayed">
-      {{ exam.description }}
-    </p>
-  </div>
-  <div class="header-wave">
-    <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
-      <path
-        fill="currentColor"
-        d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,208C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-      ></path>
-    </svg>
+<!-- Compact Exam Title Bar -->
+<div class="exam-title-bar">
+  <div class="container">
+    <h1 class="exam-title-text">
+      <i class="fas fa-file-alt"></i>
+      {{ exam.title }}
+    </h1>
   </div>
 </div>
 
@@ -101,9 +90,10 @@
           </p>
         </div>
       </div>
+    </div>
 
-    <!-- Start Button -->
-    <div class="text-center mt-5 animate-fade-in-delayed">
+    <!-- Start Button - Centered -->
+    <div class="start-button-container">
       <a href="{% url 'question_list' exam.id %}" class="btn btn-start">
         Start Exam
         <i class="fas fa-arrow-right ml-2"></i>
