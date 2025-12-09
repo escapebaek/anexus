@@ -23,12 +23,12 @@
           {% if user.is_authenticated and user.is_approved %}
           <a href="{{ section.url }}" class="btn btn-feature">
             Access Now
-            <i class="fas fa-chevron-right ml-2"></i>
+            <i class="fas fa-chevron-right ms-2"></i>
           </a>
           {% else %}
           <button class="btn btn-feature disabled" disabled>
             Access Restricted
-            <i class="fas fa-lock ml-2"></i>
+            <i class="fas fa-lock ms-2"></i>
           </button>
           {% endif %}
         </div>

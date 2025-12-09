@@ -434,3 +434,20 @@
   font-size: 0.85rem;
   line-height: 1.4;
 }
+
+/* Custom responsive grid for more cards per row */
+/* XXL screens (1400px+): 6 cards per row */
+@media (min-width: 1400px) {
+  .col-xxl-custom {
+    flex: 0 0 auto;
+    width: 16.666667%; /* 100% / 6 = 16.667% */
+  }
+}
+
+/* XL screens (1200px - 1399px): 5 cards per row */
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+  .col-xl-custom {
+    flex: 0 0 auto;
+    width: 20%; /* 100% / 5 = 20% */
+  }
+}

@@ -2602,12 +2602,24 @@ input[type="text"]:focus {
 .board-container {
   background: var(--bg-light);
   min-height: calc(100vh - var(--navbar-height));
-  padding: 3rem 0;
+  padding: 2rem 1rem;
 }
 .board-wrapper {
-  max-width: 900px;
+  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 2rem;
+}
+@media (max-width: 1200px) {
+  .board-wrapper {
+    max-width: 100%;
+    padding: 0 1.5rem;
+  }
+}
+@media (max-width: 768px) {
+  .board-wrapper {
+    padding: 0 1rem;
+  }
 }
 .post-container {
   background: var(--white);
@@ -2825,7 +2837,7 @@ input[type="text"]:focus {
     var(--primary-alpha),
     rgba(78, 67, 118, 0.03)
   );
-  padding: 0.8rem 1.5rem;
+  padding: 0.8rem 2rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   color: var(--text-primary);
   font-weight: 600;
@@ -2840,7 +2852,7 @@ input[type="text"]:focus {
 .post-item {
   display: flex;
   align-items: center;
-  padding: 1.2rem 1.5rem;
+  padding: 1rem 2rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   transition: background-color 0.2s ease;
 }
@@ -2855,7 +2867,8 @@ input[type="text"]:focus {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 .post-id {
-  flex-basis: 80px;
+  flex-basis: 100px;
+  flex-shrink: 0;
   text-align: center;
   color: var(--text-muted);
   font-size: 0.9rem;
@@ -2882,13 +2895,15 @@ input[type="text"]:focus {
   color: var(--primary-dark);
 }
 .post-author {
-  flex-basis: 120px;
+  flex-basis: 150px;
+  flex-shrink: 0;
   text-align: center;
   font-size: 0.9rem;
   color: var(--text-muted);
 }
 .post-date {
-  flex-basis: 120px;
+  flex-basis: 140px;
+  flex-shrink: 0;
   text-align: center;
   font-size: 0.9rem;
   color: var(--text-muted);

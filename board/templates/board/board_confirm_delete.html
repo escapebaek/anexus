@@ -15,10 +15,10 @@
       <form method="post" class="d-flex gap-3">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">
-          <i class="fas fa-trash-alt mr-2"></i>삭제
+          <i class="fas fa-trash-alt me-2"></i>삭제
         </button>
         <a href="{% url 'board_detail' board.pk %}" class="btn btn-secondary">
-          <i class="fas fa-times mr-2"></i>취소
+          <i class="fas fa-times me-2"></i>취소
         </a>
       </form>
     </div>
