@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from coag.models import Coag
 from accounts.decorators import user_is_approved
 
@@ -18,8 +18,10 @@ def coag_index(request):
 
 @user_is_approved
 def coag_detail(request, drugName):
-    coag = Coag.objects.get(drugName=drugName)
+    # get_object_or_404 사용으로 객체 미발견 시 404 반환 (500 에러 방지)
+    coag = get_object_or_404(Coag, drugName=drugName)
     context = {
         'coag': coag,
     }
     return render(request, 'coag/coag_detail.html', context)
+

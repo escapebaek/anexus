@@ -179,3 +179,43 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # 로그인 페이지 설정
 LOGIN_URL = '/login/'
+
+############################################################################
+# Security Settings (프로덕션 보안 설정)
+############################################################################
+
+# XSS 방지 - 브라우저의 XSS 필터 활성화
+SECURE_BROWSER_XSS_FILTER = True
+
+# Content-Type 스니핑 방지
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Clickjacking 방지 - iframe 임베딩 차단
+X_FRAME_OPTIONS = 'DENY'
+
+# HTTPS 관련 설정
+# 주의: Vercel은 자체적으로 HTTPS를 처리하므로 SECURE_SSL_REDIRECT를 True로 설정하면
+# 무한 리디렉션 루프가 발생할 수 있습니다. Vercel에서는 False로 유지합니다.
+SECURE_SSL_REDIRECT = False
+
+# 프록시 뒤에서 HTTPS 감지 (Vercel/로드밸런서 환경용)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# HTTPS에서만 세션 쿠키 전송 (프로덕션에서 보안 강화)
+SESSION_COOKIE_SECURE = True
+
+# HTTPS에서만 CSRF 쿠키 전송
+CSRF_COOKIE_SECURE = True
+
+# HSTS (HTTP Strict Transport Security) - 브라우저가 HTTPS만 사용하도록 강제
+# Vercel은 자체 HSTS를 설정하므로 Django에서는 짧은 시간으로 설정
+SECURE_HSTS_SECONDS = 3600  # 1시간 (Vercel이 이미 HSTS 처리)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = False  # Vercel 환경에서는 비활성화 권장
+
+# CSRF 신뢰 도메인 설정 (Vercel 배포용)
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.vercel.app',
+    'https://www.anexus.cloud',
+    'https://anexus.cloud',
+]

@@ -69,7 +69,12 @@ def question_detail_partial(request, question_id):
 @user_is_specially_approved
 def save_exam_results(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
+        # JSON 파싱 예외 처리 추가 - 잘못된 JSON 요청 시 400 Bad Request 반환
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format'}, status=400)
+        
         exam_id = data.get('exam_id', None)
         category_name = data.get('category_name', None)
         num_correct = data.get('num_correct', 0)
