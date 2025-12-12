@@ -8,9 +8,11 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ['title', 'date_created']
+    list_display = ['title', 'display_order', 'date_created']
+    list_editable = ['display_order']  # 목록에서 바로 순서 편집 가능
     search_fields = ['title']
     list_filter = ['date_created']
+    ordering = ['display_order', 'date_created']
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):

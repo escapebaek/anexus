@@ -21,7 +21,7 @@ def exam_landing_page(request):
 @login_required
 @user_is_specially_approved
 def exam_list(request):
-    exams = Exam.objects.all()
+    exams = Exam.objects.all().order_by('display_order', 'date_created')
     return render(request, 'exam/exam_list.html', {'exams': exams})
 
 @login_required
