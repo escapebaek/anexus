@@ -184,9 +184,10 @@
                 >
                   <iframe
                     id="youtube_{{ question.id }}"
-                    src="https://www.youtube.com/embed/{{ question.get_youtube_embed_id }}?enablejsapi=1&rel=0"
+                    src="https://www.youtube.com/embed/{{ question.get_youtube_embed_id }}?enablejsapi=1&rel=0&origin={{ request.scheme }}://{{ request.get_host }}"
                     frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerpolicy="strict-origin-when-cross-origin"
                     allowfullscreen
                     style="
                       position: absolute;
@@ -403,9 +404,10 @@
                 >
                   <iframe
                     id="comment_youtube_{{ question.id }}"
-                    src="https://www.youtube.com/embed/{{ question.get_comment_youtube_embed_id }}?enablejsapi=1&rel=0"
+                    src="https://www.youtube.com/embed/{{ question.get_comment_youtube_embed_id }}?enablejsapi=1&rel=0&origin={{ request.scheme }}://{{ request.get_host }}"
                     frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerpolicy="strict-origin-when-cross-origin"
                     allowfullscreen
                     style="
                       position: absolute;

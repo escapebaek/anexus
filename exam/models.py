@@ -61,13 +61,26 @@ class Question(models.Model):
         if not self.youtube_url:
             return None
         
+        url = self.youtube_url.strip()
+        
         patterns = [
-            r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
-            r'youtube\.com\/watch\?.*v=([^&\n?#]+)',
+            # 표준 watch URL: youtube.com/watch?v=VIDEO_ID (v가 처음에 오거나 중간에 오는 경우 모두 처리)
+            r'(?:https?://)?(?:www\.)?youtube\.com/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})',
+            r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
+            # 짧은 URL: youtu.be/VIDEO_ID
+            r'(?:https?://)?(?:www\.)?youtu\.be/([a-zA-Z0-9_-]{11})',
+            # 임베드 URL: youtube.com/embed/VIDEO_ID
+            r'(?:https?://)?(?:www\.)?youtube\.com/embed/([a-zA-Z0-9_-]{11})',
+            # Shorts URL: youtube.com/shorts/VIDEO_ID
+            r'(?:https?://)?(?:www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
+            # youtube-nocookie.com 임베드
+            r'(?:https?://)?(?:www\.)?youtube-nocookie\.com/embed/([a-zA-Z0-9_-]{11})',
+            # v/ 형식: youtube.com/v/VIDEO_ID
+            r'(?:https?://)?(?:www\.)?youtube\.com/v/([a-zA-Z0-9_-]{11})',
         ]
         
         for pattern in patterns:
-            match = re.search(pattern, self.youtube_url)
+            match = re.search(pattern, url)
             if match:
                 return match.group(1)
         return None
@@ -77,13 +90,26 @@ class Question(models.Model):
         if not self.comment_youtube_url:
             return None
         
+        url = self.comment_youtube_url.strip()
+        
         patterns = [
-            r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
-            r'youtube\.com\/watch\?.*v=([^&\n?#]+)',
+            # 표준 watch URL: youtube.com/watch?v=VIDEO_ID (v가 처음에 오거나 중간에 오는 경우 모두 처리)
+            r'(?:https?://)?(?:www\.)?youtube\.com/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})',
+            r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
+            # 짧은 URL: youtu.be/VIDEO_ID
+            r'(?:https?://)?(?:www\.)?youtu\.be/([a-zA-Z0-9_-]{11})',
+            # 임베드 URL: youtube.com/embed/VIDEO_ID
+            r'(?:https?://)?(?:www\.)?youtube\.com/embed/([a-zA-Z0-9_-]{11})',
+            # Shorts URL: youtube.com/shorts/VIDEO_ID
+            r'(?:https?://)?(?:www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
+            # youtube-nocookie.com 임베드
+            r'(?:https?://)?(?:www\.)?youtube-nocookie\.com/embed/([a-zA-Z0-9_-]{11})',
+            # v/ 형식: youtube.com/v/VIDEO_ID
+            r'(?:https?://)?(?:www\.)?youtube\.com/v/([a-zA-Z0-9_-]{11})',
         ]
         
         for pattern in patterns:
-            match = re.search(pattern, self.comment_youtube_url)
+            match = re.search(pattern, url)
             if match:
                 return match.group(1)
         return None
