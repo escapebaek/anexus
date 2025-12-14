@@ -31,12 +31,12 @@
 
   <!-- Performance Overview -->
   <div class="performance-indicator">
-    <div class="score-circle" style="background: {% if pct_total >= 85 %}linear-gradient(135deg, #11998e 0%, #38ef7d 100%){% elif pct_total >= 70 %}linear-gradient(135deg, #4facfe 0%, #00f2fe 100%){% elif pct_total >= 60 %}linear-gradient(135deg, #f39c12 0%, #f7b733 100%){% else %}linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%){% endif %};">
+    <div class="score-circle" style="background: {% if pct_total >= 60 %}linear-gradient(135deg, #11998e 0%, #38ef7d 100%){% elif pct_total >= 50 %}linear-gradient(135deg, #4facfe 0%, #00f2fe 100%){% elif pct_total >= 40 %}linear-gradient(135deg, #f39c12 0%, #f7b733 100%){% else %}linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%){% endif %};">
       {{ pct_total }}%
     </div>
     <div class="performance-text flex-grow-1">
       <h3>
-        {% if pct_total >= 85 %}
+        {% if pct_total >= 60 %}
         Excellent Performance!
         {% elif pct_total >= 70 %}
         Good Result
@@ -114,7 +114,7 @@
     <div class="row mt-3">
       {% if strong_categories %}
       <div class="col-md-6">
-        <h6 class="text-success"><i class="fas fa-check-circle"></i> Strong Performance (≥85%)</h6>
+        <h6 class="text-success"><i class="fas fa-check-circle"></i> Strong Performance (≥60%)</h6>
         <div class="mt-2">
           {% for cat in strong_categories %}
           <span class="category-badge strong">{{ cat.name }}: {{ cat.accuracy }}%</span>
@@ -237,7 +237,7 @@
         label: 'Accuracy %',
         data: accuracyPct,
         backgroundColor: accuracyPct.map(v => 
-          v >= 85 ? '#2ecc71' : 
+          v >= 60 ? '#2ecc71' : 
           v >= 70 ? '#3498db' : 
           v >= 60 ? '#f39c12' : 
           '#e74c3c'

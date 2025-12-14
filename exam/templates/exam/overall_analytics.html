@@ -194,7 +194,7 @@
     <div class="insights-grid">
       <!-- Strengths Column -->
       <div class="insight-column strengths">
-        <h6><i class="fas fa-check-circle"></i> 강점 카테고리 (≥85%)</h6>
+        <h6><i class="fas fa-check-circle"></i> 강점 카테고리 (≥60%)</h6>
         {% if strong_categories %}
           {% for cat in strong_categories %}
           <div class="category-progress-item">
@@ -208,7 +208,7 @@
           </div>
           {% endfor %}
         {% else %}
-          <p class="text-muted small">85% 이상인 카테고리가 없습니다.</p>
+          <p class="text-muted small">60% 이상인 카테고리가 없습니다.</p>
         {% endif %}
       </div>
       
@@ -400,14 +400,14 @@
             annotations: {
               targetLine: {
                 type: 'line',
-                yMin: 85,
-                yMax: 85,
+                yMin: 60,
+                yMax: 60,
                 borderColor: '#e74c3c',
                 borderWidth: 2,
                 borderDash: [10, 5],
                 label: {
                   display: true,
-                  content: 'Target 85%',
+                  content: 'Target 60%',
                   position: 'end',
                   backgroundColor: '#e74c3c',
                   color: 'white',
@@ -470,7 +470,7 @@
           label: 'Accuracy %',
           data: accAll,
           backgroundColor: accAll.map(function(v) {
-            return v >= 85 ? '#2ecc71' : v >= 70 ? '#3498db' : v >= 60 ? '#f39c12' : '#e74c3c';
+            return v >= 60 ? '#2ecc71' : v >= 50 ? '#3498db' : v >= 40 ? '#f39c12' : '#e74c3c';
           }),
           borderRadius: 8
         }]
@@ -546,7 +546,7 @@
             label: 'Accuracy %',
             data: data.accuracy,
             backgroundColor: data.accuracy.map(function(v) {
-              return v >= 85 ? '#2ecc71' : v >= 70 ? '#3498db' : v >= 60 ? '#f39c12' : '#e74c3c';
+              return v >= 60 ? '#2ecc71' : v >= 50 ? '#3498db' : v >= 40 ? '#f39c12' : '#e74c3c';
             }),
             borderRadius: 8
           }]

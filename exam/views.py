@@ -346,7 +346,7 @@ def identify_weak_categories(category_stats, threshold=70):
                 weak.append({'name': cat, 'accuracy': round(acc, 1), 'total': denom})
     return sorted(weak, key=lambda x: x['accuracy'])
 
-def identify_strong_categories(category_stats, threshold=85):
+def identify_strong_categories(category_stats, threshold=60):
     """Identify categories with accuracy above threshold"""
     strong = []
     for cat, s in category_stats.items():
@@ -383,7 +383,7 @@ def calculate_recent_vs_overall(scores, recent_count=3):
         'diff': round(recent_avg - overall_avg, 1)
     }
 
-def calculate_target_gap(avg_pct, target=85):
+def calculate_target_gap(avg_pct, target=60):
     """Calculate gap to target score"""
     gap = target - avg_pct
     return {
@@ -393,7 +393,7 @@ def calculate_target_gap(avg_pct, target=85):
         'progress_pct': round(min(100, (avg_pct / target) * 100), 1) if target > 0 else 100
     }
 
-def generate_study_recommendation(weak_categories, avg_pct, target=85):
+def generate_study_recommendation(weak_categories, avg_pct, target=60):
     """Generate personalized study recommendation"""
     # Filter out N/A categories as they can't be linked
     valid_weak_categories = [c for c in weak_categories if c.get('name') and c.get('name') != 'N/A']
@@ -448,7 +448,7 @@ def get_performance_grade(pct):
     """Get grade and color based on percentage"""
     if pct >= 90:
         return {'grade': 'A+', 'label': 'Excellent', 'label_kr': '우수', 'color': '#2ecc71'}
-    elif pct >= 85:
+    elif pct >= 60:
         return {'grade': 'A', 'label': 'Great', 'label_kr': '훌륭', 'color': '#27ae60'}
     elif pct >= 80:
         return {'grade': 'B+', 'label': 'Good', 'label_kr': '양호', 'color': '#3498db'}
@@ -784,7 +784,7 @@ def result_analytics(request, result_id:int):
 
     # Identify weak categories in this attempt
     weak_in_attempt = identify_weak_categories(cat, threshold=70)
-    strong_in_attempt = identify_strong_categories(cat, threshold=85)
+    strong_in_attempt = identify_strong_categories(cat, threshold=60)
 
     labels, correct, incorrect, unanswered, noanswer, acc = [], [], [], [], [], []
     for k, s in sorted(cat.items()):
