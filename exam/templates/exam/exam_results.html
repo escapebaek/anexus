@@ -8,15 +8,12 @@
 {% block page_content %}
 <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}" />
 <div class="container mt-5">
-  <!-- ?곷떒 ??댄? ?곸뿭 -->
-  <div class="text-center mb-4">
-    <h1 class="section-title">Exam Results</h1>
-    <p class="lead text-muted mt-2">
-      Here is a summary of your performance and detailed results.
-    </p>
+  <!-- 상단 제목 영역 -->
+  <div class="text-center mb-3">
+    <h1 class="section-title" style="margin-bottom: 1rem;">Exam Results</h1>
   </div>
 
-  <!-- ?붿빟 移대뱶??- ?ъ씠利?異뺤냼 -->
+  <!-- 요약 카드들 - 사이즈 축소 -->
   <div class="summary-cards mb-4">
     <div class="row g-3">
       <!-- Exam / Category -->
@@ -79,7 +76,7 @@
       </div>
     </div>
 
-    <!-- ?곸꽭 ?먯닔 ?뺣낫 (?묒쓣 ???덈뒗 ?뺥깭) -->
+    <!-- 상세 점수 정보 (작을 수록 있는 형태) -->
     <div class="row g-2 mt-2">
       <div class="col-6 col-md-3">
         <div class="mini-card bg-success">
@@ -128,10 +125,25 @@
     </div>
   </div>
 
-  <!-- ?곸꽭 寃곌낵: Question / Category / Selected Answer / Correct Answer / Result -->
+  <!-- 상세 결과: Question / Category / Selected Answer / Correct Answer / Result -->
   <h2 class="text-gradient mb-3" style="font-size: 1.75rem">
     Detailed Results
   </h2>
+  
+  <!-- Tip Notice -->
+  <div class="tip-notice" id="tipNotice">
+    <div class="tip-icon">
+      <i class="fas fa-lightbulb"></i>
+    </div>
+    <div class="tip-content">
+      <strong>💡 Tip:</strong> 아래 테이블에서 <span class="highlight-text">문제를 클릭</span>하면 
+      팝업창으로 문제, 보기, 정답, 해설을 한눈에 확인할 수 있습니다!
+    </div>
+    <button class="tip-close" onclick="this.parentElement.style.display='none'" title="닫기">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
   <div class="table-responsive">
     <table class="table table-striped table-hover">
       <thead class="thead-dark">
@@ -148,7 +160,7 @@
         {% for detail in result.detailed_results %}
         <tr>
           <td class="question-cell{% if not detail.question_id %} text-muted{% endif %}"
-              {% if detail.question_id %}data-question-id="{{ detail.question_id }}" style="cursor:pointer" title="?대┃?섏뿬 臾몄젣 蹂닿린"{% else %}title="Question ID not found"{% endif %}>
+              {% if detail.question_id %}data-question-id="{{ detail.question_id }}" style="cursor:pointer" title="클릭하여 문제 보기"{% else %}title="Question ID not found"{% endif %}>
             {{ detail.question|truncatechars:80 }}
           </td>
           <td class="category-cell">
@@ -204,46 +216,48 @@
     </table>
   </div>
 
-  <!-- ?뚯븘媛湲?踰꾪듉 -->
-  <div class="text-center mt-4">
-    <button onclick="exportToPDF()" class="btn btn-success btn-lg me-3">
-      <i class="fas fa-file-pdf"></i> PDF濡????    </button>
+  <!-- 액션 버튼 -->
+  <div class="action-buttons-wrapper">
+    <button onclick="exportToPDF()" class="btn-results-primary">
+      <i class="fas fa-file-pdf"></i> PDF로 내보내기
+    </button>
+    <button onclick="exportIncorrectToPDF()" class="btn-results-secondary">
+      <i class="fas fa-times-circle"></i> 오답만 내보내기
+    </button>
     {% if result.exam %}
-    <a href="{% url 'result_analytics' result.id %}" class="btn btn-outline-info btn-lg me-3">
+    <a href="{% url 'result_analytics' result.id %}" class="btn-results-outline">
       <i class="fas fa-chart-bar"></i> Attempt Analytics
     </a>
-    {% if result.exam %}
-    <a href="{% url 'exam_analytics' result.exam.id %}" class="btn btn-outline-secondary btn-lg me-3">
-      Rollup
+    <a href="{% url 'exam_analytics' result.exam.id %}" class="btn-results-outline">
+      <i class="fas fa-chart-line"></i> Rollup
     </a>
-    {% endif %}
     <form method="post" action="{% url 'delete_result' result.id %}" style="display:inline" onsubmit="return confirm('정말 이 결과를 삭제하시겠습니까? 삭제 시 통계에서 제외됩니다.');">
       {% csrf_token %}
-      <button type="submit" class="btn btn-outline-danger btn-lg">
+      <button type="submit" class="btn-results-danger-outline">
         <i class="fas fa-trash"></i> Delete Result
       </button>
     </form>
     {% endif %}
-    <a href="{% url 'question_home' %}" class="btn btn-primary btn-lg">
+    <a href="{% url 'question_home' %}" class="btn-results-primary">
       <i class="fas fa-arrow-left"></i> Back to Home
     </a>
   </div>
 </div>
 
-<!-- PDF ?대낫?닿린瑜??꾪븳 ?④꺼吏?div 異붽? -->
-<div id="pdfContent" style="display: none">
-  <div class="pdf-container">
-    <h2>?쒗뿕 寃곌낵</h2>
+<!-- PDF 내보내기를 위한 숨겨진 div 추가 -->
+<div id="pdfContent" style="display: none; font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;">
+  <div class="pdf-container" style="padding: 20px; background: white;">
+    <h2 style="margin-bottom: 20px; color: #333;">시험 결과</h2>
 
-    <!-- ?붿빟 ?뺣낫 ?뱀뀡 -->
-    <div class="pdf-summary-section">
-      <h3>?쒗뿕 ?뺣낫</h3>
+    <!-- 요약 정보 섹션 -->
+    <div class="pdf-summary-section" style="margin-bottom: 30px;">
+      <h3 style="border-bottom: 2px solid #007bff; padding-bottom: 10px; color: #007bff;">시험 정보</h3>
       <div id="summaryCardsClone"></div>
     </div>
 
-    <!-- ?곸꽭 寃곌낵 ?뱀뀡 -->
+    <!-- 상세 결과 섹션 -->
     <div class="pdf-details-section">
-      <h3>?곸꽭 寃곌낵</h3>
+      <h3 style="border-bottom: 2px solid #28a745; padding-bottom: 10px; color: #28a745;">상세 결과</h3>
       <div id="detailsTableClone"></div>
     </div>
   </div>
@@ -251,9 +265,9 @@
 
 <script>
   /**
-   * 遺곷쭏???좉?
-   * @param {number} questionId 吏덈Ц ID
-   * @param {HTMLElement} element 遺곷쭏??踰꾪듉
+   * 북마크 토글
+   * @param {number} questionId 질문 ID
+   * @param {HTMLElement} element 북마크 버튼
    */
   function toggleBookmark(questionId, element) {
     if (!questionId) {
@@ -265,7 +279,7 @@
       'input[name="csrfmiddlewaretoken"]'
     ).value;
 
-    // POST ?붿껌
+    // POST 요청
     fetch(`/exam/bookmark/${questionId}/`, {
       method: "POST",
       headers: {
@@ -281,7 +295,7 @@
       })
       .then((data) => {
         if (data.status === "ok") {
-          // 遺곷쭏???곹깭???곕씪 ?대옒???좉?
+          // 북마크 상태에 따라 클래스 토글
           if (data.is_bookmarked) {
             element.classList.add("bookmarked");
           } else {
@@ -299,22 +313,23 @@
   }
 
   function exportToPDF() {
-    // ?붿빟 移대뱶 蹂듭젣
+    // 요약 카드 복제
     var originalCards = document.querySelector(".summary-cards");
     var cardsClone = originalCards.cloneNode(true);
     document.getElementById("summaryCardsClone").innerHTML = "";
     document.getElementById("summaryCardsClone").appendChild(cardsClone);
 
-    // ?곸꽭 寃곌낵 ?뚯씠釉?蹂듭젣
+    // 상세 결과 테이블 복제
     var originalTable = document.querySelector(".table");
     var tableClone = originalTable.cloneNode(true);
     document.getElementById("detailsTableClone").innerHTML = "";
     document.getElementById("detailsTableClone").appendChild(tableClone);
 
-    // PDF 而⑦뀗痢?以鍮?    var pdfContent = document.getElementById("pdfContent");
+    // PDF 컨텐츠 준비
+    var pdfContent = document.getElementById("pdfContent");
     pdfContent.style.display = "block";
 
-    // PDF ?앹꽦
+    // PDF 생성
     html2canvas(pdfContent, {
       scale: 2,
       logging: false,
@@ -342,10 +357,98 @@
         position += pageHeight;
       }
 
-      // PDF ?뚯씪紐낆뿉 ?쒗뿕 ?쒕ぉ怨??좎쭨 ?ы븿
-      var examTitle = document.querySelector(".card-text").textContent;
-      var dateTaken = document.querySelectorAll(".card-text")[1].textContent;
-      var fileName = `?쒗뿕寃곌낵_${examTitle}_${dateTaken}.pdf`.replace(
+      // PDF 파일명에 시험 제목과 날짜 포함
+      var examTitle = document.querySelector(".card-text").textContent.trim();
+      var dateTaken = document.querySelectorAll(".card-text")[1].textContent.trim();
+      var fileName = `시험결과_${examTitle}_${dateTaken}.pdf`.replace(
+        /[/\\?%*:|"<>]/g,
+        "-"
+      );
+
+      pdf.save(fileName);
+    });
+  }
+
+  function exportIncorrectToPDF() {
+    // 요약 카드 복제
+    var originalCards = document.querySelector(".summary-cards");
+    var cardsClone = originalCards.cloneNode(true);
+    document.getElementById("summaryCardsClone").innerHTML = "";
+    document.getElementById("summaryCardsClone").appendChild(cardsClone);
+
+    // 상세 결과 테이블 복제 (오답만 필터링)
+    var originalTable = document.querySelector(".table");
+    var tableClone = originalTable.cloneNode(true);
+    
+    // 오답이 아닌 행 제거
+    var rows = tableClone.querySelectorAll("tbody tr");
+    var incorrectCount = 0;
+    rows.forEach(function(row) {
+      var resultBadge = row.querySelector(".badge-danger");
+      if (!resultBadge) {
+        row.remove();
+      } else {
+        incorrectCount++;
+      }
+    });
+
+    // 오답이 없는 경우 알림
+    if (incorrectCount === 0) {
+      alert("틀린 문제가 없습니다! 🎉");
+      return;
+    }
+
+    document.getElementById("detailsTableClone").innerHTML = "";
+    document.getElementById("detailsTableClone").appendChild(tableClone);
+
+    // PDF 제목 변경
+    var pdfContent = document.getElementById("pdfContent");
+    var pdfTitle = pdfContent.querySelector("h2");
+    var originalTitle = pdfTitle.textContent;
+    pdfTitle.textContent = "오답 노트 (" + incorrectCount + "문제)";
+    
+    var pdfDetailsTitle = pdfContent.querySelector(".pdf-details-section h3");
+    var originalDetailsTitle = pdfDetailsTitle.textContent;
+    pdfDetailsTitle.textContent = "틀린 문제 목록";
+
+    pdfContent.style.display = "block";
+
+    // PDF 생성
+    html2canvas(pdfContent, {
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      height: pdfContent.scrollHeight,
+    }).then(function (canvas) {
+      pdfContent.style.display = "none";
+      
+      // 원래 제목 복원
+      pdfTitle.textContent = originalTitle;
+      pdfDetailsTitle.textContent = originalDetailsTitle;
+
+      const { jsPDF } = window.jspdf;
+      var pdf = new jsPDF("p", "mm", "a4");
+
+      var imgData = canvas.toDataURL("image/png");
+      var imgProps = pdf.getImageProperties(imgData);
+      var pdfWidth = pdf.internal.pageSize.getWidth();
+      var pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      var position = 0;
+      var pageHeight = pdf.internal.pageSize.getHeight();
+
+      while (position < pdfHeight) {
+        if (position > 0) {
+          pdf.addPage();
+        }
+        pdf.addImage(imgData, "PNG", 0, -position, pdfWidth, pdfHeight);
+        position += pageHeight;
+      }
+
+      // PDF 파일명
+      var examTitle = document.querySelector(".card-text").textContent.trim();
+      var dateTaken = document.querySelectorAll(".card-text")[1].textContent.trim();
+      var fileName = `오답노트_${examTitle}_${dateTaken}.pdf`.replace(
         /[/\\?%*:|"<>]/g,
         "-"
       );
@@ -355,7 +458,7 @@
   }
 </script>
 
-<!-- html2canvas? jsPDF ?쇱씠釉뚮윭由?異붽? -->
+<!-- html2canvas와 jsPDF 라이브러리 추가 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -364,11 +467,11 @@
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">臾몄젣 蹂닿린</h5>
+        <h5 class="modal-title">문제 보기</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body text-start">
-        <div class="text-center text-muted">濡쒕뵫 以?..</div>
+        <div class="text-center text-muted">로딩 중...</div>
       </div>
     </div>
   </div>
@@ -387,7 +490,7 @@
         cell.addEventListener('click', () => {
           const qid = cell.getAttribute('data-question-id');
           if (!qid) return;
-          modalBody.innerHTML = '<div class="text-center text-muted">濡쒕뵫 以?..</div>';
+          modalBody.innerHTML = '<div class="text-center text-muted">로딩 중...</div>';
           fetch(`/exam/question/${qid}/partial/`, { credentials: 'same-origin' })
             .then(res => {
               if (!res.ok) throw new Error('Failed to load question');
@@ -399,7 +502,7 @@
             })
             .catch(err => {
               console.error(err);
-              modalBody.innerHTML = '<div class="alert alert-danger">臾몄젣瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??</div>';
+              modalBody.innerHTML = '<div class="alert alert-danger">문제를 불러오지 못했습니다.</div>';
               bsModal.show();
             });
         });
