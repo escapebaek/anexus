@@ -5,594 +5,833 @@
 {% endblock %}
 {% block page_content %}
 <div class="anesthesia-record">
-  <h2>Anesthesia Record Dashboard</h2>
+  <div class="page-header">
+    <h2><i class="fas fa-heartbeat"></i> Anesthesia Record</h2>
+    <div class="header-actions">
+      <button id="exportPdfBtn" class="btn btn-secondary">
+        <i class="fas fa-file-pdf"></i> Export PDF
+      </button>
+      <form
+        method="POST"
+        action="{% url 'reset_all' %}"
+        onsubmit="return confirm('Are you sure you want to reset ALL records?');"
+        style="display: inline-block"
+      >
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+          <i class="fas fa-trash-alt"></i> Reset All
+        </button>
+      </form>
+    </div>
+  </div>
 
-  <div class="dashboard-grid">
-    <!-- Left Column - Vital Signs Input -->
-    <div class="left-column">
-      <div class="input-section card">
-        <h3>Vital Signs Input</h3>
-        <form method="POST" id="recordForm">
-          {% csrf_token %}
-          <input type="hidden" id="record_id" name="record_id" value="" />
+  <!-- Collapsible Chart Section -->
+  <div class="chart-section card collapsible collapsed">
+    <div class="section-header" onclick="toggleChart()">
+      <h3><i class="fas fa-chart-line"></i> Vitals Chart</h3>
+      <button type="button" class="btn-collapse">
+        <i class="fas fa-chevron-down" id="chartToggleIcon"></i>
+      </button>
+    </div>
+    <div class="chart-content">
+      <div class="chart-container">
+        <canvas id="vitalsChart"></canvas>
+      </div>
+    </div>
+  </div>
 
-          <div class="form-group">
-            {{ form.patient_id.label_tag }} {{ form.patient_id }}
-          </div>
-
-          <div class="form-group">
-            {{ form.timestamp.label_tag }} {{ form.timestamp }}
-            <small>(비워두면 현재 시간으로 저장됩니다.)</small>
-          </div>
-
-          <div class="vitals-grid">
-            <div class="form-group">{{ form.hr.label_tag }} {{ form.hr }}</div>
-            <div class="form-group">
-              {{ form.sbp.label_tag }} {{ form.sbp }}
-            </div>
-            <div class="form-group">
-              {{ form.dbp.label_tag }} {{ form.dbp }}
-            </div>
-            <div class="form-group">
-              {{ form.spo2.label_tag }} {{ form.spo2 }}
-            </div>
-          </div>
-
-          <h4>Extra Vitals</h4>
-          <div id="extraVitalsContainer" class="extra-vitals-container"></div>
-
-          <div class="button-container">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              onclick="addExtraVital()"
-            >
-              <i class="fas fa-plus"></i> Add Extra Vital
-            </button>
-          </div>
-
-          {{ form.extra_vitals_json }}
-
-          <div class="form-group">
-            {{ form.additional_notes.label_tag }} {{ form.additional_notes }}
-          </div>
-
-          <div class="button-container">
-            <button
-              type="submit"
-              id="submitButton"
-              name="save_record"
-              class="btn btn-primary"
-            >
-              Save Record
-            </button>
-            <button
-              type="button"
-              onclick="resetForm()"
-              class="btn btn-secondary"
-            >
-              Reset Form
-            </button>
-          </div>
-        </form>
+  <!-- Transposed Spreadsheet Section (Rows = Vitals, Columns = Time) -->
+  <div class="spreadsheet-section card">
+    <div class="section-header">
+      <h3><i class="fas fa-table"></i> Vital Signs Record</h3>
+    </div>
+    
+    <!-- Toolbar with Patient ID and Actions -->
+    <div class="spreadsheet-toolbar">
+      <div class="toolbar-left">
+        <div class="patient-id-group">
+          <label for="patientIdInput"><i class="fas fa-user"></i> Patient ID</label>
+          <input type="text" id="patientIdInput" placeholder="Enter Patient ID" />
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <button type="button" class="btn btn-primary" onclick="addNewTimeColumn()">
+          <i class="fas fa-plus"></i> Add Time Entry
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="toggleExtraVitalsManager()">
+          <i class="fas fa-columns"></i> Manage Rows
+        </button>
+      </div>
+    </div>
+    
+    <!-- Extra Vitals Row Manager -->
+    <div id="extraVitalsManager" class="extra-vitals-manager-panel" style="display: none;">
+      <div class="manager-content">
+        <label>Add Extra Vital Row:</label>
+        <div class="add-column-row">
+          <input type="text" id="newRowName" placeholder="Vital Name (e.g., EtCO2, BIS, MAC)" />
+          <button type="button" class="btn btn-primary btn-sm" onclick="addExtraRow()">
+            <i class="fas fa-plus"></i> Add Row
+          </button>
+        </div>
+        <div id="existingRows" class="existing-columns"></div>
       </div>
     </div>
 
-    <!-- Right Column - Records and Charts -->
-    <div class="right-column">
-      <!-- Records Section Moved Up -->
-      <div class="records-section card">
-        <div class="section-header">
-          <h3>Records</h3>
-          <div class="action-buttons">
-            <button id="exportPdfBtn" class="btn btn-secondary">
-              <i class="fas fa-file-pdf"></i> Export to PDF
-            </button>
-            <form
-              method="POST"
-              action="{% url 'reset_all' %}"
-              onsubmit="return confirm('Are you sure you want to reset ALL records?');"
-              style="display: inline-block"
-            >
-              {% csrf_token %}
-              <button type="submit" class="btn btn-danger">
-                Reset All Records
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div class="table-container">
-          <table class="records-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Patient ID</th>
-                <th>HR</th>
-                <th>SBP</th>
-                <th>DBP</th>
-                <th>SpO2</th>
-                <th>Extra Vitals</th>
-                <th>Notes</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for record in records %}
-              <tr>
-                <td>{{ record.timestamp|date:'H:i' }}</td>
-                <td>{{ record.patient_id }}</td>
-                <td>{{ record.hr }}</td>
-                <td>{{ record.sbp }}</td>
-                <td>{{ record.dbp }}</td>
-                <td>{{ record.spo2 }}</td>
-                <td>
-                  {% if record.extra_vitals %}
-                  <ul class="extra-vitals-list">
-                    {% for key, value in record.extra_vitals.items %}
-                    <li>{{ key }}: {{ value }}</li>
-                    {% endfor %}
-                  </ul>
-                  {% endif %}
-                </td>
-                <td>{{ record.additional_notes }}</td>
-                <td>
-                  <div class="record-actions">
-                    <button
-                      type="button"
-                      onclick="editRecord({{ record.id }})"
-                      class="btn btn-secondary btn-xs"
-                    >
-                      Edit
-                    </button>
-                    <form
-                      method="POST"
-                      action="{% url 'delete_record' record.id %}"
-                      style="display: inline"
-                    >
-                      {% csrf_token %}
-                      <button
-                        type="submit"
-                        class="btn btn-danger btn-xs"
-                        onclick="return confirm('Are you sure to delete this record?');"
-                      >
-                        Delete
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+    <div class="spreadsheet-wrapper">
+      <div class="spreadsheet-container" id="spreadsheetContainer">
+        <table class="spreadsheet-table" id="spreadsheetTable">
+          <thead>
+            <tr id="headerRow">
+              <th class="vital-label-header">Vital Signs</th>
+              <!-- Time columns will be added dynamically -->
+            </tr>
+          </thead>
+          <tbody id="spreadsheetBody">
+            <!-- Rows will be generated by JavaScript -->
+          </tbody>
+        </table>
       </div>
+    </div>
+    
+    <div class="spreadsheet-footer">
+      <button type="button" class="btn btn-primary btn-lg" onclick="saveAllRecords()">
+        <i class="fas fa-save"></i> Save All Records
+      </button>
+    </div>
+  </div>
 
-      <div class="chart-section card">
+  <!-- Free Text Section -->
+  <div class="free-text-section card">
+    <div class="section-header">
+      <h3><i class="fas fa-sticky-note"></i> Free Text Note</h3>
+    </div>
+    <form method="POST" id="freeTextForm">
+      {% csrf_token %}
+      <div class="free-text-container">
+        {{ form_free.content }}
+      </div>
+      <div class="button-container">
+        <button type="submit" name="save_free_text" class="btn btn-primary">
+          <i class="fas fa-save"></i> Save Note
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Hidden form for saving records -->
+  <form method="POST" id="recordForm" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" id="record_id" name="record_id" value="" />
+    <input type="hidden" id="form_patient_id" name="patient_id" value="" />
+    <input type="hidden" id="form_timestamp" name="timestamp" value="" />
+    <input type="hidden" id="form_hr" name="hr" value="" />
+    <input type="hidden" id="form_sbp" name="sbp" value="" />
+    <input type="hidden" id="form_dbp" name="dbp" value="" />
+    <input type="hidden" id="form_spo2" name="spo2" value="" />
+    <input type="hidden" id="form_extra_vitals_json" name="extra_vitals_json" value="{}" />
+    <input type="hidden" id="form_additional_notes" name="additional_notes" value="" />
+  </form>
+
+  <!-- Hidden div for PDF export -->
+  <div id="pdfContent" style="display: none">
+    <div class="pdf-container">
+      <h2>Anesthesia Records</h2>
+      <div class="pdf-chart-section">
         <h3>Vitals Chart</h3>
-        <div class="chart-container">
-          <canvas id="vitalsChart"></canvas>
-        </div>
+        <div id="pdfChartContainer"></div>
       </div>
-
-      <!-- Free Text Section Moved Down -->
-      <div class="free-text-section card">
+      <div class="pdf-records-section">
+        <h3>Records Table</h3>
+        <div id="recordsTableClone"></div>
+      </div>
+      <div class="pdf-free-text">
         <h3>Free Text Note</h3>
-        <form method="POST" id="freeTextForm">
-          {% csrf_token %} {{ form_free.as_p }}
-          <div class="button-container">
-            <button type="submit" name="save_free_text" class="btn btn-primary">
-              Save Free Text
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Add a hidden div for PDF export -->
-      <div id="pdfContent" style="display: none">
-        <div class="pdf-container">
-          <h2>Anesthesia Records</h2>
-
-          <!-- Chart section -->
-          <div class="pdf-chart-section">
-            <h3>Vitals Chart</h3>
-            <div id="pdfChartContainer"></div>
-          </div>
-
-          <!-- Records table section -->
-          <div class="pdf-records-section">
-            <h3>Records Table</h3>
-            <div id="recordsTableClone"></div>
-          </div>
-
-          <!-- Free text section -->
-          <div class="pdf-free-text">
-            <h3>Free Text Note</h3>
-            <div id="freeTextContent"></div>
-          </div>
-        </div>
+        <div id="freeTextContent"></div>
       </div>
     </div>
   </div>
 </div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-  document.getElementById("exportPdfBtn").addEventListener("click", async function () {
-    // Get the free text content
-    var freeTextArea = document.querySelector('#id_content');
-    var freeTextContent = freeTextArea ? freeTextArea.value : '';
-    
-    // Clone the records table
-    var originalTable = document.querySelector('.records-table');
-    var tableClone = originalTable.cloneNode(true);
-    
-    // Clone the chart
-    var originalChart = document.getElementById('vitalsChart');
-    var chartClone = document.createElement('canvas');
-    chartClone.style.height = '300px';
-    document.getElementById('pdfChartContainer').innerHTML = '';
-    document.getElementById('pdfChartContainer').appendChild(chartClone);
-    
-    // Create a new chart instance for PDF
-    var newChart = new Chart(chartClone.getContext('2d'), {
-      type: chart.config.type,
-      data: chart.config.data,
-      options: {
-        ...chart.config.options,
-        animation: false,
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          ...chart.config.options.plugins,
-          legend: {
-            ...chart.config.options.plugins.legend,
-            labels: {
-              ...chart.config.options.plugins.legend.labels,
-              font: {
-                size: 11 // Increase font size for PDF
-              }
-            }
-          }
-        },
-        scales: {
-          ...chart.config.options.scales,
-          x: {
-            ...chart.config.options.scales.x,
-            ticks: {
-              ...chart.config.options.scales.x.ticks,
-              font: {
-                size: 10 // Increase font size for PDF
-              }
-            }
-          },
-          y: {
-            ...chart.config.options.scales.y,
-            ticks: {
-              ...chart.config.options.scales.y.ticks,
-              font: {
-                size: 10 // Increase font size for PDF
-              }
-            }
-          }
-        }
-      }
-    });
-    
-    // Prepare the PDF content
-    document.getElementById('recordsTableClone').innerHTML = '';
-    document.getElementById('recordsTableClone').appendChild(tableClone);
-    document.getElementById('freeTextContent').textContent = freeTextContent;
-    
-    // Generate PDF from the hidden content
-    var pdfContent = document.getElementById('pdfContent');
-    pdfContent.style.display = 'block'; // Temporarily show for capture
-    
-    // Wait for chart to render
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    html2canvas(pdfContent, {
-      scale: 2,
-      logging: false,
-      useCORS: true,
-      height: pdfContent.scrollHeight
-    }).then(function(canvas) {
-      pdfContent.style.display = 'none';
-      
-      const { jsPDF } = window.jspdf;
-      var pdf = new jsPDF('p', 'mm', 'a4');
-      
-      // Add the content to PDF
-      var imgData = canvas.toDataURL('image/png');
-      var imgProps = pdf.getImageProperties(imgData);
-      var pdfWidth = pdf.internal.pageSize.getWidth();
-      var pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      // Add content to PDF, creating new pages as needed
-      var position = 0;
-      var pageHeight = pdf.internal.pageSize.getHeight();
-      
-      while (position < pdfHeight) {
-        if (position > 0) {
-          pdf.addPage();
-        }
-        
-        pdf.addImage(imgData, 'PNG', 0, -position, pdfWidth, pdfHeight);
-        position += pageHeight;
-      }
-      
-      pdf.save('anesthesia_records.pdf');
-      
-      // Cleanup
-      newChart.destroy();
-    });
-  });
-
-  // --- 페이지 로드시 localStorage에서 저장된 값 복원 ---
-  function loadPreservedValues() {
-      var preservedPatient = localStorage.getItem('patient_id');
-      if (preservedPatient) {
-          document.getElementById('id_patient_id').value = preservedPatient;
-      }
-      var preservedExtraVitals = localStorage.getItem('extraVitals');
-      if (preservedExtraVitals) {
-          try {
-              var extraVitalKeys = JSON.parse(preservedExtraVitals); // extra vital의 이름 목록 (배열)
-              var container = document.getElementById('extraVitalsContainer');
-              container.innerHTML = ''; // 기존에 입력된 행은 초기화
-              extraVitalKeys.forEach(function(key) {
-                  addExtraVital(key, ''); // 값은 비워둡니다.
-              });
-          } catch(e) {
-              console.error("Error parsing preserved extra vitals:", e);
-          }
-      }
-  }
-  window.addEventListener('load', loadPreservedValues);
-
-  // --- 폼 제출 시 patient ID와 extra vital 이름을 localStorage에 저장 ---
-  document.getElementById('recordForm').addEventListener('submit', function(e) {
-      // 저장할 patient id
-      var patientId = document.getElementById('id_patient_id').value;
-      localStorage.setItem('patient_id', patientId);
-
-      // extra vital의 이름(키) 목록 저장
-      var container = document.getElementById('extraVitalsContainer');
-      var rows = container.querySelectorAll('.extraVitalRow');
-      var extraKeys = [];
-      rows.forEach(function(row) {
-           var key = row.querySelector('.vitalKey').value;
-           if(key) {
-               extraKeys.push(key);
-           }
-      });
-      localStorage.setItem('extraVitals', JSON.stringify(extraKeys));
-
-      // 그리고 제출 시 extra vital 전체 데이터를 hidden 필드에 채워 넣음 (기존 로직)
-      var extraVitals = {};
-      rows.forEach(function(row) {
-           var key = row.querySelector('.vitalKey').value;
-           var value = row.querySelector('.vitalValue').value;
-           if(key) {
-               extraVitals[key] = isNaN(value) ? value : parseFloat(value);
-           }
-      });
-      document.getElementById("id_extra_vitals_json").value = JSON.stringify(extraVitals);
-  });
-
-  // --- Extra Vitals 동적 입력 처리 ---
-  function addExtraVital(key='', value='') {
-      var container = document.getElementById('extraVitalsContainer');
-      var div = document.createElement('div');
-      div.className = 'extraVitalRow';
-      div.innerHTML = '<input type="text" class="vitalKey" placeholder="Vital Name" value="'+key+'"> ' +
-                      '<input type="text" class="vitalValue" placeholder="Value" value="'+value+'"> ' +
-                      '<button type="button" onclick="removeExtraVital(this)">Remove</button>';
-      container.appendChild(div);
-  }
-
-  function removeExtraVital(btn) {
-      var row = btn.parentNode;
-      row.parentNode.removeChild(row);
-  }
-
-  // --- Reset Form 버튼: 로컬에 저장된 persistent 값들도 삭제 ---
-  function resetForm(){
-      // localStorage에 저장된 patient id와 extra vitals 삭제
-      localStorage.removeItem('patient_id');
-      localStorage.removeItem('extraVitals');
-
-      var form = document.getElementById('recordForm');
-      form.reset();
-      document.getElementById('record_id').value = '';
-      document.getElementById('extraVitalsContainer').innerHTML = '';
-      document.getElementById('submitButton').innerText = 'Save Record';
-  }
-
-  // --- Reset All 버튼 클릭 시 localStorage도 삭제 ---
-  function clearLocalStorage() {
-      localStorage.removeItem('patient_id');
-      localStorage.removeItem('extraVitals');
-  }
-
-  // 만약 Reset All 폼에 onsubmit 속성을 추가할 수 있다면:
-  // <form method="POST" action="{% url 'reset_all' %}" onsubmit="clearLocalStorage()" ...>
-  // 또는 아래와 같이 이벤트 리스너를 추가할 수도 있습니다.
-  var resetAllForm = document.querySelector('form[action$="reset/"]');
-  if(resetAllForm){
-      resetAllForm.addEventListener('submit', clearLocalStorage);
-  }
-
-  // --- recordsData 및 editRecord, Chart.js 처리 부분은 기존 코드와 동일 ---
-  var recordsData = [
+  // ===== Configuration =====
+  const baseVitals = ['HR', 'SBP', 'DBP', 'SpO2'];
+  let extraVitals = [];
+  let timeColumns = []; // Array of { id: number, timestamp: string, isNew: boolean }
+  let nextNewId = -1; // Negative IDs for new columns
+  
+  // ===== Load existing records =====
+  const existingRecords = [
     {% for record in records %}
     {
       id: {{ record.id }},
       patient_id: "{{ record.patient_id|escapejs }}",
       timestamp: "{{ record.timestamp|date:'Y-m-d\\TH:i' }}",
-      hr: "{{ record.hr|default_if_none:'' }}",
-      sbp: "{{ record.sbp|default_if_none:'' }}",
-      dbp: "{{ record.dbp|default_if_none:'' }}",
-      spo2: "{{ record.spo2|default_if_none:'' }}",
+      time_display: "{{ record.timestamp|date:'H:i' }}",
+      hr: {{ record.hr|default:"null" }},
+      sbp: {{ record.sbp|default:"null" }},
+      dbp: {{ record.dbp|default:"null" }},
+      spo2: {{ record.spo2|default:"null" }},
       extra_vitals: {{ record.extra_vitals|default:"{}"|safe }},
       additional_notes: "{{ record.additional_notes|escapejs }}"
     },
     {% endfor %}
   ];
 
-  function editRecord(id) {
-      var rec = recordsData.find(function(item){ return item.id === id; });
-      if(!rec) return;
-      document.getElementById('record_id').value = rec.id;
-      document.getElementById('id_patient_id').value = rec.patient_id;
-      document.getElementById('id_timestamp').value = rec.timestamp;
-      document.getElementById('id_hr').value = rec.hr;
-      document.getElementById('id_sbp').value = rec.sbp;
-      document.getElementById('id_dbp').value = rec.dbp;
-      document.getElementById('id_spo2').value = rec.spo2;
-      document.getElementById('id_additional_notes').value = rec.additional_notes;
-
-      var extraContainer = document.getElementById('extraVitalsContainer');
-      extraContainer.innerHTML = '';
-      for (var key in rec.extra_vitals) {
-          addExtraVital(key, rec.extra_vitals[key]);
-      }
-      document.getElementById('submitButton').innerText = 'Update Record';
+  // ===== Helper: Get Seoul Time =====
+  function getSeoulTime() {
+    // 한국 표준시 (UTC+9)
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const seoulTime = new Date(utc + (9 * 60 * 60 * 1000));
+    return seoulTime;
   }
 
-  // --- Chart.js 처리 ---
-  // 내림차순으로 저장된 records를 reverse() 하여 시간 순(오름차순)으로 그립니다.
-  var chartRecords = [
-    {% for record in records %}
-    {
-      timestamp: "{{ record.timestamp|date:'H:i' }}",
-      hr: {{ record.hr|default:"null" }},
-      sbp: {{ record.sbp|default:"null" }},
-      dbp: {{ record.dbp|default:"null" }},
-      spo2: {{ record.spo2|default:"null" }},
-      extra_vitals: {{ record.extra_vitals|default:"{}"|safe }}
-    },
-    {% endfor %}
-  ];
-
-  var fixedVitals = ['hr', 'sbp', 'dbp', 'spo2'];
-  var extraKeys = new Set();
-  chartRecords.forEach(function(rec) {
-      if(rec.extra_vitals) {
-          for(var key in rec.extra_vitals){
-              extraKeys.add(key);
-          }
-      }
-  });
-  extraKeys = Array.from(extraKeys);
-
-  function getColor(index) {
-      var colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'cyan', 'magenta'];
-      return colors[index % colors.length];
+  function formatDateTimeLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  var datasets = [];
-  // 고정 필드: 모든 데이터셋 hidden:false (기본 on)
-  fixedVitals.forEach(function(vital, index) {
-      var data = chartRecords.map(function(rec) {
-          return rec[vital];
-      });
-      datasets.push({
-          label: vital.toUpperCase(),
-          data: data,
-          borderColor: getColor(index),
-          fill: false,
-          hidden: false
-      });
-  });
+  function formatTimeDisplay(date) {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
 
-  // extra vital 데이터셋: 기본 hidden:false (모두 표시)
-  extraKeys.forEach(function(vital, index) {
-      var data = chartRecords.map(function(rec) {
-          return rec.extra_vitals ? rec.extra_vitals[vital] : null;
-      });
-      datasets.push({
-          label: vital,
-          data: data,
-          borderColor: getColor(index + fixedVitals.length),
-          fill: false,
-          hidden: false
-      });
-  });
+  // ===== Initialize =====
+  function init() {
+    loadExtraVitals();
+    loadPatientId();
+    initializeTimeColumns();
+    renderSpreadsheet();
+    initChart();
+    
+    // 페이지 로드 후 스크롤을 가장 오른쪽으로 이동
+    setTimeout(() => {
+      scrollToRight();
+    }, 100);
+  }
 
-  var ctx = document.getElementById('vitalsChart').getContext('2d');
-  var chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: chartRecords.map(function(rec) { return rec.timestamp; }),
-      datasets: datasets
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top',
-          align: 'start',
-          labels: {
-            boxWidth: 8,
-            padding: 2,
-            font: {
-              size: 9
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: {
-            display: false
-          },
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45,
-            autoSkip: true,
-            maxTicksLimit: 20,
-            font: {
-              size: 8
-            }
-          }
-        },
-        y: {
-          grid: {
-            borderDash: [2, 2]
-          },
-          beginAtZero: true,
-          suggestedMin: 0,  // 최소값을 0으로 설정
-          ticks: {
-            font: {
-              size: 8
-            }
-          }
-        }
-      },
-      elements: {
-        point: {
-          radius: 1.5,
-          hoverRadius: 3
-        },
-        line: {
-          tension: 0.2,
-          borderWidth: 1
-        }
-      },
-      layout: {
-        padding: {
-          left: 2,
-          right: 2,
-          top: 2,
-          bottom: 2
-        }
+  function scrollToRight() {
+    const wrapper = document.querySelector('.spreadsheet-wrapper');
+    if (wrapper) {
+      wrapper.scrollLeft = wrapper.scrollWidth;
+    }
+  }
+
+  function loadPatientId() {
+    const saved = localStorage.getItem('patient_id');
+    if (saved) {
+      document.getElementById('patientIdInput').value = saved;
+    }
+  }
+
+  function loadExtraVitals() {
+    const saved = localStorage.getItem('extraVitalRows');
+    if (saved) {
+      try {
+        extraVitals = JSON.parse(saved);
+      } catch(e) {
+        extraVitals = [];
       }
     }
+    
+    // Also collect from existing records
+    existingRecords.forEach(rec => {
+      if (rec.extra_vitals) {
+        Object.keys(rec.extra_vitals).forEach(key => {
+          if (!extraVitals.includes(key)) {
+            extraVitals.push(key);
+          }
+        });
+      }
+    });
+    
+    updateExtraRowsDisplay();
+  }
+
+  function saveExtraVitals() {
+    localStorage.setItem('extraVitalRows', JSON.stringify(extraVitals));
+  }
+
+  function initializeTimeColumns() {
+    // Sort records by timestamp (oldest first for left-to-right display)
+    const sortedRecords = [...existingRecords].sort((a, b) => 
+      new Date(a.timestamp) - new Date(b.timestamp)
+    );
+    
+    timeColumns = sortedRecords.map(rec => ({
+      id: rec.id,
+      timestamp: rec.timestamp,
+      time_display: rec.time_display,
+      isNew: false,
+      data: rec
+    }));
+  }
+
+  // ===== Spreadsheet Rendering =====
+  function renderSpreadsheet() {
+    renderHeader();
+    renderBody();
+  }
+
+  function renderHeader() {
+    const headerRow = document.getElementById('headerRow');
+    // Clear existing time headers
+    headerRow.innerHTML = '<th class="vital-label-header">Vital Signs</th>';
+    
+    timeColumns.forEach((col, index) => {
+      const th = document.createElement('th');
+      th.className = 'time-header';
+      th.innerHTML = `
+        <div class="time-header-content">
+          ${col.isNew ? `<input type="datetime-local" class="time-input" data-col="${index}" value="${col.timestamp}" onchange="updateTimeColumn(${index}, this.value)" />` 
+                      : `<span class="time-display">${col.time_display}</span>`}
+          <button type="button" class="btn-delete-col" onclick="deleteTimeColumn(${index})" title="Delete column">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `;
+      headerRow.appendChild(th);
+    });
+    
+    // Add "+" column for adding new time
+    const addTh = document.createElement('th');
+    addTh.className = 'add-column-header';
+    addTh.innerHTML = `
+      <button type="button" class="btn-add-col" onclick="addNewTimeColumn()" title="Add new time entry">
+        <i class="fas fa-plus"></i>
+      </button>
+    `;
+    headerRow.appendChild(addTh);
+  }
+
+  function renderBody() {
+    const tbody = document.getElementById('spreadsheetBody');
+    tbody.innerHTML = '';
+    
+    // Get all vitals (base + extra)
+    const allVitals = [...baseVitals, ...extraVitals];
+    
+    allVitals.forEach(vital => {
+      const tr = document.createElement('tr');
+      tr.className = 'vital-row';
+      
+      // Vital label cell
+      const labelTd = document.createElement('td');
+      labelTd.className = 'vital-label';
+      labelTd.innerHTML = `
+        <span class="vital-name">${vital}</span>
+        ${extraVitals.includes(vital) ? `<button type="button" class="btn-remove-vital" onclick="removeExtraVital('${vital}')" title="Remove row"><i class="fas fa-times"></i></button>` : ''}
+      `;
+      tr.appendChild(labelTd);
+      
+      // Data cells for each time column
+      timeColumns.forEach((col, colIndex) => {
+        const td = document.createElement('td');
+        td.className = 'data-cell';
+        
+        let value = '';
+        if (col.data) {
+          if (baseVitals.includes(vital)) {
+            value = col.data[vital.toLowerCase()] ?? '';
+          } else if (col.data.extra_vitals && col.data.extra_vitals[vital] !== undefined) {
+            value = col.data.extra_vitals[vital];
+          }
+        }
+        
+        td.innerHTML = `<input type="text" class="cell-input" data-vital="${vital}" data-col="${colIndex}" value="${value}" />`;
+        tr.appendChild(td);
+      });
+      
+      // Empty cell for add column
+      const emptyTd = document.createElement('td');
+      emptyTd.className = 'empty-cell';
+      tr.appendChild(emptyTd);
+      
+      tbody.appendChild(tr);
+    });
+    
+    // Notes row
+    const notesTr = document.createElement('tr');
+    notesTr.className = 'notes-row';
+    
+    const notesLabelTd = document.createElement('td');
+    notesLabelTd.className = 'vital-label';
+    notesLabelTd.innerHTML = '<span class="vital-name">Notes</span>';
+    notesTr.appendChild(notesLabelTd);
+    
+    timeColumns.forEach((col, colIndex) => {
+      const td = document.createElement('td');
+      td.className = 'data-cell notes-cell';
+      const noteValue = col.data?.additional_notes ?? '';
+      td.innerHTML = `<input type="text" class="cell-input" data-vital="notes" data-col="${colIndex}" value="${noteValue}" />`;
+      notesTr.appendChild(td);
+    });
+    
+    const emptyNotesTd = document.createElement('td');
+    emptyNotesTd.className = 'empty-cell';
+    notesTr.appendChild(emptyNotesTd);
+    
+    tbody.appendChild(notesTr);
+  }
+
+  // ===== Time Column Management =====
+  function addNewTimeColumn() {
+    const seoulNow = getSeoulTime();
+    const timestamp = formatDateTimeLocal(seoulNow);
+    
+    timeColumns.push({
+      id: nextNewId--,
+      timestamp: timestamp,
+      time_display: formatTimeDisplay(seoulNow),
+      isNew: true,
+      data: null
+    });
+    
+    renderSpreadsheet();
+    
+    // Scroll to the right
+    setTimeout(() => {
+      scrollToRight();
+    }, 50);
+  }
+
+  function updateTimeColumn(index, value) {
+    timeColumns[index].timestamp = value;
+    const date = new Date(value);
+    timeColumns[index].time_display = date.toTimeString().slice(0, 5);
+  }
+
+  function deleteTimeColumn(index) {
+    const col = timeColumns[index];
+    
+    if (!col.isNew) {
+      // Delete from server
+      if (confirm('정말로 이 기록을 삭제하시겠습니까?')) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch(`/record/delete/${col.id}/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken
+          }
+        }).then(() => {
+          timeColumns.splice(index, 1);
+          renderSpreadsheet();
+        });
+      }
+    } else {
+      timeColumns.splice(index, 1);
+      renderSpreadsheet();
+    }
+  }
+
+  // ===== Extra Vitals Management =====
+  function toggleExtraVitalsManager() {
+    const manager = document.getElementById('extraVitalsManager');
+    manager.style.display = manager.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function addExtraRow() {
+    const input = document.getElementById('newRowName');
+    const name = input.value.trim();
+    if (!name) return;
+    if (extraVitals.includes(name) || baseVitals.includes(name)) {
+      alert('This vital already exists!');
+      return;
+    }
+    
+    extraVitals.push(name);
+    saveExtraVitals();
+    updateExtraRowsDisplay();
+    renderSpreadsheet();
+    input.value = '';
+  }
+
+  function removeExtraVital(name) {
+    extraVitals = extraVitals.filter(v => v !== name);
+    saveExtraVitals();
+    updateExtraRowsDisplay();
+    renderSpreadsheet();
+  }
+
+  function updateExtraRowsDisplay() {
+    const container = document.getElementById('existingRows');
+    if (extraVitals.length > 0) {
+      container.innerHTML = '<label>Current Extra Rows:</label><div class="column-tags">' +
+        extraVitals.map(v => 
+          `<span class="column-tag">${v} <button type="button" onclick="removeExtraVital('${v}')" class="remove-tag">&times;</button></span>`
+        ).join('') + '</div>';
+    } else {
+      container.innerHTML = '';
+    }
+  }
+
+  // ===== Save Records =====
+  async function saveAllRecords() {
+    const patientId = document.getElementById('patientIdInput').value || 'unknown';
+    localStorage.setItem('patient_id', patientId);
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const allVitals = [...baseVitals, ...extraVitals];
+    
+    for (let colIndex = 0; colIndex < timeColumns.length; colIndex++) {
+      const col = timeColumns[colIndex];
+      
+      // Collect data for this column
+      const data = {
+        patient_id: patientId,
+        timestamp: col.timestamp,
+        hr: '',
+        sbp: '',
+        dbp: '',
+        spo2: '',
+        extra_vitals: {},
+        additional_notes: ''
+      };
+      
+      // Get values from inputs
+      document.querySelectorAll(`[data-col="${colIndex}"]`).forEach(input => {
+        if (input.classList.contains('time-input')) return;
+        
+        const vital = input.dataset.vital;
+        const value = input.value.trim();
+        
+        if (vital === 'notes') {
+          data.additional_notes = value;
+        } else if (baseVitals.map(v => v.toLowerCase()).includes(vital.toLowerCase())) {
+          data[vital.toLowerCase()] = value;
+        } else {
+          if (value) {
+            data.extra_vitals[vital] = isNaN(value) ? value : parseFloat(value);
+          }
+        }
+      });
+      
+      // Set form values
+      document.getElementById('form_patient_id').value = data.patient_id;
+      document.getElementById('form_timestamp').value = data.timestamp;
+      document.getElementById('form_hr').value = data.hr;
+      document.getElementById('form_sbp').value = data.sbp;
+      document.getElementById('form_dbp').value = data.dbp;
+      document.getElementById('form_spo2').value = data.spo2;
+      document.getElementById('form_extra_vitals_json').value = JSON.stringify(data.extra_vitals);
+      document.getElementById('form_additional_notes').value = data.additional_notes;
+      
+      // Set record ID for updating existing records
+      if (!col.isNew && col.id > 0) {
+        document.getElementById('record_id').value = col.id;
+      } else {
+        document.getElementById('record_id').value = '';
+      }
+      
+      // Submit form via fetch
+      const formData = new FormData(document.getElementById('recordForm'));
+      
+      try {
+        const response = await fetch(window.location.href, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to save record for column', colIndex);
+        }
+      } catch (error) {
+        console.error('Error saving record:', error);
+      }
+    }
+    
+    // Reload page to show updated records
+    window.location.reload();
+  }
+
+  // ===== Chart =====
+  let chart = null;
+  
+  function toggleChart() {
+    const chartSection = document.querySelector('.chart-section');
+    const icon = document.getElementById('chartToggleIcon');
+    chartSection.classList.toggle('collapsed');
+    
+    if (chartSection.classList.contains('collapsed')) {
+      icon.classList.remove('fa-chevron-up');
+      icon.classList.add('fa-chevron-down');
+    } else {
+      icon.classList.remove('fa-chevron-down');
+      icon.classList.add('fa-chevron-up');
+      setTimeout(() => {
+        if (chart) chart.resize();
+      }, 300);
+    }
+  }
+
+  function initChart() {
+    const sortedRecords = [...existingRecords].sort((a, b) => 
+      new Date(a.timestamp) - new Date(b.timestamp)
+    );
+    
+    const colors = ['#ef4444', '#3b82f6', '#22c55e', '#f97316', '#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b'];
+    
+    const datasets = baseVitals.map((vital, index) => ({
+      label: vital,
+      data: sortedRecords.map(rec => rec[vital.toLowerCase()]),
+      borderColor: colors[index % colors.length],
+      backgroundColor: colors[index % colors.length] + '20',
+      fill: false,
+      tension: 0.3
+    }));
+    
+    // Add extra vitals to chart
+    extraVitals.forEach((vital, index) => {
+      datasets.push({
+        label: vital,
+        data: sortedRecords.map(rec => rec.extra_vitals?.[vital] ?? null),
+        borderColor: colors[(baseVitals.length + index) % colors.length],
+        fill: false,
+        tension: 0.3
+      });
+    });
+    
+    const ctx = document.getElementById('vitalsChart').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: sortedRecords.map(rec => rec.time_display),
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { boxWidth: 12, padding: 15, font: { size: 11 } }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: { grid: { borderDash: [2, 2] }, beginAtZero: true, ticks: { font: { size: 10 } } }
+        },
+        elements: {
+          point: { radius: 3, hoverRadius: 5 },
+          line: { borderWidth: 2 }
+        }
+      }
+    });
+  }
+
+  // ===== PDF Export =====
+  document.getElementById("exportPdfBtn").addEventListener("click", async function () {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+    
+    try {
+      const freeTextArea = document.querySelector('#id_content');
+      const freeTextContent = freeTextArea ? freeTextArea.value : '';
+      const patientId = document.getElementById('patientIdInput').value || 'Unknown';
+      
+      const { jsPDF } = window.jspdf;
+      // Use A4 landscape for wider tables
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const contentWidth = pageWidth - (margin * 2);
+      
+      // ===== Page 1: Header and Chart =====
+      // Header
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Anesthesia Record', margin, 20);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Patient ID: ${patientId}`, margin, 28);
+      pdf.text(`Generated: ${new Date().toLocaleString('ko-KR')}`, margin, 34);
+      
+      // Draw chart to PDF
+      if (chart && existingRecords.length > 0) {
+        const chartCanvas = document.getElementById('vitalsChart');
+        const chartImage = chartCanvas.toDataURL('image/png', 1.0);
+        
+        // Chart dimensions
+        const chartWidth = contentWidth;
+        const chartHeight = 80;
+        pdf.addImage(chartImage, 'PNG', margin, 42, chartWidth, chartHeight);
+      }
+      
+      // ===== Page 2+: Vital Signs Table =====
+      // Create a temporary container for the table
+      const tempContainer = document.createElement('div');
+      tempContainer.style.cssText = 'position: absolute; left: -9999px; top: 0; background: white; padding: 20px;';
+      document.body.appendChild(tempContainer);
+      
+      // Clone and style the table for PDF
+      const originalTable = document.querySelector('.spreadsheet-table');
+      const tableClone = originalTable.cloneNode(true);
+      
+      // Remove the "+" add column from clone
+      const addHeaders = tableClone.querySelectorAll('.add-column-header');
+      addHeaders.forEach(h => h.remove());
+      const emptyCells = tableClone.querySelectorAll('.empty-cell');
+      emptyCells.forEach(c => c.remove());
+      
+      // Style the cloned table for PDF
+      tableClone.style.cssText = 'border-collapse: collapse; font-size: 10px; background: white;';
+      tableClone.querySelectorAll('th').forEach(th => {
+        th.style.cssText = 'background: #4299e1; color: white; padding: 6px 8px; border: 1px solid #333; font-size: 9px; white-space: nowrap;';
+      });
+      tableClone.querySelectorAll('td').forEach(td => {
+        td.style.cssText = 'padding: 5px 8px; border: 1px solid #ccc; text-align: center; font-size: 9px; white-space: nowrap;';
+      });
+      tableClone.querySelectorAll('input').forEach(input => {
+        const span = document.createElement('span');
+        span.textContent = input.value || '-';
+        span.style.cssText = 'display: inline-block; min-width: 30px;';
+        input.parentNode.replaceChild(span, input);
+      });
+      tableClone.querySelectorAll('button').forEach(btn => btn.remove());
+      
+      tempContainer.appendChild(tableClone);
+      
+      // Capture table as image
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const tableCanvas = await html2canvas(tempContainer, {
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: tempContainer.scrollWidth + 40
+      });
+      
+      document.body.removeChild(tempContainer);
+      
+      // Add table page(s)
+      pdf.addPage();
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Vital Signs Record', margin, 15);
+      
+      const tableImgData = tableCanvas.toDataURL('image/png');
+      const tableImgWidth = tableCanvas.width;
+      const tableImgHeight = tableCanvas.height;
+      
+      // Calculate how to fit the table
+      // Available space on page after header
+      const tableStartY = 22;
+      const availableHeight = pageHeight - tableStartY - margin;
+      
+      // Scale to fit width first
+      let scaledWidth = contentWidth;
+      let scaledHeight = (tableImgHeight * contentWidth) / tableImgWidth;
+      
+      // If the table is too wide, we may need multiple columns or just scale it down
+      // For very wide tables, split horizontally across pages
+      if (tableImgWidth > tableImgHeight * 3) {
+        // Very wide table - try to fit by scaling down more
+        const maxScale = Math.min(contentWidth / tableImgWidth * 2, availableHeight / (tableImgHeight / 2 * 2));
+        scaledWidth = tableImgWidth * maxScale / 2;
+        scaledHeight = tableImgHeight * maxScale / 2;
+      }
+      
+      // If scaled height is manageable, add in single page
+      if (scaledHeight <= availableHeight) {
+        pdf.addImage(tableImgData, 'PNG', margin, tableStartY, scaledWidth, scaledHeight);
+      } else {
+        // Split across multiple pages
+        const scaleRatio = contentWidth / tableImgWidth * 2; // Scale for source coords
+        const srcChunkHeight = (availableHeight / scaleRatio) * 2;
+        
+        let srcY = 0;
+        let isFirstChunk = true;
+        
+        while (srcY < tableImgHeight) {
+          if (!isFirstChunk) {
+            pdf.addPage();
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Vital Signs Record (continued)', margin, 15);
+          }
+          
+          // Create a cropped canvas for this chunk
+          const chunkCanvas = document.createElement('canvas');
+          const chunkHeight = Math.min(srcChunkHeight, tableImgHeight - srcY);
+          chunkCanvas.width = tableImgWidth;
+          chunkCanvas.height = chunkHeight;
+          
+          const ctx = chunkCanvas.getContext('2d');
+          ctx.drawImage(tableCanvas, 0, srcY, tableImgWidth, chunkHeight, 0, 0, tableImgWidth, chunkHeight);
+          
+          const chunkImgData = chunkCanvas.toDataURL('image/png');
+          const destHeight = (chunkHeight * scaledWidth) / tableImgWidth;
+          
+          pdf.addImage(chunkImgData, 'PNG', margin, tableStartY, scaledWidth, destHeight);
+          
+          srcY += chunkHeight;
+          isFirstChunk = false;
+        }
+      }
+      
+      // ===== Last Page: Free Text Notes =====
+      if (freeTextContent.trim()) {
+        pdf.addPage();
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Free Text Notes', margin, 15);
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        
+        // Split long text into lines
+        const lines = pdf.splitTextToSize(freeTextContent, contentWidth);
+        let yPos = 25;
+        const lineHeight = 5;
+        
+        lines.forEach(line => {
+          if (yPos > pageHeight - margin) {
+            pdf.addPage();
+            yPos = 15;
+          }
+          pdf.text(line, margin, yPos);
+          yPos += lineHeight;
+        });
+      }
+      
+      // Save PDF
+      const filename = `anesthesia_record_${patientId}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      pdf.save(filename);
+      
+    } catch (error) {
+      console.error('PDF export error:', error);
+      alert('PDF 생성 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-file-pdf"></i> Export PDF';
+    }
   });
+
+  // ===== localStorage cleanup on reset =====
+  const resetAllForm = document.querySelector('form[action$="reset/"]');
+  if (resetAllForm) {
+    resetAllForm.addEventListener('submit', function() {
+      localStorage.removeItem('patient_id');
+      localStorage.removeItem('extraVitalRows');
+    });
+  }
+
+  // ===== Initialize on load =====
+  window.addEventListener('load', init);
 </script>
 {% endblock %}

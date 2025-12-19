@@ -11,6 +11,10 @@ def anesthesia_record_view(request):
     # 현재 로그인한 사용자에 해당하는 Free Text Note 가져오기
     free_text_note = FreeTextNote.objects.filter(user=request.user).first()
     
+    # 폼 초기화 (GET, POST 모두에서 사용)
+    form = AnesthesiaRecordForm()
+    form_free = FreeTextNoteForm(instance=free_text_note)
+    
     if request.method == "POST":
         # 두 개의 폼이 같은 URL로 POST될 때 submit 버튼 이름으로 구분합니다.
         if "save_free_text" in request.POST:
@@ -36,9 +40,6 @@ def anesthesia_record_view(request):
                 record.extra_vitals = form.cleaned_data.get('extra_vitals', {})
                 record.save()
                 return redirect('anesthesia_record')
-    else:
-        form = AnesthesiaRecordForm()
-        form_free = FreeTextNoteForm(instance=free_text_note)
     
     # 현재 로그인한 사용자의 레코드만 조회
     records = AnesthesiaRecord.objects.filter(user=request.user).order_by('-timestamp')
