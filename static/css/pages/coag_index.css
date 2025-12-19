@@ -72,6 +72,10 @@
     color: #6c757d;
     margin-bottom: 0.4rem;
     font-size: 0.8rem;
+    min-height: 1.6em;
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
   }
 
   /* Guideline Card Styles */
@@ -148,6 +152,7 @@
     transition: all 0.3s ease;
     border: none;
     font-size: 0.75rem;
+    margin-top: auto;
   }
 
   .feature-card .btn-gradient:hover {

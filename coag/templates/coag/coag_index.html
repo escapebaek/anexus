@@ -20,9 +20,7 @@
           <i class="fas fa-pills"></i>
         </div>
         <h3 class="feature-title">{{ coag.drugName }}</h3>
-        {% if coag.subtitle %}
-        <p class="feature-subtitle">{{ coag.subtitle }}</p>
-        {% endif %}
+        <p class="feature-subtitle">{% if coag.subtitle %}{{ coag.subtitle }}{% else %}&nbsp;{% endif %}</p>
         <a
           href="{% url 'coag_detail' drugName=coag.drugName %}"
           class="btn btn-gradient"

@@ -25,52 +25,57 @@
   /* Card Styles */
   .feature-card {
     background: white;
-    border-radius: 16px;
-    padding: 1.1rem 1.25rem;
+    border-radius: 12px;
+    padding: 0.75rem 0.75rem;
     transition: all 0.25s ease;
     border: 1px solid rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 0.5rem;
+    gap: 0.35rem;
+    height: 100%;
   }
 
   .feature-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
   }
 
   .feature-icon {
-    width: 56px;
-    height: 56px;
+    width: 40px;
+    height: 40px;
     background: var(--primary-gradient);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.4rem;
     transition: all 0.25s ease;
-    box-shadow: 0 6px 16px rgba(43, 88, 118, 0.15);
+    box-shadow: 0 4px 12px rgba(43, 88, 118, 0.15);
   }
 
   .feature-icon i {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     color: white;
   }
 
   .feature-title {
-    font-size: 1.2rem;
+    font-size: 0.9rem;
     font-weight: 700;
     color: var(--primary-dark);
-    margin-bottom: 0.25rem;
-    line-height: 1.25;
+    margin-bottom: 0.15rem;
+    line-height: 1.2;
   }
 
   .feature-subtitle {
     color: #6c757d;
-    margin-bottom: 0.75rem;
-    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.8rem;
+    min-height: 1.6em;
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
   }
 
   /* Guideline Card Styles */
@@ -141,16 +146,17 @@
   .feature-card .btn-gradient {
     background: var(--primary-gradient);
     color: var(--text-light);
-    padding: 0.4rem 0.9rem;
+    padding: 0.3rem 0.7rem;
     border-radius: 999px;
     font-weight: 600;
     transition: all 0.3s ease;
     border: none;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
+    margin-top: auto;
   }
 
   .feature-card .btn-gradient:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 15px rgba(43, 88, 118, 0.2);
+    box-shadow: 0 6px 12px rgba(43, 88, 118, 0.2);
     color: var(--text-light);
   }
