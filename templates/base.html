@@ -26,6 +26,9 @@
       rel="stylesheet"
     />
 
+    <!-- KaTeX CSS for math formula rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+
     <!-- Project CSS -->
     <link href="{% static 'css/main.css' %}" rel="stylesheet" />
 
@@ -282,6 +285,26 @@
         },
       };
     </script>
+
+    <!-- KaTeX JS for math formula rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        if (typeof renderMathInElement === 'function') {
+          renderMathInElement(document.body, {
+            delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+            ],
+            throwOnError: false
+          });
+        }
+      });
+    </script>
+
     {% block extra_js %}{% endblock extra_js %}
   </body>
 </html>

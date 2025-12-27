@@ -1006,6 +1006,22 @@
     const element = document.getElementById(id);
     if (element) {
       element.classList.toggle("hidden");
+      
+      // KaTeX 수식 렌더링 (해설 박스가 표시될 때)
+      if (!element.classList.contains("hidden") && !element.dataset.katexRendered) {
+        if (typeof renderMathInElement === 'function') {
+          renderMathInElement(element, {
+            delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+            ],
+            throwOnError: false
+          });
+          element.dataset.katexRendered = 'true';
+        }
+      }
     }
   }
 
