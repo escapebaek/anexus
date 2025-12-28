@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+{% block custom_css %}
+  <link href="{% static 'css/pages/board_form.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block page_content %}
+<div class="board-container">
+  <div class="board-wrapper">
+    <form method="post" class="form-container">
+      {% csrf_token %}
+      
+      <div class="form-header">
+        <h2 class="form-title">
+          <i class="fas fa-comment-dots me-2"></i>댓글 수정하기
+        </h2>
+      </div>
+      
+      <div class="form-body">
+        <div class="form-field">
+          <label for="{{ form.content.id_for_label }}">댓글 내용</label>
+          <textarea 
+            name="{{ form.content.name }}" 
+            id="{{ form.content.id_for_label }}" 
+            class="form-control" 
+            rows="5"
+            placeholder="댓글 내용을 입력해주세요."
+          >{{ form.content.value|default:'' }}</textarea>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-gradient" onclick="history.back()">취소</button>
+          <button type="submit" class="btn btn-gradient btn-lg">
+            <i class="fas fa-save me-2"></i>저장하기
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock page_content %}
