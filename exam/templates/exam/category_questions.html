@@ -941,7 +941,7 @@
       } else if (!selectedRadio) {
         numUnanswered++;
         resultType = "unanswered";
-      } else if (selectedRadio.value === correctOption) {
+      } else if (selectedRadio.value.trim().charAt(0).toUpperCase() === correctOption.trim().charAt(0).toUpperCase()) {
         numCorrect++;
         resultType = "correct";
       } else {

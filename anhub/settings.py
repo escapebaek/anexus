@@ -170,8 +170,8 @@ LOGOUT_REDIRECT_URL = '/'
 # for password change e-mail
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# 세션 만료 시간 설정 (예: 30분)
-SESSION_COOKIE_AGE = 1800  # 30분(1800초) 후에 세션 만료
+# 세션 만료 시간 설정 (6시간)
+SESSION_COOKIE_AGE = 21600  # 6시간(21600초) 후에 세션 만료
 SESSION_SAVE_EVERY_REQUEST = True  # 각 요청마다 세션의 만료 시간을 갱신
 
 # 브라우저 닫을 때 세션 삭제
