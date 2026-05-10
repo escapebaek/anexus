@@ -386,13 +386,21 @@
 
   // ===== Time Column Management =====
   function addNewTimeColumn() {
-    const seoulNow = getSeoulTime();
-    const timestamp = formatDateTimeLocal(seoulNow);
-    
+    let newDate;
+    if (timeColumns.length > 0) {
+      // Default to last entry's time + 5 minutes (user can adjust via the datetime-local input)
+      const lastTimestamp = timeColumns[timeColumns.length - 1].timestamp;
+      newDate = new Date(lastTimestamp);
+      newDate.setMinutes(newDate.getMinutes() + 5);
+    } else {
+      newDate = getSeoulTime();
+    }
+    const timestamp = formatDateTimeLocal(newDate);
+
     timeColumns.push({
       id: nextNewId--,
       timestamp: timestamp,
-      time_display: formatTimeDisplay(seoulNow),
+      time_display: formatTimeDisplay(newDate),
       isNew: true,
       data: null
     });
@@ -579,23 +587,42 @@
       new Date(a.timestamp) - new Date(b.timestamp)
     );
     
-    const colors = ['#ef4444', '#3b82f6', '#22c55e', '#f97316', '#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b'];
-    
-    const datasets = baseVitals.map((vital, index) => ({
-      label: vital,
-      data: sortedRecords.map(rec => rec[vital.toLowerCase()]),
-      borderColor: colors[index % colors.length],
-      backgroundColor: colors[index % colors.length] + '20',
-      fill: false,
-      tension: 0.3
-    }));
-    
+    // Named palette: red family for pressure vitals, green for HR, blue for SpO2
+    const vitalColors = {
+      'SBP':  { border: '#e53e3e', bg: 'rgba(229,62,62,0.12)' },
+      'DBP':  { border: '#c05621', bg: 'rgba(192,86,33,0.12)' },
+      'MBP':  { border: '#dd6b20', bg: 'rgba(221,107,32,0.12)' },
+      'HR':   { border: '#276749', bg: 'rgba(39,103,73,0.12)' },
+      'SpO2': { border: '#2b6cb0', bg: 'rgba(43,108,176,0.12)' },
+    };
+    const fallbackColors = ['#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b', '#6366f1', '#06b6d4'];
+
+    function getVitalColor(name, fallbackIdx) {
+      if (vitalColors[name]) return vitalColors[name];
+      const c = fallbackColors[fallbackIdx % fallbackColors.length];
+      return { border: c, bg: c + '20' };
+    }
+
+    const datasets = baseVitals.map((vital) => {
+      const color = getVitalColor(vital, 0);
+      return {
+        label: vital,
+        data: sortedRecords.map(rec => rec[vital.toLowerCase()]),
+        borderColor: color.border,
+        backgroundColor: color.bg,
+        fill: false,
+        tension: 0.3
+      };
+    });
+
     // Add extra vitals to chart
     extraVitals.forEach((vital, index) => {
+      const color = getVitalColor(vital, index);
       datasets.push({
         label: vital,
         data: sortedRecords.map(rec => rec.extra_vitals?.[vital] ?? null),
-        borderColor: colors[(baseVitals.length + index) % colors.length],
+        borderColor: color.border,
+        backgroundColor: color.bg,
         fill: false,
         tension: 0.3
       });
@@ -650,25 +677,33 @@
       const contentWidth = pageWidth - (margin * 2);
       
       // ===== Page 1: Header and Chart =====
-      // Header
-      pdf.setFontSize(18);
+      // Header bar
+      pdf.setFillColor(43, 88, 118);
+      pdf.rect(margin, 10, contentWidth, 14, 'F');
+      pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Anesthesia Record', margin, 20);
-      
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('Anesthesia Record', margin + 4, 20);
+
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Patient ID: ${patientId}`, margin, 28);
-      pdf.text(`Generated: ${new Date().toLocaleString('ko-KR')}`, margin, 34);
-      
+      pdf.setTextColor(43, 88, 118);
+      pdf.text(`Patient ID: ${patientId}`, margin, 32);
+      pdf.setTextColor(100, 100, 100);
+      const now = new Date();
+      const generatedStr = `Generated: ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      pdf.text(generatedStr, margin, 38);
+      pdf.setTextColor(0, 0, 0);
+
       // Draw chart to PDF
       if (chart && existingRecords.length > 0) {
         const chartCanvas = document.getElementById('vitalsChart');
         const chartImage = chartCanvas.toDataURL('image/png', 1.0);
-        
+
         // Chart dimensions
         const chartWidth = contentWidth;
         const chartHeight = 80;
-        pdf.addImage(chartImage, 'PNG', margin, 42, chartWidth, chartHeight);
+        pdf.addImage(chartImage, 'PNG', margin, 46, chartWidth, chartHeight);
       }
       
       // ===== Page 2+: Vital Signs Table =====
@@ -687,13 +722,30 @@
       const emptyCells = tableClone.querySelectorAll('.empty-cell');
       emptyCells.forEach(c => c.remove());
       
-      // Style the cloned table for PDF
+      // Style the cloned table for PDF.
+      // Classes are cleared so that sticky/!important class rules don't fight inline styles
+      // during off-screen html2canvas capture.
       tableClone.style.cssText = 'border-collapse: collapse; font-size: 10px; background: white;';
       tableClone.querySelectorAll('th').forEach(th => {
-        th.style.cssText = 'background: #4299e1; color: white; padding: 6px 8px; border: 1px solid #333; font-size: 9px; white-space: nowrap;';
+        const isLabelHeader = th.classList.contains('vital-label-header');
+        th.className = '';
+        if (isLabelHeader) {
+          th.style.cssText = 'background: #1e4060; color: white; padding: 6px 10px; border: 1px solid #1e4060; border-right: 2px solid rgba(255,255,255,0.3); font-size: 9px; white-space: nowrap; font-weight: 600; text-align: left;';
+        } else {
+          th.style.cssText = 'background: #2b5876; color: white; padding: 6px 8px; border: 1px solid #2b5876; font-size: 9px; white-space: nowrap; text-align: center;';
+        }
       });
-      tableClone.querySelectorAll('td').forEach(td => {
-        td.style.cssText = 'padding: 5px 8px; border: 1px solid #ccc; text-align: center; font-size: 9px; white-space: nowrap;';
+      tableClone.querySelectorAll('tr').forEach((tr, rowIdx) => {
+        tr.querySelectorAll('td').forEach(td => {
+          const isVitalLabel = td.classList.contains('vital-label');
+          td.className = '';
+          if (isVitalLabel) {
+            td.style.cssText = 'background: #edf2f7; color: #2b5876; padding: 5px 10px; border: 1px solid #c8d8e4; border-right: 2px solid #2b5876; font-size: 9px; font-weight: 600; white-space: nowrap; text-align: left;';
+          } else {
+            const stripe = rowIdx % 2 === 0 ? '#ffffff' : '#f0f4f8';
+            td.style.cssText = `padding: 5px 8px; border: 1px solid #d1dce6; text-align: center; font-size: 9px; white-space: nowrap; background: ${stripe};`;
+          }
+        });
       });
       tableClone.querySelectorAll('input').forEach(input => {
         const span = document.createElement('span');
@@ -720,9 +772,13 @@
       
       // Add table page(s)
       pdf.addPage();
-      pdf.setFontSize(14);
+      pdf.setFillColor(43, 88, 118);
+      pdf.rect(margin, 8, contentWidth, 10, 'F');
+      pdf.setFontSize(13);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Vital Signs Record', margin, 15);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('Vital Signs Record', margin + 4, 15);
+      pdf.setTextColor(0, 0, 0);
       
       const tableImgData = tableCanvas.toDataURL('image/png');
       const tableImgWidth = tableCanvas.width;
@@ -760,9 +816,13 @@
         while (srcY < tableImgHeight) {
           if (!isFirstChunk) {
             pdf.addPage();
-            pdf.setFontSize(14);
+            pdf.setFillColor(43, 88, 118);
+            pdf.rect(margin, 8, contentWidth, 10, 'F');
+            pdf.setFontSize(13);
             pdf.setFont('helvetica', 'bold');
-            pdf.text('Vital Signs Record (continued)', margin, 15);
+            pdf.setTextColor(255, 255, 255);
+            pdf.text('Vital Signs Record (continued)', margin + 4, 15);
+            pdf.setTextColor(0, 0, 0);
           }
           
           // Create a cropped canvas for this chunk
@@ -787,9 +847,13 @@
       // ===== Last Page: Free Text Notes =====
       if (freeTextContent.trim()) {
         pdf.addPage();
-        pdf.setFontSize(14);
+        pdf.setFillColor(43, 88, 118);
+        pdf.rect(margin, 8, contentWidth, 10, 'F');
+        pdf.setFontSize(13);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Free Text Notes', margin, 15);
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('Free Text Notes', margin + 4, 15);
+        pdf.setTextColor(0, 0, 0);
         
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
