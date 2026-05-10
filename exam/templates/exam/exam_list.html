@@ -10,7 +10,6 @@
 <!-- Exam Cards Section -->
 <div class="exam-section">
   <div class="container">
-    {% if user.is_specially_approved %}
     <div class="row g-3 align-items-stretch">
       {% for exam in exams %}
       <div class="col-6 col-md-4 col-lg-3 col-xl-2 d-flex">
@@ -30,15 +29,6 @@
       </div>
       {% endfor %}
     </div>
-    {% else %}
-    <div class="access-restricted animate-fade-in">
-      <div class="restricted-icon">
-        <i class="fas fa-lock"></i>
-      </div>
-      <h2>Access Restricted</h2>
-      <p>You do not have permission to view this content.</p>
-    </div>
-    {% endif %}
   </div>
 </div>
 <script>

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:/Users/lumin/OneDrive/WORKSPACE/python/anexus/venv/Scripts/python.exe\" manage.py makemigrations exam --name add_is_special_to_exam)"
+    ]
+  }
+}

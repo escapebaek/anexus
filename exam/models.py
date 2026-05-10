@@ -15,6 +15,7 @@ class Exam(models.Model):
     description = models.TextField(blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
     display_order = models.PositiveIntegerField(default=0, help_text="표시 순서 (숫자가 작을수록 먼저 표시)")
+    is_special = models.BooleanField(default=False, help_text="특별 승인된 사용자(is_specially_approved)에게만 표시")
 
     class Meta:
         ordering = ['display_order', 'date_created']

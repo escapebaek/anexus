@@ -2,7 +2,7 @@
 from .models import Exam, Question, ExamResult, Category
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
-from accounts.decorators import user_is_specially_approved
+from accounts.decorators import user_is_approved
 import json
 import csv
 from django.views.decorators.http import require_POST
@@ -14,26 +14,33 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def exam_landing_page(request):
     return render(request, 'exam/landing_page.html')
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def exam_list(request):
-    exams = Exam.objects.all().order_by('display_order', 'date_created')
+    if request.user.is_specially_approved:
+        exams = Exam.objects.all().order_by('display_order', 'date_created')
+    else:
+        exams = Exam.objects.filter(is_special=False).order_by('display_order', 'date_created')
     return render(request, 'exam/exam_list.html', {'exams': exams})
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def exam_detail(request, exam_id):
     exam = get_object_or_404(Exam, pk=exam_id)
+    if exam.is_special and not request.user.is_specially_approved:
+        return redirect('exam_list')
     return render(request, 'exam/exam_detail.html', {'exam': exam})
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def question_list(request, exam_id):
     exam = get_object_or_404(Exam.objects.select_related(), pk=exam_id)
+    if exam.is_special and not request.user.is_specially_approved:
+        return redirect('exam_list')
     
     bookmarked_questions = set(Bookmark.objects.filter(
         user=request.user
@@ -56,7 +63,7 @@ def question_list(request, exam_id):
     })
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def question_detail_partial(request, question_id):
     question = get_object_or_404(Question.objects.select_related('category', 'exam'), pk=question_id)
     is_bookmarked = Bookmark.objects.filter(user=request.user, question=question).exists()
@@ -66,7 +73,7 @@ def question_detail_partial(request, question_id):
     })
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def save_exam_results(request):
     if request.method == 'POST':
         # JSON 파싱 예외 처리 추가 - 잘못된 JSON 요청 시 400 Bad Request 반환
@@ -133,6 +140,8 @@ def save_exam_results(request):
         exam_instance = None
         if exam_id is not None:
             exam_instance = get_object_or_404(Exam, id=exam_id)
+            if exam_instance.is_special and not request.user.is_specially_approved:
+                return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
 
         result = ExamResult.objects.create(
             user=user,
@@ -149,7 +158,7 @@ def save_exam_results(request):
         return JsonResponse({'status': 'error'}, status=400)
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def exam_results(request):
     result_id = request.GET.get('result_id')
     result = get_object_or_404(ExamResult, id=result_id, user=request.user)
@@ -215,13 +224,13 @@ def exam_results(request):
     return render(request, 'exam/exam_results.html', {'result': result})
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def category_list(request):
     categories = Category.objects.all()
     return render(request, 'exam/category_list.html', {'categories': categories})
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def category_questions(request, category_name):
     decoded_category_name = unquote(category_name)
     try:
@@ -245,7 +254,7 @@ def category_questions(request, category_name):
         raise Http404(f"Category not found: {decoded_category_name}")
     
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def bookmarked_questions(request):
     bookmarked_queryset = Question.objects.filter(
         bookmark__user=request.user
@@ -284,7 +293,7 @@ def bookmarked_questions(request):
 
 @require_POST
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def toggle_bookmark(request, question_id):
     try:
         question = get_object_or_404(Question, id=question_id)
@@ -303,7 +312,7 @@ def toggle_bookmark(request, question_id):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
         
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def question_home(request):
     sections = [
         {"title": "Question Bank", "text": "Practice exams and question banks", 
@@ -468,7 +477,7 @@ def calculate_total_questions_answered(results):
 
 # ============ Results History & Analytics ============
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def my_results(request):
     results = (
         ExamResult.objects
@@ -491,7 +500,7 @@ def my_results(request):
     return render(request, 'exam/my_results.html', {'results': display})
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def exam_analytics(request, exam_id:int):
     """Enhanced analytics for a specific exam"""
     exam = get_object_or_404(Exam, pk=exam_id)
@@ -599,7 +608,7 @@ def exam_analytics(request, exam_id:int):
     })
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def analytics_overview(request):
     """Enhanced aggregate analytics across ALL exams"""
     results = list(
@@ -762,7 +771,7 @@ def analytics_overview(request):
     })
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def result_analytics(request, result_id:int):
     """Enhanced analytics for a single result attempt"""
     r = get_object_or_404(ExamResult, pk=result_id, user=request.user)
@@ -814,14 +823,14 @@ def result_analytics(request, result_id:int):
 
 @require_POST
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def delete_result(request, result_id: int):
     r = get_object_or_404(ExamResult, pk=result_id, user=request.user)
     r.delete()
     return redirect('my_results')
 
 @login_required
-@user_is_specially_approved
+@user_is_approved
 def export_analytics_csv(request):
     """Export analytics data as CSV"""
     results = ExamResult.objects.filter(user=request.user).select_related('exam').order_by('-date_taken')
