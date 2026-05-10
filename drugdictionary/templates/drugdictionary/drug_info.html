@@ -7,19 +7,27 @@
 {% endblock %}
 
 {% block page_content %}
-<div class="drug-page">
 
-  <!-- Page Header -->
-  <div class="drug-page-header">
-    <h1><i class="fas fa-pills"></i> Drug Information</h1>
-    <p>Search FDA-approved drug labels by brand or generic name</p>
+<!-- Hero Header -->
+<div class="drug-hero">
+  <div class="drug-hero-content">
+    <div class="drug-hero-icon"><i class="fas fa-pills"></i></div>
+    <h1 class="drug-hero-title">Drug Information</h1>
+    <p class="drug-hero-subtitle">Search FDA-approved drug labels</p>
   </div>
+  <div class="drug-hero-wave">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 56" preserveAspectRatio="none">
+      <path fill="#f8f9fa" d="M0,28 C240,56 480,0 720,28 C960,56 1200,0 1440,28 L1440,56 L0,56 Z"/>
+    </svg>
+  </div>
+</div>
 
-  <!-- Search -->
-  <div class="search-section">
-    <form method="get" class="search-form">
+<!-- Search -->
+<div class="drug-search-section">
+  <div class="search-container">
+    <form method="get">
       <div class="search-bar">
-        <i class="fas fa-search search-icon"></i>
+        <i class="fas fa-search search-bar-icon"></i>
         <input
           type="text"
           name="q"
@@ -29,95 +37,85 @@
           autocomplete="off"
         />
         <button class="search-btn" type="submit">
-          <i class="fas fa-search"></i><span> Search</span>
+          <i class="fas fa-search"></i> Search
         </button>
       </div>
-      <p class="search-hint">
-        <i class="fas fa-info-circle"></i> Brand name or generic name
-      </p>
+      <p class="search-hint">Search by brand name or generic name</p>
     </form>
   </div>
+</div>
 
-  <!-- Error -->
+<!-- Main -->
+<div class="drug-main">
+
   {% if error %}
-  <div class="alert-box alert-error">
+  <div class="drug-alert drug-alert-error">
     <i class="fas fa-exclamation-circle"></i> {{ error }}
   </div>
   {% endif %}
 
-  <!-- No results -->
   {% if query and not results and not error %}
-  <div class="alert-box alert-warning">
+  <div class="drug-alert drug-alert-warning">
     <i class="fas fa-search"></i>
     No results found for "<strong>{{ query }}</strong>". Try a different spelling or generic name.
   </div>
   {% endif %}
 
-  <!-- Results -->
   {% if results %}
-  <div class="results-meta">
+  <p class="results-meta">
     <i class="fas fa-list-ul"></i>
-    Found <strong>{{ results|length }}</strong> result{{ results|length|pluralize }} for
-    &ldquo;<em>{{ query }}</em>&rdquo;
-  </div>
+    Found <strong>{{ results|length }}</strong> result{{ results|length|pluralize }}
+    for &ldquo;<em>{{ query }}</em>&rdquo;
+  </p>
 
-  <div class="drug-list" id="drugList">
+  <div class="drug-grid" id="drugGrid">
     {% for drug in results %}
-    <div class="drug-card" data-drug-id="{{ drug.id }}">
+    <div class="drug-card animate-fade-in" data-drug-id="{{ drug.id }}">
 
-      <!-- Card top: always visible -->
-      <div class="drug-card-header">
-        <div class="drug-icon-wrap"><i class="fas fa-capsules"></i></div>
-        <div class="drug-names">
-          <h3 class="drug-brand">{{ drug.brand_names.0|default:"Unknown" }}</h3>
-          {% if drug.generic_names.0 %}
-          <span class="drug-generic">{{ drug.generic_names.0 }}</span>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="drug-card-body">
-        {% if drug.manufacturer.0 and drug.manufacturer.0 != "Unknown" %}
-        <div class="drug-manufacturer">
-          <i class="fas fa-industry"></i>
-          <span>{{ drug.manufacturer.0 }}</span>
-        </div>
+      <!-- Left/top: always visible drug info -->
+      <div class="drug-card-info">
+        <div class="drug-icon"><i class="fas fa-capsules"></i></div>
+        <h3 class="drug-brand-name">{{ drug.brand_names.0|default:"Unknown" }}</h3>
+        {% if drug.generic_names.0 %}
+        <p class="drug-generic-name">{{ drug.generic_names.0 }}</p>
         {% endif %}
-
-        <div class="section-tabs">
-          <button class="tab-btn tab-indications section-btn"
+        {% if drug.manufacturer.0 and drug.manufacturer.0 != "Unknown" %}
+        <p class="drug-mfr"><i class="fas fa-industry"></i>{{ drug.manufacturer.0 }}</p>
+        {% endif %}
+        <div class="drug-tabs">
+          <button class="drug-tab tab-indications section-btn"
             data-section="indications" data-drug-id="{{ drug.id }}">
             <i class="fas fa-check-circle"></i> Indications
           </button>
-          <button class="tab-btn tab-dosage section-btn"
+          <button class="drug-tab tab-dosage section-btn"
             data-section="dosage" data-drug-id="{{ drug.id }}">
             <i class="fas fa-prescription"></i> Dosage
           </button>
-          <button class="tab-btn tab-warnings section-btn"
+          <button class="drug-tab tab-warnings section-btn"
             data-section="warnings" data-drug-id="{{ drug.id }}">
             <i class="fas fa-exclamation-triangle"></i> Warnings
           </button>
-          <button class="tab-btn tab-adverse section-btn"
+          <button class="drug-tab tab-adverse section-btn"
             data-section="adverse_reactions" data-drug-id="{{ drug.id }}">
             <i class="fas fa-allergies"></i> Adverse
           </button>
-          <button class="tab-btn tab-contra section-btn"
+          <button class="drug-tab tab-contra section-btn"
             data-section="contraindications" data-drug-id="{{ drug.id }}">
             <i class="fas fa-ban"></i> Contraindications
           </button>
         </div>
       </div>
 
-      <!-- Expandable section panel -->
-      <div class="section-panel d-none">
-        <div class="section-panel-header">
-          <h4 class="section-title"><i class="fas fa-info-circle"></i></h4>
-          <button type="button" class="btn-close-panel" title="Close">
+      <!-- Right: content panel (shown when expanded) -->
+      <div class="drug-panel">
+        <div class="drug-panel-header">
+          <h4 class="drug-panel-title"><i class="fas fa-info-circle"></i></h4>
+          <button type="button" class="drug-panel-close" title="Close">
             <i class="fas fa-times"></i>
           </button>
         </div>
-        <div class="section-content">
-          <!-- AJAX content inserted here -->
+        <div class="drug-panel-body">
+          <!-- AJAX content -->
         </div>
       </div>
 
@@ -130,14 +128,14 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const SECTION_ICONS = {
+  const ICONS = {
     indications:       'fas fa-check-circle',
     dosage:            'fas fa-prescription',
     warnings:          'fas fa-exclamation-triangle',
     adverse_reactions: 'fas fa-allergies',
     contraindications: 'fas fa-ban',
   };
-  const SECTION_LABELS = {
+  const LABELS = {
     indications:       'Indications & Usage',
     dosage:            'Dosage & Administration',
     warnings:          'Warnings',
@@ -145,76 +143,79 @@ document.addEventListener('DOMContentLoaded', function () {
     contraindications: 'Contraindications',
   };
 
-  function closeCard(card) {
-    card.classList.remove('expanded-card');
-    const panel = card.querySelector('.section-panel');
-    panel.classList.remove('open');
-    panel.classList.add('d-none');
-    card.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  function collapseCard(card) {
+    card.classList.remove('is-expanded');
+    const panel = card.querySelector('.drug-panel');
+    panel.classList.remove('is-open');
+    card.querySelectorAll('.drug-tab').forEach(b => b.classList.remove('active'));
   }
 
-  document.querySelectorAll('.section-btn').forEach(button => {
-    button.addEventListener('click', function () {
-      const card       = this.closest('.drug-card');
-      const panel      = card.querySelector('.section-panel');
-      const titleEl    = panel.querySelector('.section-title');
-      const contentEl  = panel.querySelector('.section-content');
-      const section    = this.dataset.section;
-      const drugId     = this.dataset.drugId;
-      const activeBtn  = card.querySelector('.tab-btn.active');
-      const isSameBtn  = activeBtn === this;
+  document.querySelectorAll('.section-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const card      = this.closest('.drug-card');
+      const panel     = card.querySelector('.drug-panel');
+      const titleEl   = panel.querySelector('.drug-panel-title');
+      const bodyEl    = panel.querySelector('.drug-panel-body');
+      const section   = this.dataset.section;
+      const drugId    = this.dataset.drugId;
+      const isSameBtn = this.classList.contains('active');
 
-      // Close all other cards
+      // Collapse all other cards
       document.querySelectorAll('.drug-card').forEach(c => {
-        if (c !== card) closeCard(c);
+        if (c !== card) collapseCard(c);
       });
 
-      // Same button = toggle off
-      if (isSameBtn) { closeCard(card); return; }
+      // Toggle off if same button clicked again
+      if (isSameBtn) { collapseCard(card); return; }
 
-      // Open / switch section
-      card.classList.add('expanded-card');
-      card.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      // Expand this card
+      card.classList.add('is-expanded');
+      card.querySelectorAll('.drug-tab').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
 
-      titleEl.innerHTML =
-        `<i class="${SECTION_ICONS[section] || 'fas fa-info-circle'}"></i> ${SECTION_LABELS[section] || section}`;
+      // Set title
+      titleEl.innerHTML = `<i class="${ICONS[section]}"></i> ${LABELS[section]}`;
 
-      contentEl.innerHTML = `
-        <div class="loading-spinner">
-          <div class="spinner"></div><span>Loading...</span>
+      // Show loading
+      bodyEl.innerHTML = `
+        <div class="drug-loading">
+          <div class="drug-spinner"></div><span>Loading...</span>
         </div>`;
 
-      panel.classList.remove('d-none');
-      setTimeout(() => panel.classList.add('open'), 10);
-      setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+      // Fade panel in
+      requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.add('is-open')));
 
+      // Scroll into view
+      setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+
+      // Fetch content
       fetch(`/drugdictionary/get-section/?drug_id=${drugId}&section=${section}`)
         .then(r => r.json())
         .then(data => {
           if (data.content && data.content.length) {
-            contentEl.innerHTML = data.content
-              .map(item => `<p class="content-para">${item}</p>`)
+            bodyEl.innerHTML = data.content
+              .map(p => `<p class="drug-content-para">${p}</p>`)
               .join('');
           } else if (data.error) {
-            contentEl.innerHTML =
-              `<div class="content-error"><i class="fas fa-exclamation-circle"></i> ${data.error}</div>`;
+            bodyEl.innerHTML =
+              `<div class="drug-content-error"><i class="fas fa-exclamation-circle"></i> ${data.error}</div>`;
           } else {
-            contentEl.innerHTML = '<p class="content-empty">No information available.</p>';
+            bodyEl.innerHTML = '<p class="drug-content-empty">No information available.</p>';
           }
         })
         .catch(() => {
-          contentEl.innerHTML =
-            '<div class="content-error"><i class="fas fa-exclamation-circle"></i> Error loading content. Please try again.</div>';
+          bodyEl.innerHTML =
+            '<div class="drug-content-error"><i class="fas fa-exclamation-circle"></i> Error loading content. Please try again.</div>';
         });
     });
   });
 
-  document.querySelectorAll('.btn-close-panel').forEach(btn => {
+  document.querySelectorAll('.drug-panel-close').forEach(btn => {
     btn.addEventListener('click', function () {
-      closeCard(this.closest('.drug-card'));
+      collapseCard(this.closest('.drug-card'));
     });
   });
 });
 </script>
+
 {% endblock %}
