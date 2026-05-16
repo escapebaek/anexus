@@ -33,3 +33,4 @@ virtualenv==20.26.2
 webencodings==0.5.1
 websockets==9.1
 whitenoise==6.7.0
+gunicorn==22.0.0
