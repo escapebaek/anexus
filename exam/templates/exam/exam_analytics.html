@@ -184,7 +184,7 @@
     <div class="insights-grid">
       <!-- Strengths Column -->
       <div class="insight-column strengths">
-        <h6><i class="fas fa-check-circle"></i> 강점 카테고리 (≥60%)</h6>
+        <h6><i class="fas fa-check-circle"></i> 강점 카테고리 (≥70%)</h6>
         {% if strong_categories %}
           {% for cat in strong_categories %}
           <div class="category-progress-item">
@@ -301,19 +301,19 @@
     datasets: [{
       label: 'Score (%)',
       data: {{ attempt_scores|safe }},
-      borderColor: '#667eea',
-      backgroundColor: 'rgba(102, 126, 234, 0.1)',
+      borderColor: '#2b5876',
+      backgroundColor: 'rgba(43, 88, 118, 0.1)',
       tension: 0.4,
       fill: true,
       pointRadius: 6,
       pointHoverRadius: 8,
-      pointBackgroundColor: '#667eea',
+      pointBackgroundColor: '#2b5876',
       pointBorderColor: '#fff',
       pointBorderWidth: 2
     }, {
       label: 'Moving Average',
       data: {{ moving_avg|safe }},
-      borderColor: '#38ef7d',
+      borderColor: '#48bb78',
       borderDash: [5, 5],
       borderWidth: 2,
       pointRadius: 0,
@@ -383,10 +383,10 @@
     data: {
       labels,
       datasets: [
-        { label: 'Correct', data: correctData, backgroundColor: '#2ecc71' },
-        { label: 'Incorrect', data: incorrectData, backgroundColor: '#e74c3c' },
-        { label: 'Unanswered', data: unansweredData, backgroundColor: '#f1c40f' },
-        { label: 'No Answer', data: noanswerData, backgroundColor: '#95a5a6' },
+        { label: 'Correct',    data: correctData,    backgroundColor: '#27ae60' },
+        { label: 'Incorrect',  data: incorrectData,  backgroundColor: '#e53e3e' },
+        { label: 'Unanswered', data: unansweredData, backgroundColor: '#d69e2e' },
+        { label: 'No Answer',  data: noanswerData,   backgroundColor: '#718096' },
       ]
     },
     options: {
@@ -409,7 +409,12 @@
       datasets: [{
         label: 'Accuracy %',
         data: accuracyPct,
-        backgroundColor: accuracyPct.map(v => v >= 60 ? '#2ecc71' : v >= 50 ? '#3498db' : v >= 40 ? '#f39c12' : '#e74c3c'),
+        backgroundColor: accuracyPct.map(v =>
+          v >= 80 ? '#27ae60' :
+          v >= 60 ? '#2b5876' :
+          v >= 40 ? '#d69e2e' :
+          '#e53e3e'
+        ),
         borderRadius: 8
       }]
     },

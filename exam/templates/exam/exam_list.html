@@ -25,6 +25,11 @@
             View Details
             <i class="fas fa-chevron-right ms-2"></i>
           </a>
+          {% if exam.id in attempted_exam_ids %}
+          <a href="{% url 'exam_analytics' exam.id %}" class="btn btn-exam-analytics">
+            <i class="fas fa-chart-bar me-1"></i> Analytics
+          </a>
+          {% endif %}
         </div>
       </div>
       {% endfor %}

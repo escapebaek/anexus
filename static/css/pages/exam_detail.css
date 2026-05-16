@@ -182,6 +182,29 @@
     color: white;
   }
 
+  .btn-analytics-outline {
+    background: transparent;
+    color: #2b5876;
+    border: 2px solid #2b5876;
+    padding: 0.9rem 2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+  }
+
+  .btn-analytics-outline:hover {
+    background: linear-gradient(135deg, #2b5876, #4e4376);
+    color: white;
+    border-color: transparent;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(43, 88, 118, 0.25);
+  }
+
   /* Animations */
   @keyframes fadeIn {
     from {

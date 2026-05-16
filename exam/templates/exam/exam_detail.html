@@ -94,6 +94,11 @@
 
     <!-- Start Button - Centered -->
     <div class="start-button-container">
+      {% if has_attempts %}
+      <a href="{% url 'exam_analytics' exam.id %}" class="btn btn-analytics-outline me-3">
+        <i class="fas fa-chart-bar me-2"></i> My Analytics
+      </a>
+      {% endif %}
       <a href="{% url 'question_list' exam.id %}" class="btn btn-start">
         Start Exam
         <i class="fas fa-arrow-right ms-2"></i>

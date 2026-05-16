@@ -25,7 +25,15 @@ def exam_list(request):
         exams = Exam.objects.all().order_by('display_order', 'date_created')
     else:
         exams = Exam.objects.filter(is_special=False).order_by('display_order', 'date_created')
-    return render(request, 'exam/exam_list.html', {'exams': exams})
+    attempted_exam_ids = set(
+        ExamResult.objects.filter(user=request.user, exam__isnull=False)
+        .values_list('exam_id', flat=True)
+        .distinct()
+    )
+    return render(request, 'exam/exam_list.html', {
+        'exams': exams,
+        'attempted_exam_ids': attempted_exam_ids,
+    })
 
 @login_required
 @user_is_approved
@@ -33,7 +41,11 @@ def exam_detail(request, exam_id):
     exam = get_object_or_404(Exam, pk=exam_id)
     if exam.is_special and not request.user.is_specially_approved:
         return redirect('exam_list')
-    return render(request, 'exam/exam_detail.html', {'exam': exam})
+    has_attempts = ExamResult.objects.filter(user=request.user, exam=exam).exists()
+    return render(request, 'exam/exam_detail.html', {
+        'exam': exam,
+        'has_attempts': has_attempts,
+    })
 
 @login_required
 @user_is_approved
@@ -315,18 +327,65 @@ def toggle_bookmark(request, question_id):
 @user_is_approved
 def question_home(request):
     sections = [
-        {"title": "Question Bank", "text": "Practice exams and question banks", 
+        {"title": "Question Bank", "text": "Practice exams and question banks",
          "url": reverse('exam_list'), "icon_class": "book"},
-        {"title": "Question Categories", "text": "Browse questions by category", 
+        {"title": "Question Categories", "text": "Browse questions by category",
          "url": reverse('category_list'), "icon_class": "folder"},
-        {"title": "Bookmarked Questions", "text": "Your saved questions", 
+        {"title": "Bookmarked Questions", "text": "Your saved questions",
          "url": reverse('bookmarked_questions'), "icon_class": "bookmark"},
-        {"title": "My Results", "text": "View your saved results", 
-         "url": reverse('my_results'), "icon_class": "chart-line"},
-        {"title": "Overall Analytics", "text": "Category accuracy across all attempts", 
-         "url": reverse('analytics_overview'), "icon_class": "chart-bar"},
+        {"title": "My Results", "text": "View your saved results",
+         "url": reverse('my_results'), "icon_class": "list-alt"},
+        {"title": "Exam Analytics", "text": "Statistics by exam round",
+         "url": reverse('exam_stats_list'), "icon_class": "chart-bar"},
+        {"title": "Overall Analytics", "text": "Category accuracy across all attempts",
+         "url": reverse('analytics_overview'), "icon_class": "chart-pie"},
     ]
     return render(request, 'exam/question_home.html', {'sections': sections})
+
+@login_required
+@user_is_approved
+def exam_stats_list(request):
+    """Per-exam statistics overview — lists every exam the user has attempted"""
+    results = (
+        ExamResult.objects
+        .filter(user=request.user, exam__isnull=False)
+        .select_related('exam')
+        .order_by('exam__display_order', 'exam__title', '-date_taken')
+    )
+
+    exam_data = {}
+    order_key = {}
+    for r in results:
+        eid = r.exam_id
+        if eid not in exam_data:
+            exam_data[eid] = {
+                'exam': r.exam,
+                'attempts': 0,
+                'scores': [],
+                'last_taken': r.date_taken,
+            }
+            order_key[eid] = (r.exam.display_order, r.exam.title)
+        total = (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
+        pct = round((r.num_correct / total) * 100, 1) if total else 0
+        exam_data[eid]['attempts'] += 1
+        exam_data[eid]['scores'].append(pct)
+
+    exam_list = []
+    for eid, data in sorted(exam_data.items(), key=lambda kv: order_key[kv[0]]):
+        scores = data['scores']
+        avg = round(sum(scores) / len(scores), 1) if scores else 0
+        exam_list.append({
+            'exam': data['exam'],
+            'attempts': data['attempts'],
+            'avg_score': avg,
+            'best_score': round(max(scores), 1) if scores else 0,
+            'last_taken': data['last_taken'],
+        })
+
+    return render(request, 'exam/exam_stats_list.html', {
+        'exam_list': exam_list,
+        'has_data': bool(exam_list),
+    })
 
 # ============ Helper Functions ============
 def calculate_improvement_rate(results):
@@ -355,7 +414,7 @@ def identify_weak_categories(category_stats, threshold=70):
                 weak.append({'name': cat, 'accuracy': round(acc, 1), 'total': denom})
     return sorted(weak, key=lambda x: x['accuracy'])
 
-def identify_strong_categories(category_stats, threshold=60):
+def identify_strong_categories(category_stats, threshold=70):
     """Identify categories with accuracy above threshold"""
     strong = []
     for cat, s in category_stats.items():
@@ -456,17 +515,17 @@ def generate_study_recommendation(weak_categories, avg_pct, target=60):
 def get_performance_grade(pct):
     """Get grade and color based on percentage"""
     if pct >= 90:
-        return {'grade': 'A+', 'label': 'Excellent', 'label_kr': '우수', 'color': '#2ecc71'}
-    elif pct >= 60:
-        return {'grade': 'A', 'label': 'Great', 'label_kr': '훌륭', 'color': '#27ae60'}
+        return {'grade': 'A+', 'label': 'Excellent', 'label_kr': '우수',   'color': '#27ae60'}
     elif pct >= 80:
-        return {'grade': 'B+', 'label': 'Good', 'label_kr': '양호', 'color': '#3498db'}
+        return {'grade': 'A',  'label': 'Great',     'label_kr': '훌륭',   'color': '#2ecc71'}
     elif pct >= 70:
-        return {'grade': 'B', 'label': 'Fair', 'label_kr': '보통', 'color': '#f39c12'}
+        return {'grade': 'B+', 'label': 'Good',      'label_kr': '양호',   'color': '#2b5876'}
     elif pct >= 60:
-        return {'grade': 'C', 'label': 'Needs Work', 'label_kr': '노력필요', 'color': '#e67e22'}
+        return {'grade': 'B',  'label': 'Fair',      'label_kr': '보통',   'color': '#d69e2e'}
+    elif pct >= 50:
+        return {'grade': 'C',  'label': 'Needs Work','label_kr': '노력필요','color': '#e67e22'}
     else:
-        return {'grade': 'D', 'label': 'Keep Trying', 'label_kr': '분발', 'color': '#e74c3c'}
+        return {'grade': 'D',  'label': 'Keep Trying','label_kr': '분발',  'color': '#e53e3e'}
 
 def calculate_total_questions_answered(results):
     """Calculate total number of questions answered across all results"""

@@ -125,6 +125,22 @@
     </div>
   </div>
 
+  <!-- Score Donut Chart -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-5 col-lg-4">
+      <div style="background:white; border-radius:16px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:24px; text-align:center;">
+        <h6 style="font-weight:700; color:#2c3e50; margin-bottom:16px;">Score Overview</h6>
+        <div style="position:relative; width:200px; height:200px; margin:0 auto;">
+          <canvas id="scoreDonut"></canvas>
+          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none;">
+            <div id="donutPct" style="font-size:2rem; font-weight:800; color:#2b5876; line-height:1;">--</div>
+            <div style="font-size:0.75rem; color:#6c757d; text-transform:uppercase; letter-spacing:1px;">Score</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 상세 결과: Question / Category / Selected Answer / Correct Answer / Result -->
   <h2 class="text-gradient mb-3" style="font-size: 1.75rem">
     Detailed Results
@@ -158,7 +174,7 @@
       </thead>
       <tbody>
         {% for detail in result.detailed_results %}
-        <tr>
+        <tr data-result="{{ detail.result }}">
           <td class="question-cell{% if not detail.question_id %} text-muted{% endif %}"
               {% if detail.question_id %}data-question-id="{{ detail.question_id }}" style="cursor:pointer" title="클릭하여 문제 보기"{% else %}title="Question ID not found"{% endif %}>
             {{ detail.question|truncatechars:80 }}
@@ -224,20 +240,20 @@
     <button onclick="exportIncorrectToPDF()" class="btn-results-secondary">
       <i class="fas fa-times-circle"></i> 오답만 내보내기
     </button>
-    {% if result.exam %}
     <a href="{% url 'result_analytics' result.id %}" class="btn-results-outline">
       <i class="fas fa-chart-bar"></i> Attempt Analytics
     </a>
+    {% if result.exam %}
     <a href="{% url 'exam_analytics' result.exam.id %}" class="btn-results-outline">
-      <i class="fas fa-chart-line"></i> Rollup
+      <i class="fas fa-chart-line"></i> Exam History
     </a>
+    {% endif %}
     <form method="post" action="{% url 'delete_result' result.id %}" style="display:inline" onsubmit="return confirm('정말 이 결과를 삭제하시겠습니까? 삭제 시 통계에서 제외됩니다.');">
       {% csrf_token %}
       <button type="submit" class="btn-results-danger-outline">
         <i class="fas fa-trash"></i> Delete Result
       </button>
     </form>
-    {% endif %}
     <a href="{% url 'question_home' %}" class="btn-results-primary">
       <i class="fas fa-arrow-left"></i> Back to Home
     </a>
@@ -384,8 +400,7 @@
     var rows = tableClone.querySelectorAll("tbody tr");
     var incorrectCount = 0;
     rows.forEach(function(row) {
-      var resultBadge = row.querySelector(".badge-danger");
-      if (!resultBadge) {
+      if (row.getAttribute('data-result') !== 'incorrect') {
         row.remove();
       } else {
         incorrectCount++;
@@ -413,15 +428,15 @@
 
     pdfContent.style.display = "block";
 
-    // PDF 생성
+    // PDF 생성 — requestAnimationFrame으로 레이아웃 확정 후 캡처
+    requestAnimationFrame(function() {
     html2canvas(pdfContent, {
       scale: 2,
       logging: false,
       useCORS: true,
-      height: pdfContent.scrollHeight,
     }).then(function (canvas) {
       pdfContent.style.display = "none";
-      
+
       // 원래 제목 복원
       pdfTitle.textContent = originalTitle;
       pdfDetailsTitle.textContent = originalDetailsTitle;
@@ -455,7 +470,53 @@
 
       pdf.save(fileName);
     });
+    }); // requestAnimationFrame
   }
+</script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const correct    = {{ result.num_correct }};
+  const incorrect  = {{ result.num_incorrect }};
+  const unanswered = {{ result.num_unanswered }};
+  const noanswer   = {{ result.num_noanswer }};
+  const total = correct + incorrect + unanswered + noanswer;
+  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  document.getElementById('donutPct').textContent = pct + '%';
+
+  new Chart(document.getElementById('scoreDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Correct', 'Incorrect', 'Unanswered', 'No Answer'],
+      datasets: [{
+        data: [correct, incorrect, unanswered, noanswer],
+        backgroundColor: ['#27ae60', '#e53e3e', '#d69e2e', '#718096'],
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      cutout: '70%',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              const val = ctx.parsed;
+              const p = total > 0 ? Math.round((val / total) * 100) : 0;
+              return ' ' + ctx.label + ': ' + val + ' (' + p + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+})();
 </script>
 
 <!-- html2canvas와 jsPDF 라이브러리 추가 -->

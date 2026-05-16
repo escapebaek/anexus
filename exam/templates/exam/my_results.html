@@ -48,16 +48,20 @@
               </div>
             </td>
             <td class="text-end">
-              <a href="{% url 'exam_results' %}?result_id={{ r.id }}" class="btn btn-sm btn-outline-primary" title="View Details"><i class="fas fa-eye"></i></a>
-              <a href="{% url 'result_analytics' r.id %}" class="btn btn-sm btn-outline-success" title="Attempt Analytics"><i class="fas fa-chart-bar"></i></a>
+              <a href="{% url 'exam_results' %}?result_id={{ r.id }}" class="btn btn-sm btn-outline-primary" title="View Details">
+                <i class="fas fa-eye"></i><span class="d-none d-lg-inline ms-1">Details</span>
+              </a>
+              <a href="{% url 'result_analytics' r.id %}" class="btn btn-sm btn-outline-success" title="Attempt Analytics">
+                <i class="fas fa-chart-bar"></i><span class="d-none d-lg-inline ms-1">Analytics</span>
+              </a>
               {% if r.is_exam and r.exam_id %}
-              <a href="{% url 'exam_analytics' r.exam_id %}" class="btn btn-sm btn-outline-secondary" title="Exam Rollup">
-                <i class="fas fa-chart-line"></i>
+              <a href="{% url 'exam_analytics' r.exam_id %}" class="btn btn-sm btn-outline-secondary" title="Exam History">
+                <i class="fas fa-chart-line"></i><span class="d-none d-lg-inline ms-1">History</span>
               </a>
               {% endif %}
               <form method="post" action="{% url 'delete_result' r.id %}" style="display:inline" onsubmit="return confirm('Are you sure?');">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Result">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                   <i class="fas fa-trash"></i>
                 </button>
               </form>
