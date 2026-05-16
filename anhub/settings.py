@@ -85,6 +85,11 @@ DATABASES = {
         'HOST': config('DB_HOST'),
         'PASSWORD': config('DB_PASSWORD'),
         'PORT': config('DB_PORT'),
+        'CONN_MAX_AGE': 0,  # Serverless: no persistent connections
+        'OPTIONS': {
+            'connect_timeout': 10,
+            'sslmode': 'require',
+        },
     }
 }
 

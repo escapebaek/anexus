@@ -10,8 +10,12 @@
       }
     }
   ],
+  "functions": {
+    "anhub/wsgi.py": {
+      "maxDuration": 30
+    }
+  },
   "routes": [
-
     {
       "src": "/(.*)",
       "dest": "anhub/wsgi.py"
