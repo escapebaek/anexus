@@ -28,26 +28,19 @@
     <p class="hero-subtitle animate-fade-in-delayed">
       {% if not exam and not category_name %}저장된 문제들을 다시 복습해보세요.{% else %}엄선된 문제들로 당신의 실력을 확인해보세요.{% endif %}
     </p>
-    <div class="exam-timer animate-fade-in-delayed">
-      <div class="timer-face">
-        <div class="timer-ring">
-          <span id="timer-display" class="timer-digits">00:00</span>
-        </div>
-        <p class="timer-label">시험 타이머</p>
+    <div class="timer-strip animate-fade-in-delayed">
+      <div class="ts-input-group">
+        <i class="fas fa-stopwatch"></i>
+        <input type="number" id="set-timer-input" min="1" value="60" placeholder="60" aria-label="Timer minutes" />
+        <span>MIN</span>
       </div>
-      <div class="timer-console">
-        <label for="set-timer-input" class="timer-input">
-          <span>시험 시간 설정</span>
-          <input type="number" id="set-timer-input" min="1" value="60" placeholder="60" aria-label="Timer minutes" />
-        </label>
-        <div class="timer-buttons">
-          <button type="button" id="start-exam-btn" class="btn-timer primary"><i class="fas fa-play"></i> 시험 시작</button>
-          <button type="button" id="pause-exam-btn" class="btn-timer secondary" style="display:none"><i class="fas fa-pause"></i> 일시 정지</button>
-          <button type="button" id="resume-exam-btn" class="btn-timer primary" style="display:none"><i class="fas fa-play"></i> 재시작</button>
-          <button type="button" id="end-exam-btn" class="btn-timer ghost" style="display:none"><i class="fas fa-stop-circle"></i> 시험 종료 및 채점</button>
-        </div>
-        <p class="timer-hint"><i class="fas fa-lightbulb"></i> 설정한 시간이 지나면 자동으로 결과가 제출돼요.</p>
-      </div>
+      <button type="button" id="start-exam-btn" class="btn-ts-start"><i class="fas fa-play"></i> 시험 시작</button>
+      <p class="ts-hint"><i class="fas fa-lightbulb"></i> 설정한 시간이 지나면 자동으로 결과가 제출돼요.</p>
+      <!-- Hidden hero elements (kept for JS compatibility) -->
+      <button type="button" id="pause-exam-btn" style="display:none"></button>
+      <button type="button" id="resume-exam-btn" style="display:none"></button>
+      <button type="button" id="end-exam-btn" style="display:none"></button>
+      <span id="timer-display" style="display:none">00:00</span>
     </div>
   </div>
   <div class="hero-wave">
@@ -299,8 +292,20 @@
   </div>
 </div>
 
-<!-- Floating panel: Temp Bookmarks -->
+<!-- Floating panel: Timer + Temp Bookmarks -->
 <div id="tempBookmarkPanel" class="temp-bookmark-panel">
+  <!-- Timer section (shown when exam is running) -->
+  <div id="panelTimerSection" class="panel-timer-section" style="display:none">
+    <div class="ptimer-row">
+      <i class="fas fa-stopwatch ptimer-icon"></i>
+      <span id="fixed-timer-display" class="ptimer-digits">00:00</span>
+      <div class="ptimer-btns">
+        <button id="fixed-pause-btn" onclick="pauseTimer()" class="ptimer-btn ptimer-pause" title="일시정지"><i class="fas fa-pause"></i></button>
+        <button id="fixed-resume-btn" onclick="resumeTimer()" class="ptimer-btn ptimer-resume" style="display:none" title="재시작"><i class="fas fa-play"></i></button>
+        <button onclick="endExamWithConfirmation()" class="ptimer-btn ptimer-end fixed-timer-end-btn" title="시험 종료"><i class="fas fa-power-off"></i></button>
+      </div>
+    </div>
+  </div>
   <div class="panel-header">
     <span><i class="fas fa-thumbtack"></i> Temp Bookmarks</span>
     <div class="panel-actions">
@@ -436,78 +441,57 @@
   function pauseCommentYouTube(qid) { const p = youtubePlayers['comment_youtube_' + qid]; p && typeof p.pauseVideo === 'function' ? p.pauseVideo() : sendCommandToIframe('comment_youtube_' + qid, 'pauseVideo'); }
   function stopCommentYouTube(qid) { const p = youtubePlayers['comment_youtube_' + qid]; if (p && typeof p.stopVideo === 'function') { p.stopVideo(); } else if (sendCommandToIframe('comment_youtube_' + qid, 'stopVideo')) { sendCommandToIframe('comment_youtube_' + qid, 'seekTo', [0, true]); } }
 
-  function makeDraggable(element) {
-    let offsetX, offsetY;
-    function onMouseDown(e) {
-      if (e.target.closest('.fixed-timer-end-btn')) return;
-      e.preventDefault(); element.classList.add('dragging');
-      offsetX = e.clientX - element.offsetLeft; offsetY = e.clientY - element.offsetTop;
-      element.style.right = 'auto';
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp, { once: true });
-    }
-    function onMouseMove(e) { element.style.left = (e.clientX - offsetX) + 'px'; element.style.top = (e.clientY - offsetY) + 'px'; }
-    function onMouseUp() { element.classList.remove('dragging'); document.removeEventListener('mousemove', onMouseMove); }
-    element.addEventListener('mousedown', onMouseDown);
+  function _tickDisplay(t) {
+    const hd = document.getElementById('timer-display'); if (hd) hd.textContent = t;
+    const ftd = document.getElementById('fixed-timer-display'); if (ftd) ftd.textContent = t;
   }
 
   function startTimer(duration) {
     if (timerInterval) clearInterval(timerInterval);
     isPaused = false; timeRemaining = duration * 60;
     document.getElementById('start-exam-btn').style.display = 'none';
-    document.getElementById('pause-exam-btn').style.display = 'inline-block';
-    document.getElementById('resume-exam-btn').style.display = 'none';
-    document.getElementById('end-exam-btn').style.display = 'inline-block';
     document.getElementById('set-timer-input').disabled = true;
 
-    let fixedTimer = document.querySelector('.fixed-timer');
-    if (!fixedTimer) {
-      fixedTimer = document.createElement('div');
-      fixedTimer.className = 'fixed-timer';
-      fixedTimer.style.cssText = 'position:fixed;top:100px;left:24px;right:auto;z-index:1050;background:linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,250,252,0.95));backdrop-filter:blur(20px);border:1px solid rgba(43,88,118,0.15);border-radius:16px;padding:0.75rem 1rem;box-shadow:0 10px 30px rgba(43,88,118,0.15);display:inline-flex;align-items:center;gap:0.75rem;cursor:move;user-select:none;width:auto;max-width:fit-content;';
-      fixedTimer.innerHTML = '<div id="fixed-timer-display" style="font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2b5876;letter-spacing:0.05em;white-space:nowrap;">00:00</div>'
-        + '<button id="fixed-pause-btn" onclick="pauseTimer()" title="일시 정지" style="width:34px;height:34px;min-width:34px;border-radius:10px;border:none;background:rgba(245,158,11,0.12);color:#d97706;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;font-size:0.85rem;"><i class="fas fa-pause"></i></button>'
-        + '<button id="fixed-resume-btn" onclick="resumeTimer()" title="재시작" style="width:34px;height:34px;min-width:34px;border-radius:10px;border:none;background:rgba(40,168,125,0.12);color:#28a87d;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;font-size:0.85rem;"><i class="fas fa-play"></i></button>'
-        + '<button class="fixed-timer-end-btn" onclick="endExamWithConfirmation()" title="시험 종료" style="width:34px;height:34px;min-width:34px;border-radius:10px;border:none;background:rgba(220,79,90,0.1);color:#dc4f5a;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;font-size:0.85rem;"><i class="fas fa-power-off"></i></button>';
-      document.body.appendChild(fixedTimer);
-      makeDraggable(fixedTimer);
+    // Show timer in panel and ensure panel is open
+    const pts = document.getElementById('panelTimerSection');
+    if (pts) pts.style.display = 'block';
+    const panel = document.getElementById('tempBookmarkPanel');
+    if (panel && panel.classList.contains('collapsed')) {
+      panel.classList.remove('collapsed');
+      const icon = document.getElementById('togglePanelIcon');
+      const txt = document.querySelector('#togglePanelBtn .btn-text');
+      if (icon) icon.className = 'fas fa-chevron-down';
+      if (txt) txt.textContent = 'Minimize';
     }
 
     timerInterval = setInterval(function () {
       if (timeRemaining <= 0) { clearInterval(timerInterval); endExam(); return; }
       timeRemaining--;
       const t = String(Math.floor(timeRemaining / 60)).padStart(2, '0') + ':' + String(timeRemaining % 60).padStart(2, '0');
-      document.getElementById('timer-display').textContent = t;
-      const ftd = document.getElementById('fixed-timer-display'); if (ftd) ftd.textContent = t;
-      const ft = document.querySelector('.fixed-timer');
-      if (timeRemaining <= 300 && ft) { ft.style.background = 'linear-gradient(135deg,rgba(220,79,90,0.15),rgba(255,255,255,0.95))'; ft.style.borderColor = 'rgba(220,79,90,0.3)'; }
+      _tickDisplay(t);
+      if (timeRemaining <= 300 && pts) pts.classList.add('timer-warning');
     }, 1000);
   }
 
   function pauseTimer() {
     if (isPaused) return;
     isPaused = true; clearInterval(timerInterval);
-    document.getElementById('pause-exam-btn').style.display = 'none';
-    document.getElementById('resume-exam-btn').style.display = 'inline-block';
     const fp = document.getElementById('fixed-pause-btn'), fr = document.getElementById('fixed-resume-btn');
-    if (fp) fp.style.display = 'none'; if (fr) fr.style.display = 'flex';
+    if (fp) fp.style.display = 'none'; if (fr) fr.style.display = 'inline-flex';
   }
 
   function resumeTimer() {
     if (!isPaused) return;
     isPaused = false;
-    document.getElementById('pause-exam-btn').style.display = 'inline-block';
-    document.getElementById('resume-exam-btn').style.display = 'none';
     const fp = document.getElementById('fixed-pause-btn'), fr = document.getElementById('fixed-resume-btn');
-    if (fp) fp.style.display = 'flex'; if (fr) fr.style.display = 'none';
+    if (fp) fp.style.display = 'inline-flex'; if (fr) fr.style.display = 'none';
+    const pts = document.getElementById('panelTimerSection');
     timerInterval = setInterval(function () {
       if (timeRemaining <= 0) { clearInterval(timerInterval); endExam(); return; }
       timeRemaining--;
       const t = String(Math.floor(timeRemaining / 60)).padStart(2, '0') + ':' + String(timeRemaining % 60).padStart(2, '0');
-      document.getElementById('timer-display').textContent = t;
-      const ftd = document.getElementById('fixed-timer-display'); if (ftd) ftd.textContent = t;
-      const ft = document.querySelector('.fixed-timer');
-      if (timeRemaining <= 300 && ft) ft.style.background = 'linear-gradient(135deg,#ff6b6b,#ff4757)';
+      _tickDisplay(t);
+      if (timeRemaining <= 300 && pts) pts.classList.add('timer-warning');
     }, 1000);
   }
 
@@ -515,7 +499,7 @@
 
   function endExam() {
     clearInterval(timerInterval);
-    const ft = document.querySelector('.fixed-timer'); if (ft) ft.remove();
+    const pts = document.getElementById('panelTimerSection'); if (pts) pts.style.display = 'none';
     if (typeof window.__clearTempBookmarks === 'function') window.__clearTempBookmarks();
     Object.values(youtubePlayers).forEach(function (p) { if (p && typeof p.stopVideo === 'function') p.stopVideo(); });
 

@@ -1,4 +1,4 @@
-body { background: #f8f9fa; }
+body { background: #f0f4f8; }
     .card.table-card {
         border-radius: 16px;
         box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -10,9 +10,10 @@ body { background: #f8f9fa; }
         border-spacing: 0;
     }
     .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
+        background: linear-gradient(135deg, rgba(43, 88, 118, 0.06), rgba(78, 67, 118, 0.04));
+        border-bottom: 2px solid rgba(43, 88, 118, 0.15);
+        color: #2b5876;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-size: 0.8rem;
@@ -21,7 +22,7 @@ body { background: #f8f9fa; }
         transition: background-color 0.2s;
     }
     .table tbody tr:hover {
-        background-color: #f1f3f5;
+        background-color: rgba(43, 88, 118, 0.04);
     }
     .table td, .table th {
         vertical-align: middle;
@@ -29,7 +30,7 @@ body { background: #f8f9fa; }
     }
     .table .score-bar {
         width: 100%;
-        background-color: #e9ecef;
+        background-color: rgba(43, 88, 118, 0.08);
         border-radius: .25rem;
         overflow: hidden;
         height: 24px;
@@ -44,4 +45,16 @@ body { background: #f8f9fa; }
         align-items: center;
         justify-content: center;
         transition: width 0.5s ease-in-out;
+    }
+    .table .score-bar-fill.bg-success {
+        background: linear-gradient(135deg, #28a87d, #1d7a5f) !important;
+    }
+    .table .score-bar-fill.bg-info {
+        background: linear-gradient(135deg, #2b5876, #4e4376) !important;
+    }
+    .table .score-bar-fill.bg-warning {
+        background: linear-gradient(135deg, #f5a623, #e07b39) !important;
+    }
+    .table .score-bar-fill.bg-danger {
+        background: linear-gradient(135deg, #dc4f5a, #b83a44) !important;
     }

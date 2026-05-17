@@ -4,8 +4,8 @@
   --gradient-primary: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
   --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
   --gradient-danger: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
-  --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-info: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+  --gradient-warning: linear-gradient(135deg, #f5a623 0%, #e07b39 100%);
   --glass-bg: rgba(255, 255, 255, 0.25);
   --glass-border: rgba(255, 255, 255, 0.18);
 }
@@ -238,8 +238,8 @@
 }
 
 .stat-change.neutral {
-  background: #e7f3ff;
-  color: #004085;
+  background: rgba(43, 88, 118, 0.1);
+  color: #2b5876;
 }
 
 /* ============ Study Recommendation Box ============ */
@@ -498,8 +498,8 @@
 }
 
 .trend-icon.stable {
-  background: #e7f3ff;
-  color: #004085;
+  background: rgba(43, 88, 118, 0.1);
+  color: #2b5876;
 }
 
 .trend-content .trend-label {

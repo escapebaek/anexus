@@ -3345,22 +3345,22 @@ input[type="text"]:focus {
 .answer-display-box {
   background: linear-gradient(
     135deg,
-    rgba(40, 167, 69, 0.08),
-    rgba(34, 139, 34, 0.05)
+    rgba(40, 168, 125, 0.08),
+    rgba(40, 168, 125, 0.04)
   );
   backdrop-filter: blur(15px);
-  border: 2px solid rgba(40, 167, 69, 0.2);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.1);
+  border: 2px solid rgba(40, 168, 125, 0.22);
+  box-shadow: 0 6px 20px rgba(40, 168, 125, 0.1);
 }
 .explanation-display-box {
   background: linear-gradient(
     135deg,
-    rgba(23, 162, 184, 0.08),
-    rgba(13, 110, 253, 0.05)
+    rgba(43, 88, 118, 0.08),
+    rgba(78, 67, 118, 0.05)
   );
   backdrop-filter: blur(15px);
-  border: 2px solid rgba(23, 162, 184, 0.2);
-  box-shadow: 0 6px 20px rgba(23, 162, 184, 0.1);
+  border: 2px solid rgba(43, 88, 118, 0.2);
+  box-shadow: 0 6px 20px rgba(43, 88, 118, 0.1);
 }
 .image-display-box {
   background: linear-gradient(
@@ -3389,10 +3389,10 @@ input[type="text"]:focus {
   margin-bottom: 1rem;
 }
 .answer-display-title {
-  color: #1e7e34;
+  color: #1d7a5f;
 }
 .explanation-display-title {
-  color: #0c5460;
+  color: #2b5876;
 }
 .image-display-title {
   color: #5a2d7e;
@@ -3404,10 +3404,10 @@ input[type="text"]:focus {
   font-size: 1.3rem;
 }
 .answer-display-title i {
-  color: #28a745;
+  color: #28a87d;
 }
 .explanation-display-title i {
-  color: #17a2b8;
+  color: #2b5876;
 }
 .image-display-title i {
   color: #6f42c1;
@@ -3419,11 +3419,11 @@ input[type="text"]:focus {
   text-align: left;
 }
 .answer-display-content {
-  color: #155724;
+  color: #1d7a5f;
   font-weight: 600;
 }
 .explanation-display-box .explanation-display-content {
-  color: #0c5460;
+  color: #1a3a4f;
   font-weight: 500;
   text-align: left;
 }
@@ -3487,12 +3487,12 @@ input[type="text"]:focus {
   padding: 8px 16px;
 }
 .video-explanation-box {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
   border-radius: 12px;
   padding: 20px;
   margin: 15px 0;
   color: #fff;
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 25px rgba(43, 88, 118, 0.3);
 }
 .video-explanation-title {
   font-size: 1.1rem;
