@@ -2,7 +2,7 @@ services:
   - type: web
     name: anexus
     runtime: python
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    buildCommand: pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput
     startCommand: gunicorn anhub.wsgi --workers 2 --timeout 60
     envVars:
       - key: PYTHON_VERSION
