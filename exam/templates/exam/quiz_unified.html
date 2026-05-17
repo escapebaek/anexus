@@ -1,0 +1,640 @@
+{% extends 'base.html' %}
+{% load static %} {% load exam_filters %} {% load markdown_extras %}
+
+{% block custom_css %}
+  {% if not exam and not category_name %}
+  <link href="{% static 'css/pages/exam_bookmarked_questions.css' %}" rel="stylesheet" />
+  {% endif %}
+  <link href="{% static 'css/pages/exam_question_list.css' %}" rel="stylesheet" />
+  <link href="{% static 'css/pages/exam_question_experience.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block page_content %}
+<!-- Loading overlay -->
+<div id="loadingOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background-color:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1050;">
+  <div style="background:white;padding:2rem;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.2);text-align:center;min-width:200px;">
+    <div style="animation:spin 1s linear infinite;border-radius:50%;width:3rem;height:3rem;border:4px solid #e9ecef;border-top-color:#2b5876;margin:0 auto 1rem;"></div>
+    <p style="margin:0;color:#5a7a8d;font-weight:500;">결과를 불러오는 중입니다...</p>
+  </div>
+</div>
+
+<!-- Hero Section -->
+<div class="hero-section position-relative d-flex flex-column justify-content-center align-items-center">
+  <div class="hero-overlay"></div>
+  <div class="hero-content text-center">
+    <h1 class="hero-title animate-fade-in">
+      {% if exam %}{{ exam.title }}{% elif category_name %}{{ category_name }}{% else %}북마크된 문제{% endif %}
+    </h1>
+    <p class="hero-subtitle animate-fade-in-delayed">
+      {% if not exam and not category_name %}저장된 문제들을 다시 복습해보세요.{% else %}엄선된 문제들로 당신의 실력을 확인해보세요.{% endif %}
+    </p>
+    <div class="exam-timer animate-fade-in-delayed">
+      <div class="timer-face">
+        <div class="timer-ring">
+          <span id="timer-display" class="timer-digits">00:00</span>
+        </div>
+        <p class="timer-label">시험 타이머</p>
+      </div>
+      <div class="timer-console">
+        <label for="set-timer-input" class="timer-input">
+          <span>시험 시간 설정</span>
+          <input type="number" id="set-timer-input" min="1" value="60" placeholder="60" aria-label="Timer minutes" />
+        </label>
+        <div class="timer-buttons">
+          <button type="button" id="start-exam-btn" class="btn-timer primary"><i class="fas fa-play"></i> 시험 시작</button>
+          <button type="button" id="pause-exam-btn" class="btn-timer secondary" style="display:none"><i class="fas fa-pause"></i> 일시 정지</button>
+          <button type="button" id="resume-exam-btn" class="btn-timer primary" style="display:none"><i class="fas fa-play"></i> 재시작</button>
+          <button type="button" id="end-exam-btn" class="btn-timer ghost" style="display:none"><i class="fas fa-stop-circle"></i> 시험 종료 및 채점</button>
+        </div>
+        <p class="timer-hint"><i class="fas fa-lightbulb"></i> 설정한 시간이 지나면 자동으로 결과가 제출돼요.</p>
+      </div>
+    </div>
+  </div>
+  <div class="hero-wave">
+    <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path fill="currentColor" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,208C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+    </svg>
+  </div>
+</div>
+
+<!-- Questions Section -->
+<div class="questions-section questions-left-align">
+  <div class="container">
+
+    {% if not exam and not category_name %}
+    <!-- Filter Panel (bookmark mode only) -->
+    <form id="filterForm" class="filter-panel bookmark-filter-custom" method="get" action="{% url 'bookmarked_questions' %}" style="position:relative;z-index:999;">
+      <div class="filter-header bookmark-filter-header">
+        <div class="filter-header-left">
+          <h2><i class="fas fa-filter"></i> 필터 설정</h2>
+          <p>원하는 시험이나 카테고리를 선택하여 문제를 필터링하세요</p>
+        </div>
+        <div class="filter-count-badge">
+          <i class="fas fa-list-ol"></i>
+          <span>{% if total_bookmarked_count %}{{ filtered_count }} / {{ total_bookmarked_count }}개{% else %}0개{% endif %}</span>
+        </div>
+      </div>
+
+      {% if selected_exam_objects or selected_category_objects %}
+      <div class="active-filters-display">
+        <span class="active-filters-label"><i class="fas fa-check-circle"></i> 적용된 필터</span>
+        {% for ef in selected_exam_objects %}<span class="active-filter-chip"><i class="fas fa-file-alt"></i> {{ ef.title }}</span>{% endfor %}
+        {% for cf in selected_category_objects %}<span class="active-filter-chip"><i class="fas fa-tag"></i> {{ cf.name }}</span>{% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="filter-section">
+        <div class="filter-section-header">
+          <h3 class="filter-section-title"><i class="fas fa-file-alt"></i> 시험 선택</h3>
+          {% if exam_filters %}<span class="filter-section-count">{{ exam_filters|length }}개 항목</span>{% endif %}
+        </div>
+        {% if exam_filters %}
+        <div class="filter-options-grid">
+          {% for ef in exam_filters %}
+          <div class="filter-checkbox-wrapper">
+            <input type="checkbox" class="filter-checkbox-input" name="exam" value="{{ ef.id }}" id="exam_{{ ef.id }}" {% if ef.id in selected_exam_ids %}checked{% endif %}>
+            <label for="exam_{{ ef.id }}" class="filter-checkbox-label">
+              <span class="filter-checkbox-icon"><i class="fas fa-file-alt"></i></span>
+              <span class="filter-checkbox-text">{{ ef.title }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="filter-empty-state"><i class="fas fa-inbox"></i><p>북마크된 시험이 없습니다</p></div>
+        {% endif %}
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-header">
+          <h3 class="filter-section-title"><i class="fas fa-tags"></i> 카테고리 선택</h3>
+          {% if category_filters %}<span class="filter-section-count">{{ category_filters|length }}개 항목</span>{% endif %}
+        </div>
+        {% if category_filters %}
+        <div class="filter-options-grid">
+          {% for cf in category_filters %}
+          <div class="filter-checkbox-wrapper">
+            <input type="checkbox" class="filter-checkbox-input" name="category" value="{{ cf.id }}" id="category_{{ cf.id }}" {% if cf.id in selected_category_ids %}checked{% endif %}>
+            <label for="category_{{ cf.id }}" class="filter-checkbox-label">
+              <span class="filter-checkbox-icon"><i class="fas fa-tag"></i></span>
+              <span class="filter-checkbox-text">{{ cf.name }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="filter-empty-state"><i class="fas fa-inbox"></i><p>북마크된 카테고리가 없습니다</p></div>
+        {% endif %}
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn-filter-apply"><i class="fas fa-check"></i> 필터 적용</button>
+        {% if has_active_filters %}<a href="{% url 'bookmarked_questions' %}" class="btn-filter-reset"><i class="fas fa-redo"></i> 필터 초기화</a>{% endif %}
+      </div>
+    </form>
+    {% endif %}
+
+    <form id="exam-form" method="POST">
+      {% csrf_token %}
+      <div class="row g-4">
+        {% for question in questions %}
+        <div class="col-12">
+          <div id="q_{{ question.id }}" class="question-card animate-fade-in"
+               data-correct-option="{{ question.correct_option }}"
+               data-qindex="{{ forloop.counter }}">
+
+            <!-- Permanent bookmark (star) stays absolute top-right -->
+            <div class="bookmark-button {% if not exam and not category_name %}bookmarked{% elif question.is_bookmarked %}bookmarked{% endif %}"
+                 data-question-id="{{ question.id }}"
+                 onclick="toggleBookmark({{ question.id }}, this)">
+              <i class="fas fa-star"></i>
+            </div>
+
+            <div class="question-content">
+              <!-- Question header: pin button + number badge + category/exam tags in one row -->
+              <div class="question-header-row">
+                <div class="temp-bookmark-button quiz-inline-pin"
+                     data-question-id="{{ question.id }}"
+                     data-qindex="{{ forloop.counter }}"
+                     onclick="toggleTempBookmark({{ question.id }}, {{ forloop.counter }}, this)"
+                     title="임시 북마크">
+                  <i class="fas fa-thumbtack"></i>
+                </div>
+                <div class="question-num-badge">{{ forloop.counter }}</div>
+                {% if exam %}
+                  {% if question.category %}<div class="question-category-box"><i class="fas fa-tags"></i><span>{{ question.category.name }}</span></div>{% endif %}
+                {% else %}
+                  {% if question.category %}<div class="question-category-box"><i class="fas fa-tags"></i><span>{{ question.category.name }}</span></div>{% endif %}
+                  {% if question.exam %}<div class="question-exam-box"><i class="fas fa-file-alt"></i><span>{{ question.exam.title }}</span></div>{% endif %}
+                {% endif %}
+              </div>
+
+              <!-- Question text -->
+              <div class="question-text">{{ question.question_text|safe }}</div>
+
+              <!-- Question image -->
+              {% if question.image %}
+              <div class="question-image"><img src="{{ question.image.url }}" alt="Question Image" class="img-fluid" /></div>
+              {% endif %}
+
+              <!-- YouTube embed -->
+              {% if question.get_youtube_embed_id %}
+              <div class="question-video">
+                <div class="video-container" style="position:relative;width:100%;height:0;padding-bottom:56.25%;margin:15px 0;">
+                  <iframe id="youtube_{{ question.id }}"
+                    src="https://www.youtube.com/embed/{{ question.get_youtube_embed_id }}?enablejsapi=1&rel=0&origin={{ request.scheme }}://{{ request.get_host }}"
+                    frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture;web-share"
+                    referrerpolicy="strict-origin-when-cross-origin" allowfullscreen
+                    style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;"></iframe>
+                </div>
+                <div class="video-controls" style="text-align:center;margin-top:10px;">
+                  <button type="button" class="btn-action-glass" onclick="playYouTube('{{ question.id }}')"><i class="fas fa-play"></i> 재생</button>
+                  <button type="button" class="btn-action-glass" onclick="pauseYouTube('{{ question.id }}')"><i class="fas fa-pause"></i> 일시정지</button>
+                  <button type="button" class="btn-action-glass" onclick="stopYouTube('{{ question.id }}')"><i class="fas fa-stop"></i> 정지</button>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Answer options (card style) -->
+              <div class="options-list">
+                <label class="option-card" for="option1_{{ question.id }}">
+                  <input type="radio" id="option1_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option1 }}" class="option-radio" />
+                  <span class="option-letter">A</span>
+                  <span class="option-text">{{ question.option1 }}</span>
+                </label>
+                <label class="option-card" for="option2_{{ question.id }}">
+                  <input type="radio" id="option2_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option2 }}" class="option-radio" />
+                  <span class="option-letter">B</span>
+                  <span class="option-text">{{ question.option2 }}</span>
+                </label>
+                <label class="option-card" for="option3_{{ question.id }}">
+                  <input type="radio" id="option3_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option3 }}" class="option-radio" />
+                  <span class="option-letter">C</span>
+                  <span class="option-text">{{ question.option3 }}</span>
+                </label>
+                <label class="option-card" for="option4_{{ question.id }}">
+                  <input type="radio" id="option4_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option4 }}" class="option-radio" />
+                  <span class="option-letter">D</span>
+                  <span class="option-text">{{ question.option4 }}</span>
+                </label>
+                {% if question.option5 %}
+                <label class="option-card" for="option5_{{ question.id }}">
+                  <input type="radio" id="option5_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option5 }}" class="option-radio" />
+                  <span class="option-letter">E</span>
+                  <span class="option-text">{{ question.option5 }}</span>
+                </label>
+                {% endif %}
+              </div>
+
+              <!-- Action buttons -->
+              <div class="action-buttons">
+                <button type="button" class="btn-action-glass" onclick="toggleDisplay('answer_{{ question.id }}')"><i class="fas fa-check-circle"></i> 정답 보기</button>
+                <button type="button" class="btn-action-glass" onclick="toggleDisplay('explanation_{{ question.id }}')"><i class="fas fa-info-circle"></i> 해설 보기</button>
+                {% if question.comment_image %}<button type="button" class="btn-action-glass" onclick="toggleDisplay('image_{{ question.id }}')"><i class="fas fa-image"></i> 이미지 보기</button>{% endif %}
+                {% if question.get_comment_youtube_embed_id %}<button type="button" class="btn-action-glass" onclick="toggleDisplay('video_explanation_{{ question.id }}')"><i class="fas fa-video"></i> 해설 영상</button>{% endif %}
+              </div>
+
+              <!-- Answer reveal box -->
+              <div id="answer_{{ question.id }}" class="answer-display-box hidden">
+                <div class="answer-display-title"><i class="fas fa-check-circle"></i> 정답</div>
+                <div class="answer-display-content">{{ question.correct_option }}</div>
+              </div>
+
+              <!-- Explanation reveal box -->
+              <div id="explanation_{{ question.id }}" class="explanation-display-box hidden">
+                <div class="explanation-display-title"><i class="fas fa-info-circle"></i> 해설</div>
+                <div class="explanation-display-content markdown-content">{{ question.comment|markdown }}</div>
+              </div>
+
+              <!-- Comment image box -->
+              {% if question.comment_image %}
+              <div id="image_{{ question.id }}" class="image-display-box hidden">
+                <div class="image-display-title"><i class="fas fa-image"></i> 관련 이미지</div>
+                <img src="{{ question.comment_image.url }}" alt="Explanation Image" class="img-fluid rounded" />
+              </div>
+              {% endif %}
+
+              <!-- Comment video box -->
+              {% if question.get_comment_youtube_embed_id %}
+              <div id="video_explanation_{{ question.id }}" class="video-explanation-box hidden">
+                <div class="video-explanation-title"><i class="fas fa-video"></i> 해설 동영상</div>
+                <div class="video-container" style="position:relative;width:100%;height:0;padding-bottom:56.25%;margin:15px 0;">
+                  <iframe id="comment_youtube_{{ question.id }}"
+                    src="https://www.youtube.com/embed/{{ question.get_comment_youtube_embed_id }}?enablejsapi=1&rel=0&origin={{ request.scheme }}://{{ request.get_host }}"
+                    frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture;web-share"
+                    referrerpolicy="strict-origin-when-cross-origin" allowfullscreen
+                    style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;"></iframe>
+                </div>
+                <div class="video-controls" style="text-align:center;margin-top:10px;">
+                  <button type="button" class="btn-action-glass" onclick="playCommentYouTube('{{ question.id }}')"><i class="fas fa-play"></i> 재생</button>
+                  <button type="button" class="btn-action-glass" onclick="pauseCommentYouTube('{{ question.id }}')"><i class="fas fa-pause"></i> 일시정지</button>
+                  <button type="button" class="btn-action-glass" onclick="stopCommentYouTube('{{ question.id }}')"><i class="fas fa-stop"></i> 정지</button>
+                </div>
+              </div>
+              {% endif %}
+
+            </div><!-- /question-content -->
+          </div><!-- /question-card -->
+        </div><!-- /col-12 -->
+
+        {% empty %}
+        {% if not exam and not category_name %}
+        <div class="col-12">
+          <div class="text-center py-5">
+            <i class="fas fa-bookmark fa-4x mb-4 d-block" style="opacity:0.3;color:#2b5876;"></i>
+            {% if has_active_filters %}
+            <h5 style="color:#2c3e50;">선택한 조건에 맞는 문제가 없습니다</h5>
+            <p class="text-muted">다른 시험이나 카테고리를 선택하거나 필터를 초기화해 보세요.</p>
+            <a href="{% url 'bookmarked_questions' %}" class="btn btn-outline-primary mt-2"><i class="fas fa-redo me-1"></i> 필터 초기화</a>
+            {% else %}
+            <h5 style="color:#2c3e50;">아직 북마크한 문제가 없습니다</h5>
+            <p class="text-muted">연습 중 중요한 문제를 북마크하면 이곳에서 빠르게 복습할 수 있어요.</p>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Floating panel: Temp Bookmarks -->
+<div id="tempBookmarkPanel" class="temp-bookmark-panel">
+  <div class="panel-header">
+    <span><i class="fas fa-thumbtack"></i> Temp Bookmarks</span>
+    <div class="panel-actions">
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="togglePanelBtn">
+        <i class="fas fa-chevron-down" id="togglePanelIcon"></i>
+        <span class="btn-text">Minimize</span>
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-danger" id="clearTempBookmarksBtn">
+        <i class="fas fa-trash-alt"></i>
+        <span class="btn-text">Clear</span>
+      </button>
+    </div>
+  </div>
+  <div class="panel-body">
+    <div id="tempBookmarkList" class="bookmark-list"></div>
+  </div>
+  <div class="panel-footer small text-muted">Click to jump to question</div>
+  <button type="button" class="panel-fab btn btn-primary" id="openPanelFab" title="Open temp bookmarks">
+    <i class="fas fa-thumbtack"></i>
+  </button>
+</div>
+
+<!-- Temp bookmark logic -->
+<script>
+(function () {
+  const panel = document.getElementById('tempBookmarkPanel');
+  if (!panel) return;
+  const listEl = document.getElementById('tempBookmarkList');
+  const btnHide = document.getElementById('togglePanelBtn');
+  const btnClear = document.getElementById('clearTempBookmarksBtn');
+  const NAV_HEIGHT = (document.getElementById('mainNavbar')?.offsetHeight || 64) + 12;
+  {% if exam %}
+  const STORAGE_KEY = 'tempBookmarks_exam_{{ exam.id }}';
+  {% elif category_name %}
+  const STORAGE_KEY = 'tempBookmarks_category_{{ category_name|slugify }}';
+  {% else %}
+  const STORAGE_KEY = 'tempBookmarks_bookmarked';
+  {% endif %}
+
+  function loadTemp() { try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { return {}; } }
+  function saveTemp(s) { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+  let temp = loadTemp();
+
+  function updateButtons() {
+    document.querySelectorAll('.temp-bookmark-button').forEach(function (btn) {
+      const qid = btn.getAttribute('data-question-id');
+      if (qid && temp[qid]) btn.classList.add('active'); else btn.classList.remove('active');
+    });
+  }
+
+  function scrollToQuestion(qid) {
+    const el = document.getElementById('q_' + qid);
+    if (!el) return;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.pageYOffset - NAV_HEIGHT, behavior: 'smooth' });
+  }
+
+  function renderList() {
+    const entries = Object.entries(temp).map(function (p) { return { qid: p[0], idx: parseInt(p[1], 10) || 0 }; });
+    entries.sort(function (a, b) { return a.idx - b.idx; });
+    listEl.innerHTML = '';
+    if (entries.length === 0) { listEl.innerHTML = '<div class="text-muted small">비어 있습니다</div>'; return; }
+    entries.forEach(function (item) {
+      const a = document.createElement('a');
+      a.className = 'bookmark-chip'; a.href = '#'; a.textContent = String(item.idx); a.title = '문제 #' + item.idx;
+      a.addEventListener('click', function (ev) { ev.preventDefault(); scrollToQuestion(item.qid); });
+      listEl.appendChild(a);
+    });
+  }
+
+  window.toggleTempBookmark = function (qid, index) {
+    const key = String(qid);
+    if (temp[key]) delete temp[key]; else temp[key] = index;
+    saveTemp(temp); updateButtons(); renderList();
+  };
+
+  if (btnHide) btnHide.addEventListener('click', function () {
+    const icon = document.getElementById('togglePanelIcon');
+    const txt = this.querySelector('.btn-text');
+    if (panel.classList.contains('collapsed')) {
+      panel.classList.remove('collapsed');
+      if (icon) icon.className = 'fas fa-chevron-down';
+      if (txt) txt.textContent = 'Minimize';
+    } else {
+      panel.classList.add('collapsed');
+      if (icon) icon.className = 'fas fa-chevron-up';
+      if (txt) txt.textContent = 'Expand';
+    }
+  });
+  if (btnClear) btnClear.addEventListener('click', function () {
+    if (!confirm('임시 북마크를 모두 삭제하시겠어요?')) return;
+    temp = {}; saveTemp(temp); updateButtons(); renderList();
+  });
+
+  updateButtons(); renderList();
+  window.__clearTempBookmarks = function () { sessionStorage.removeItem(STORAGE_KEY); };
+})();
+</script>
+
+<!-- YouTube API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+  let timerInterval, timeRemaining, isPaused = false;
+  let youtubePlayers = {};
+
+  function sendCommandToIframe(iframeId, command, args) {
+    args = args || [];
+    const iframe = document.getElementById(iframeId);
+    if (!iframe || !iframe.contentWindow) return false;
+    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: command, args: args }), '*');
+    return true;
+  }
+
+  function onYouTubeIframeAPIReady() {
+    {% for question in questions %}
+      {% if question.get_youtube_embed_id %}
+        youtubePlayers['youtube_{{ question.id }}'] = new YT.Player('youtube_{{ question.id }}', {
+          events: { onReady: function (e) { youtubePlayers['youtube_{{ question.id }}'] = e.target; } }
+        });
+      {% endif %}
+      {% if question.get_comment_youtube_embed_id %}
+        youtubePlayers['comment_youtube_{{ question.id }}'] = new YT.Player('comment_youtube_{{ question.id }}', {
+          events: { onReady: function (e) { youtubePlayers['comment_youtube_{{ question.id }}'] = e.target; } }
+        });
+      {% endif %}
+    {% endfor %}
+  }
+
+  function playYouTube(qid) { const p = youtubePlayers['youtube_' + qid]; p && typeof p.playVideo === 'function' ? p.playVideo() : sendCommandToIframe('youtube_' + qid, 'playVideo'); }
+  function pauseYouTube(qid) { const p = youtubePlayers['youtube_' + qid]; p && typeof p.pauseVideo === 'function' ? p.pauseVideo() : sendCommandToIframe('youtube_' + qid, 'pauseVideo'); }
+  function stopYouTube(qid) { const p = youtubePlayers['youtube_' + qid]; if (p && typeof p.stopVideo === 'function') { p.stopVideo(); } else if (sendCommandToIframe('youtube_' + qid, 'stopVideo')) { sendCommandToIframe('youtube_' + qid, 'seekTo', [0, true]); } }
+  function playCommentYouTube(qid) { const p = youtubePlayers['comment_youtube_' + qid]; p && typeof p.playVideo === 'function' ? p.playVideo() : sendCommandToIframe('comment_youtube_' + qid, 'playVideo'); }
+  function pauseCommentYouTube(qid) { const p = youtubePlayers['comment_youtube_' + qid]; p && typeof p.pauseVideo === 'function' ? p.pauseVideo() : sendCommandToIframe('comment_youtube_' + qid, 'pauseVideo'); }
+  function stopCommentYouTube(qid) { const p = youtubePlayers['comment_youtube_' + qid]; if (p && typeof p.stopVideo === 'function') { p.stopVideo(); } else if (sendCommandToIframe('comment_youtube_' + qid, 'stopVideo')) { sendCommandToIframe('comment_youtube_' + qid, 'seekTo', [0, true]); } }
+
+  function makeDraggable(element) {
+    let offsetX, offsetY;
+    function onMouseDown(e) {
+      if (e.target.closest('.fixed-timer-end-btn')) return;
+      e.preventDefault(); element.classList.add('dragging');
+      offsetX = e.clientX - element.offsetLeft; offsetY = e.clientY - element.offsetTop;
+      element.style.right = 'auto';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp, { once: true });
+    }
+    function onMouseMove(e) { element.style.left = (e.clientX - offsetX) + 'px'; element.style.top = (e.clientY - offsetY) + 'px'; }
+    function onMouseUp() { element.classList.remove('dragging'); document.removeEventListener('mousemove', onMouseMove); }
+    element.addEventListener('mousedown', onMouseDown);
+  }
+
+  function startTimer(duration) {
+    if (timerInterval) clearInterval(timerInterval);
+    isPaused = false; timeRemaining = duration * 60;
+    document.getElementById('start-exam-btn').style.display = 'none';
+    document.getElementById('pause-exam-btn').style.display = 'inline-block';
+    document.getElementById('resume-exam-btn').style.display = 'none';
+    document.getElementById('end-exam-btn').style.display = 'inline-block';
+    document.getElementById('set-timer-input').disabled = true;
+
+    let fixedTimer = document.querySelector('.fixed-timer');
+    if (!fixedTimer) {
+      fixedTimer = document.createElement('div');
+      fixedTimer.className = 'fixed-timer';
+      fixedTimer.style.cssText = 'position:fixed;top:100px;left:24px;right:auto;z-index:1050;background:linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,250,252,0.95));backdrop-filter:blur(20px);border:1px solid rgba(43,88,118,0.15);border-radius:16px;padding:0.75rem 1rem;box-shadow:0 10px 30px rgba(43,88,118,0.15);display:inline-flex;align-items:center;gap:0.75rem;cursor:move;user-select:none;width:auto;max-width:fit-content;';
+      fixedTimer.innerHTML = '<div id="fixed-timer-display" style="font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2b5876;letter-spacing:0.05em;white-space:nowrap;">00:00</div>'
+        + '<button id="fixed-pause-btn" onclick="pauseTimer()" title="일시 정지" style="width:34px;height:34px;min-width:34px;border-radius:10px;border:none;background:rgba(245,158,11,0.12);color:#d97706;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;font-size:0.85rem;"><i class="fas fa-pause"></i></button>'
+        + '<button id="fixed-resume-btn" onclick="resumeTimer()" title="재시작" style="width:34px;height:34px;min-width:34px;border-radius:10px;border:none;background:rgba(40,168,125,0.12);color:#28a87d;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;font-size:0.85rem;"><i class="fas fa-play"></i></button>'
+        + '<button class="fixed-timer-end-btn" onclick="endExamWithConfirmation()" title="시험 종료" style="width:34px;height:34px;min-width:34px;border-radius:10px;border:none;background:rgba(220,79,90,0.1);color:#dc4f5a;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;font-size:0.85rem;"><i class="fas fa-power-off"></i></button>';
+      document.body.appendChild(fixedTimer);
+      makeDraggable(fixedTimer);
+    }
+
+    timerInterval = setInterval(function () {
+      if (timeRemaining <= 0) { clearInterval(timerInterval); endExam(); return; }
+      timeRemaining--;
+      const t = String(Math.floor(timeRemaining / 60)).padStart(2, '0') + ':' + String(timeRemaining % 60).padStart(2, '0');
+      document.getElementById('timer-display').textContent = t;
+      const ftd = document.getElementById('fixed-timer-display'); if (ftd) ftd.textContent = t;
+      const ft = document.querySelector('.fixed-timer');
+      if (timeRemaining <= 300 && ft) { ft.style.background = 'linear-gradient(135deg,rgba(220,79,90,0.15),rgba(255,255,255,0.95))'; ft.style.borderColor = 'rgba(220,79,90,0.3)'; }
+    }, 1000);
+  }
+
+  function pauseTimer() {
+    if (isPaused) return;
+    isPaused = true; clearInterval(timerInterval);
+    document.getElementById('pause-exam-btn').style.display = 'none';
+    document.getElementById('resume-exam-btn').style.display = 'inline-block';
+    const fp = document.getElementById('fixed-pause-btn'), fr = document.getElementById('fixed-resume-btn');
+    if (fp) fp.style.display = 'none'; if (fr) fr.style.display = 'flex';
+  }
+
+  function resumeTimer() {
+    if (!isPaused) return;
+    isPaused = false;
+    document.getElementById('pause-exam-btn').style.display = 'inline-block';
+    document.getElementById('resume-exam-btn').style.display = 'none';
+    const fp = document.getElementById('fixed-pause-btn'), fr = document.getElementById('fixed-resume-btn');
+    if (fp) fp.style.display = 'flex'; if (fr) fr.style.display = 'none';
+    timerInterval = setInterval(function () {
+      if (timeRemaining <= 0) { clearInterval(timerInterval); endExam(); return; }
+      timeRemaining--;
+      const t = String(Math.floor(timeRemaining / 60)).padStart(2, '0') + ':' + String(timeRemaining % 60).padStart(2, '0');
+      document.getElementById('timer-display').textContent = t;
+      const ftd = document.getElementById('fixed-timer-display'); if (ftd) ftd.textContent = t;
+      const ft = document.querySelector('.fixed-timer');
+      if (timeRemaining <= 300 && ft) ft.style.background = 'linear-gradient(135deg,#ff6b6b,#ff4757)';
+    }, 1000);
+  }
+
+  function endExamWithConfirmation() { if (confirm('정말로 시험을 종료하시겠습니까?')) endExam(); }
+
+  function endExam() {
+    clearInterval(timerInterval);
+    const ft = document.querySelector('.fixed-timer'); if (ft) ft.remove();
+    if (typeof window.__clearTempBookmarks === 'function') window.__clearTempBookmarks();
+    Object.values(youtubePlayers).forEach(function (p) { if (p && typeof p.stopVideo === 'function') p.stopVideo(); });
+
+    document.getElementById('loadingOverlay').style.display = 'flex';
+
+    const blocks = document.querySelectorAll('.question-card');
+    let numCorrect = 0, numIncorrect = 0, numUnanswered = 0, numNoanswer = 0, details = [];
+
+    blocks.forEach(function (block) {
+      const questionText = block.querySelector('.question-text').textContent.trim();
+      const correctOption = block.dataset.correctOption;
+      const selected = block.querySelector('input[type="radio"]:checked');
+      let resultType;
+      if (!correctOption || correctOption.trim() === '' || correctOption === 'default') { numNoanswer++; resultType = 'noanswer'; }
+      else if (!selected) { numUnanswered++; resultType = 'unanswered'; }
+      else if (selected.value.trim().charAt(0).toUpperCase() === correctOption.trim().charAt(0).toUpperCase()) { numCorrect++; resultType = 'correct'; }
+      else { numIncorrect++; resultType = 'incorrect'; }
+      details.push({ question: questionText, selected_answer: selected ? selected.value : '', correct_answer: correctOption || '', result: resultType });
+    });
+
+    const resultData = {
+      {% if exam %}exam_id: "{{ exam.id }}"{% elif category_name %}category_name: "{{ category_name }}"{% else %}category_name: "북마크된 문제"{% endif %},
+      num_correct: numCorrect, num_incorrect: numIncorrect, num_unanswered: numUnanswered, num_noanswer: numNoanswer,
+      detailed_results: details
+    };
+
+    const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    fetch('/exam/save_exam_results/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify(resultData)
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.status === 'ok') {
+        window.location.href = '/exam/exam_results/?result_id=' + data.result_id;
+      } else {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        alert('결과 저장 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      }
+    })
+    .catch(function (err) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      console.error(err);
+      alert('결과 저장 중 오류가 발생했습니다. 다시 시도해 주세요.');
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('start-exam-btn').addEventListener('click', function () {
+      const d = parseInt(document.getElementById('set-timer-input').value, 10);
+      if (!isNaN(d) && d > 0) startTimer(d); else alert('유효한 시간을 분 단위로 입력해주세요.');
+    });
+    document.getElementById('pause-exam-btn').addEventListener('click', pauseTimer);
+    document.getElementById('resume-exam-btn').addEventListener('click', resumeTimer);
+    document.getElementById('end-exam-btn').addEventListener('click', endExamWithConfirmation);
+
+    // Option card selection feedback (JS fallback for :has())
+    document.addEventListener('change', function (e) {
+      if (e.target.classList.contains('option-radio')) {
+        const name = e.target.name;
+        document.querySelectorAll('input[name="' + name + '"]').forEach(function (r) {
+          r.closest('.option-card') && r.closest('.option-card').classList.remove('selected');
+        });
+        e.target.closest('.option-card') && e.target.closest('.option-card').classList.add('selected');
+      }
+    });
+  });
+
+  function toggleDisplay(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('hidden');
+    if (!el.classList.contains('hidden') && !el.dataset.katexRendered) {
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(el, {
+          delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }, { left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }],
+          throwOnError: false
+        });
+        el.dataset.katexRendered = 'true';
+      }
+    }
+  }
+
+  function toggleBookmark(questionId, button) {
+    const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    fetch('/exam/bookmark/' + questionId + '/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.status === 'ok') {
+        button.classList.toggle('bookmarked', data.is_bookmarked);
+        {% if not exam and not category_name %}
+        if (!data.is_bookmarked) {
+          const card = button.closest('.col-12');
+          if (card) {
+            card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            card.style.opacity = '0'; card.style.transform = 'scale(0.95)';
+            setTimeout(function () {
+              card.remove();
+              if (document.querySelectorAll('.question-card').length === 0) location.reload();
+            }, 300);
+          }
+        }
+        {% endif %}
+      } else { alert('북마크 처리 중 오류가 발생했습니다.'); }
+    })
+    .catch(function (err) { console.error(err); alert('북마크 처리 중 오류가 발생했습니다.'); });
+  }
+</script>
+
+<!-- Explanation text-align fix -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('div[id^="explanation_"]').forEach(function (box) {
+      box.querySelectorAll('.markdown-content *').forEach(function (child) { child.style.textAlign = 'left'; });
+    });
+  });
+</script>
+{% endblock %}

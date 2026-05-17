@@ -68,7 +68,7 @@ def question_list(request, exam_id):
     for question in page_obj:
         question.is_bookmarked = question.id in bookmarked_questions
     
-    return render(request, 'exam/question_list.html', {
+    return render(request, 'exam/quiz_unified.html', {
         'exam': exam,
         'questions': page_obj,
         'page_obj': page_obj,
@@ -258,7 +258,7 @@ def category_questions(request, category_name):
         ).order_by('order')
         for question in questions:
             question.is_bookmarked = bool(getattr(question, 'user_bookmarks', []))
-        return render(request, 'exam/category_questions.html', {
+        return render(request, 'exam/quiz_unified.html', {
             'category_name': category.name,
             'questions': questions
         })
@@ -290,7 +290,7 @@ def bookmarked_questions(request):
     filtered_bookmarks_list = list(filtered_bookmarks)
     filtered_count = len(filtered_bookmarks_list)
     has_active_filters = bool(selected_exam_ids or selected_category_ids)
-    return render(request, 'exam/bookmarked_questions.html', {
+    return render(request, 'exam/quiz_unified.html', {
         'questions': filtered_bookmarks_list,
         'exam_filters': available_exam_filters,
         'category_filters': available_category_filters,
