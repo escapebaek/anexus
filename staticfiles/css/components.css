@@ -3345,22 +3345,24 @@ input[type="text"]:focus {
 .answer-display-box {
   background: linear-gradient(
     135deg,
-    rgba(40, 168, 125, 0.08),
-    rgba(40, 168, 125, 0.04)
+    rgba(40, 168, 125, 0.1),
+    rgba(40, 168, 125, 0.05)
   );
   backdrop-filter: blur(15px);
-  border: 2px solid rgba(40, 168, 125, 0.22);
-  box-shadow: 0 6px 20px rgba(40, 168, 125, 0.1);
+  border: 1.5px solid rgba(40, 168, 125, 0.28);
+  border-left: 4px solid #28a87d;
+  box-shadow: 0 6px 20px rgba(40, 168, 125, 0.12);
 }
 .explanation-display-box {
   background: linear-gradient(
     135deg,
-    rgba(43, 88, 118, 0.08),
-    rgba(78, 67, 118, 0.05)
+    rgba(43, 88, 118, 0.1),
+    rgba(78, 67, 118, 0.06)
   );
   backdrop-filter: blur(15px);
-  border: 2px solid rgba(43, 88, 118, 0.2);
-  box-shadow: 0 6px 20px rgba(43, 88, 118, 0.1);
+  border: 1.5px solid rgba(43, 88, 118, 0.25);
+  border-left: 4px solid #2b5876;
+  box-shadow: 0 6px 20px rgba(43, 88, 118, 0.12);
 }
 .image-display-box {
   background: linear-gradient(
@@ -3389,10 +3391,10 @@ input[type="text"]:focus {
   margin-bottom: 1rem;
 }
 .answer-display-title {
-  color: #1d7a5f;
+  color: #1a6b52;
 }
 .explanation-display-title {
-  color: #2b5876;
+  color: #1a3a4f;
 }
 .image-display-title {
   color: #5a2d7e;

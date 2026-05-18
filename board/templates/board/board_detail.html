@@ -1,5 +1,5 @@
-{% extends 'base.html' %} 
-{% load static %} 
+{% extends 'base.html' %}
+{% load static %}
 
 
 {% block custom_css %}
@@ -39,7 +39,7 @@
             {% endif %}
             <div class="post-meta-item">
               <i class="fas fa-eye"></i>
-              <span>조회수</span> {# 실제 조회수 변수 삽입 #}
+              <span>{{ board.view_count }}</span>
             </div>
           </div>
 
@@ -70,34 +70,69 @@
       <div class="comments-header">
         <i class="fas fa-comments"></i>
         <span>댓글</span>
-        <span class="badge rounded-pill bg-primary ms-1">{{ comments|length }}</span>
+        <span class="badge rounded-pill bg-primary ms-1">{{ board.comments.count }}</span>
       </div>
-      
+
       <div class="comments-list">
         {% for comment in comments %}
-        <div class="comment-item">
+        <div class="comment-item" id="comment-{{ comment.id }}">
           <div class="comment-header">
             <div class="comment-author">
               <i class="fas fa-user-circle"></i>
               <span>{{ comment.author }}</span>
             </div>
-            <div class="comment-date">
-              {{ comment.created_date|date:'Y.m.d H:i' }}
-            </div>
+            <div class="comment-date">{{ comment.created_date|date:'Y.m.d H:i' }}</div>
           </div>
-          
+
           <p class="comment-content">{{ comment.content|linebreaksbr }}</p>
-          
-          {% if comment.author == user or user.is_superuser %}
+
           <div class="comment-actions">
-            <a href="{% url 'comment_edit' comment.id %}" class="btn btn-action-glass btn-sm">
-              수정
-            </a>
-            <a href="{% url 'comment_delete' comment.id %}" class="btn btn-action-glass danger btn-sm" onclick="return confirm('정말로 삭제하시겠습니까?')">
-              삭제
-            </a>
+            <button type="button" class="btn btn-action-glass btn-sm reply-toggle"
+                    data-target="reply-form-{{ comment.id }}">
+              <i class="fas fa-reply"></i> 답글
+            </button>
+            {% if comment.author == user or user.is_superuser %}
+            <a href="{% url 'comment_edit' comment.id %}" class="btn btn-action-glass btn-sm">수정</a>
+            <a href="{% url 'comment_delete' comment.id %}" class="btn btn-action-glass danger btn-sm"
+               onclick="return confirm('정말로 삭제하시겠습니까?')">삭제</a>
+            {% endif %}
           </div>
-          {% endif %}
+
+          <!-- 대댓글 목록 -->
+          {% for reply in comment.replies.all %}
+          <div class="reply-item">
+            <div class="comment-header">
+              <div class="comment-author">
+                <i class="fas fa-reply reply-arrow"></i>
+                <i class="fas fa-user-circle"></i>
+                <span>{{ reply.author }}</span>
+              </div>
+              <div class="comment-date">{{ reply.created_date|date:'Y.m.d H:i' }}</div>
+            </div>
+            <p class="comment-content reply-content">{{ reply.content|linebreaksbr }}</p>
+            {% if reply.author == user or user.is_superuser %}
+            <div class="comment-actions">
+              <a href="{% url 'comment_edit' reply.id %}" class="btn btn-action-glass btn-sm">수정</a>
+              <a href="{% url 'comment_delete' reply.id %}" class="btn btn-action-glass danger btn-sm"
+                 onclick="return confirm('정말로 삭제하시겠습니까?')">삭제</a>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+
+          <!-- 답글 작성 폼 (기본 숨김) -->
+          <div class="reply-form-wrapper" id="reply-form-{{ comment.id }}" style="display:none">
+            <form method="post" class="reply-form">
+              {% csrf_token %}
+              <input type="hidden" name="parent_id" value="{{ comment.id }}">
+              <textarea name="content" rows="2" placeholder="답글을 입력하세요..." required></textarea>
+              <div class="reply-form-actions">
+                <button type="submit" class="btn btn-gradient btn-sm">등록</button>
+                <button type="button" class="btn btn-action-glass btn-sm reply-cancel"
+                        data-target="reply-form-{{ comment.id }}">취소</button>
+              </div>
+            </form>
+          </div>
         </div>
         {% empty %}
         <div class="empty-comments">
@@ -119,4 +154,29 @@
 
   </div>
 </div>
+
+<script>
+document.querySelectorAll('.reply-toggle').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var targetId = this.dataset.target;
+    var form = document.getElementById(targetId);
+    var isVisible = form.style.display !== 'none';
+    // 모든 답글 폼 닫기
+    document.querySelectorAll('.reply-form-wrapper').forEach(function(f) {
+      f.style.display = 'none';
+    });
+    if (!isVisible) {
+      form.style.display = 'block';
+      form.querySelector('textarea').focus();
+    }
+  });
+});
+
+document.querySelectorAll('.reply-cancel').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var targetId = this.dataset.target;
+    document.getElementById(targetId).style.display = 'none';
+  });
+});
+</script>
 {% endblock page_content %}

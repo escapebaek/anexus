@@ -6,6 +6,7 @@ from django.contrib import messages
 from .models import Board, Comment
 from .forms import BoardForm, CommentForm
 from django.core.paginator import Paginator
+from django.db.models import F
 from accounts.decorators import user_is_specially_approved
 
 @login_required
@@ -30,18 +31,27 @@ def board_index(request):
 @user_is_specially_approved
 def board_detail(request, pk):
     board = get_object_or_404(Board, pk=pk)
-    comments = board.comments.all()
+    if request.method == 'GET':
+        Board.objects.filter(pk=pk).update(view_count=F('view_count') + 1)
+        board.view_count += 1
+    comments = board.comments.filter(parent=None).prefetch_related('replies__author')
 
     if request.method == 'POST':
-        if 'content' in request.POST:  # 댓글이 달리는 경우
+        if 'content' in request.POST:
             comment_form = CommentForm(request.POST)
             if comment_form.is_valid():
                 comment = comment_form.save(commit=False)
                 comment.board = board
                 comment.author = request.user
+                parent_id = request.POST.get('parent_id')
+                if parent_id:
+                    try:
+                        comment.parent = Comment.objects.get(id=parent_id, board=board, parent=None)
+                    except Comment.DoesNotExist:
+                        pass
                 comment.save()
                 return redirect('board_detail', pk=board.pk)
-        else:  # 게시글 수정/삭제의 경우
+        else:
             pass
     else:
         comment_form = CommentForm()

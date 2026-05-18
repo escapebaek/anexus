@@ -12,7 +12,8 @@ class Board(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_date = models.DateTimeField(default=timezone.now)
     modified_date = models.DateTimeField(default=timezone.now)
-    is_notice = models.BooleanField(default=False, verbose_name='공지사항')  # 공지사항 여부 필드 추가
+    is_notice = models.BooleanField(default=False, verbose_name='공지사항')
+    view_count = models.IntegerField(default=0)
     
     def save(self, *args, **kwargs):
         # 수정 시간 자동 업데이트
@@ -39,6 +40,10 @@ class Comment(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     content = models.TextField()
     created_date = models.DateTimeField(default=timezone.now)
+    parent = models.ForeignKey(
+        'self', null=True, blank=True,
+        related_name='replies', on_delete=models.CASCADE
+    )
 
     def __str__(self):
         return f"Comment by {self.author} on {self.board}"
