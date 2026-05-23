@@ -71,6 +71,35 @@
   margin-bottom: 2rem;
   opacity: 0;
   animation: fadeInUp 0.8s ease-out 0.6s forwards;
+  min-height: 4rem; /* 2줄 높이 고정 — 삭제 중 레이아웃 흔들림 방지 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ANExuS 브랜드 강조 */
+.hero-brand {
+  display: inline-block;
+  background: linear-gradient(110deg, #93c5fd 30%, #c4b5fd 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: rgba(255, 255, 255, 0.85);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  animation: cursorBlink 0.75s step-end infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
 
 .hero-buttons {
@@ -382,18 +411,43 @@
   border-radius: 16px;
   padding: 1.25rem;
   height: 100%;
-  transition: all 0.3s ease;
+  transition: box-shadow 0.35s ease, transform 0.35s ease;
   border: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  /* 3D tilt */
+  transform-style: preserve-3d;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+
+/* 마우스 방향 빛 반사 */
+.feature-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.22) 0%,
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.feature-card:hover::after {
+  opacity: 1;
 }
 
 .feature-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 18px 40px rgba(43, 88, 118, 0.18);
 }
 
 .feature-icon {
@@ -407,7 +461,7 @@
   margin-bottom: 0.75rem;
   font-size: 1.25rem;
   color: white;
-  transform: rotate(45deg);
+  transform: rotate(45deg) translateZ(12px);
   transition: all 0.3s ease;
 }
 
@@ -416,7 +470,17 @@
 }
 
 .feature-card:hover .feature-icon {
-  transform: rotate(90deg);
+  transform: rotate(90deg) translateZ(16px);
+}
+
+/* 틸트 중엔 transition 제거해 부드러운 추적 */
+.feature-card.is-tilting {
+  transition: box-shadow 0.35s ease;
+}
+
+@media (hover: none) {
+  /* 터치 기기에선 틸트 비활성화 */
+  .feature-card::after { display: none; }
 }
 
 .feature-title {

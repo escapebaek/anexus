@@ -16,9 +16,9 @@
   </div>
 
   <div class="hero-content text-center">
-    <h1 class="hero-title">Welcome to ANExuS</h1>
+    <h1 class="hero-title">Welcome to <span class="hero-brand">ANExuS</span></h1>
     <p class="hero-subtitle">
-      Your one-stop solution for safe and precise anesthesia care.
+      <span id="hero-typewriter"></span><span class="hero-cursor" aria-hidden="true"></span>
     </p>
     <div class="hero-buttons">
       <a href="#features" class="btn btn-hero btn-hero-primary">
@@ -38,8 +38,8 @@
   <div class="container-fluid">
     <h2 class="section-title scroll-reveal">Our Features</h2>
     <div class="row g-3">
-      
-      
+
+
       {% for card in cards %}
       <div class="col-xxl-custom col-xl-custom col-lg-3 col-md-4 col-sm-6">
         <div
@@ -87,24 +87,20 @@
           const delay = parseInt(entry.target.dataset.delay) || 0;
           setTimeout(() => {
             entry.target.classList.add("revealed");
-          }, delay * 50); // Reduced delay for faster loading
+          }, delay * 50);
 
-          // Stop observing once revealed for performance
           observer.unobserve(entry.target);
         }
       });
     }, observerOptions);
 
-    // Observe all scroll-reveal elements
     document.querySelectorAll(".scroll-reveal").forEach((el, index) => {
-      // Add staggered delay if not specified
       if (!el.dataset.delay) {
         el.dataset.delay = index;
       }
       observer.observe(el);
     });
 
-    // Optimized smooth scroll for hero button
     document
       .querySelector(".btn-hero-primary")
       ?.addEventListener("click", function (e) {
@@ -122,33 +118,74 @@
         }
       });
 
-    // Preload feature icons for better performance
-    const iconClasses = [
-      "heartbeat",
-      "pills",
-      "baby",
-      "chart-line",
-      "history",
-      "shield-alt",
-      "users",
-      "mobile-alt",
-    ];
-    iconClasses.forEach((iconClass) => {
-      const link = document.createElement("link");
-      link.rel = "prefetch";
-      link.href = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.woff2`;
-      document.head.appendChild(link);
-    });
+    // Typewriter cycling text
+    (function () {
+      const el = document.getElementById("hero-typewriter");
+      if (!el) return;
 
-    // Performance monitoring (optional)
-    if ("performance" in window) {
-      window.addEventListener("load", function () {
-        const loadTime =
-          performance.timing.loadEventEnd - performance.timing.navigationStart;
-        if (loadTime > 3000) {
-          // If load time > 3s
-          console.warn("Page load time:", loadTime + "ms");
+      const phrases = [
+        "Your one-stop solution for safe and precise anesthesia care.",
+        "Evidence-based drug references at your fingertips.",
+        "Trusted by anesthesia specialists.",
+        "Precise. Safe. Smart.",
+        "Everything you need for modern anesthesia practice.",
+      ];
+
+      let pi = 0, ci = 0, deleting = false;
+
+      function tick() {
+        const phrase = phrases[pi];
+        if (!deleting) {
+          el.textContent = phrase.slice(0, ci + 1);
+          ci++;
+          if (ci === phrase.length) {
+            setTimeout(function () { deleting = true; tick(); }, 2400);
+            return;
+          }
+          setTimeout(tick, 42);
+        } else {
+          el.textContent = phrase.slice(0, ci - 1);
+          ci--;
+          if (ci === 0) {
+            deleting = false;
+            pi = (pi + 1) % phrases.length;
+            setTimeout(tick, 380);
+            return;
+          }
+          setTimeout(tick, 22);
         }
+      }
+
+      // hero-subtitle fade-in이 끝난 후 시작
+      setTimeout(tick, 1100);
+    })();
+
+    // 3D Card Tilt
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const MAX_TILT = 12; // degrees
+      document.querySelectorAll(".feature-card").forEach((card) => {
+        card.addEventListener("mousemove", function (e) {
+          const r = this.getBoundingClientRect();
+          const cx = r.left + r.width  / 2;
+          const cy = r.top  + r.height / 2;
+          const dx = (e.clientX - cx) / (r.width  / 2); // -1 ~ 1
+          const dy = (e.clientY - cy) / (r.height / 2);
+          const rotX = -dy * MAX_TILT;
+          const rotY =  dx * MAX_TILT;
+          this.classList.add("is-tilting");
+          this.style.transform =
+            `perspective(700px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(6px)`;
+          // 빛 반사 위치
+          const mx = ((e.clientX - r.left) / r.width)  * 100;
+          const my = ((e.clientY - r.top)  / r.height) * 100;
+          this.style.setProperty("--mx", mx + "%");
+          this.style.setProperty("--my", my + "%");
+        });
+
+        card.addEventListener("mouseleave", function () {
+          this.classList.remove("is-tilting");
+          this.style.transform = "";
+        });
       });
     }
   });
