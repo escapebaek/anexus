@@ -4,6 +4,7 @@ from django.db import models
 class CustomUser(AbstractUser):
     is_approved = models.BooleanField(default=True)
     is_specially_approved = models.BooleanField(default=False)
+    real_name = models.CharField(max_length=50, blank=True)
     
     TRAINING_HOSPITAL_CHOICES = [
         # 서울 지역

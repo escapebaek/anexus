@@ -5,9 +5,9 @@ from .models import CustomUser
 class CustomUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = CustomUser
-        fields = ('username', 'email', 'first_name', 'last_name', 'training_hospital')
-        
+        fields = ('username', 'email', 'real_name', 'training_hospital')
+
     def __init__(self, *args, **kwargs):
-        super(CustomUserCreationForm, self).__init__(*args, **kwargs)
-        self.fields['first_name'].required = True
-        self.fields['last_name'].required = True
+        super().__init__(*args, **kwargs)
+        self.fields['real_name'].required = True
+        self.fields['real_name'].label = '실명'

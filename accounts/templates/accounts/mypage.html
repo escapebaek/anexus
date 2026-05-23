@@ -1,8 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{# Styles moved to global SCSS bundle (components/accounts) #}
-
 {% block page_content %}
 <div class="mypage-section position-relative min-vh-100">
   <div class="mypage-overlay"></div>
@@ -10,60 +8,46 @@
     <div class="row justify-content-center">
       <div class="col-md-8">
         <div class="profile-card animate-fade-in">
+
+          <!-- Header -->
           <div class="card-header text-center">
             <h1 class="profile-title">My Profile</h1>
-            <p class="profile-subtitle">Manage your account information</p>
+            <p class="profile-subtitle">
+              {{ user.real_name }}{% if user.real_name and user.username %} · {% endif %}{{ user.username }}
+            </p>
           </div>
-          
-          <!-- Update Information -->
+
+          <!-- Card Body -->
           <div class="card-body">
+
+            <!-- Account Info -->
+            <div class="section-heading">계정 정보</div>
             <form method="POST" action="{% url 'update_user_info' %}" class="profile-form">
               {% csrf_token %}
-              
-              <div class="row g-4">
+              <div class="row g-3">
                 <div class="col-md-6">
                   <div class="form-group">
-                    <label for="first_name" class="form-label">First Name</label>
+                    <label for="real_name" class="form-label">실명 (Real Name)</label>
                     <div class="input-group">
-                      <span class="input-group-text">
-                        <i class="fas fa-user"></i>
-                      </span>
-                      <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+                      <span class="input-group-text"><i class="fas fa-user"></i></span>
+                      <input type="text" class="form-control" id="real_name" name="real_name" value="{{ user.real_name }}">
                     </div>
                   </div>
                 </div>
-                
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="last_name" class="form-label">Last Name</label>
-                    <div class="input-group">
-                      <span class="input-group-text">
-                        <i class="fas fa-user"></i>
-                      </span>
-                      <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
-                    </div>
-                  </div>
-                </div>
-                
                 <div class="col-md-6">
                   <div class="form-group">
                     <label for="email" class="form-label">Email</label>
                     <div class="input-group">
-                      <span class="input-group-text">
-                        <i class="fas fa-envelope"></i>
-                      </span>
+                      <span class="input-group-text"><i class="fas fa-envelope"></i></span>
                       <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
                     </div>
                   </div>
                 </div>
-                
-                <div class="col-md-6">
+                <div class="col-12">
                   <div class="form-group">
                     <label for="training_hospital" class="form-label">Training Hospital</label>
                     <div class="input-group">
-                      <span class="input-group-text">
-                        <i class="fas fa-hospital"></i>
-                      </span>
+                      <span class="input-group-text"><i class="fas fa-hospital"></i></span>
                       <select class="form-control" id="training_hospital" name="training_hospital">
                         {% for choice in user.TRAINING_HOSPITAL_CHOICES %}
                         <option value="{{ choice.0 }}" {% if choice.0 == user.training_hospital %}selected{% endif %}>
@@ -75,24 +59,49 @@
                   </div>
                 </div>
               </div>
-
-              <div class="text-center mt-4">
+              <div class="text-center mt-3">
                 <button type="submit" class="btn btn-update">
-                  Update Information
-                  <i class="fas fa-check ms-2"></i>
+                  Update Information <i class="fas fa-check ms-2"></i>
                 </button>
               </div>
             </form>
 
-            <!-- Change Password -->
-            <div class="password-section text-center mt-5">
-              <h3 class="password-title">Change Password</h3>
-              <p class="password-subtitle">Keep your account secure by updating your password regularly</p>
-              <a href="{% url 'password_change' %}" class="btn btn-password">
-                Change Password
-                <i class="fas fa-key ms-2"></i>
+            <!-- Analytics Navigation -->
+            <div class="section-heading">학습 분석</div>
+            <div class="nav-cards">
+              <a href="{% url 'my_results' %}" class="nav-card">
+                <div class="nav-card-icon"><i class="fas fa-list-alt"></i></div>
+                <div class="nav-card-title">내 성적 기록</div>
+                <div class="nav-card-desc">시험별 응시 이력 확인</div>
+              </a>
+              <a href="{% url 'analytics_overview' %}" class="nav-card">
+                <div class="nav-card-icon"><i class="fas fa-chart-bar"></i></div>
+                <div class="nav-card-title">전체 분석</div>
+                <div class="nav-card-desc">카테고리·추세 분석</div>
+              </a>
+              <a href="{% url 'bookmarked_questions' %}" class="nav-card">
+                <div class="nav-card-icon"><i class="fas fa-bookmark"></i></div>
+                <div class="nav-card-title">북마크 문제</div>
+                <div class="nav-card-desc">저장한 문제 복습</div>
               </a>
             </div>
+
+            <!-- Change Password -->
+            <div class="password-section">
+              <div class="password-card">
+                <div class="password-card-left">
+                  <div class="password-card-icon"><i class="fas fa-lock"></i></div>
+                  <div class="password-card-text">
+                    <p class="pw-title">비밀번호 변경</p>
+                    <p class="pw-sub">정기적인 변경으로 계정을 안전하게 유지하세요.</p>
+                  </div>
+                </div>
+                <a href="{% url 'password_change' %}" class="btn btn-password">
+                  변경하기 <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

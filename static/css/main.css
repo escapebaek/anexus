@@ -2416,16 +2416,171 @@ footer p {
   margin-bottom: 1.5rem;
 }
 .mypage-section .profile-card .password-section .btn-password {
-  background: rgba(43, 88, 118, 0.1);
-  color: var(--text-primary);
-  padding: 0.75rem 2rem;
+  background: var(--primary-gradient);
+  color: white;
+  padding: 0.65rem 1.5rem;
   border-radius: 50px;
   font-weight: 600;
+  font-size: 0.9rem;
   transition: var(--transition);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .mypage-section .profile-card .password-section .btn-password:hover {
-  background: rgba(43, 88, 118, 0.2);
+  color: white;
+  text-decoration: none;
   transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(43, 88, 118, 0.35);
+}
+
+/* Quick stats bar */
+.mypage-section .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  padding: 1.25rem 2.5rem 0;
+}
+.mypage-section .stat-tile {
+  background: linear-gradient(135deg, rgba(43,88,118,0.07), rgba(78,67,118,0.04));
+  border: 1px solid rgba(43,88,118,0.14);
+  border-radius: 14px;
+  padding: 1rem;
+  text-align: center;
+}
+.mypage-section .stat-tile-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #2b5876;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+.mypage-section .stat-tile-value small {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.mypage-section .stat-tile-label {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Section heading */
+.mypage-section .section-heading {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(43,88,118,0.55);
+  margin-bottom: 0.75rem;
+  margin-top: 2rem;
+}
+
+/* Analytics nav cards */
+.mypage-section .nav-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+.mypage-section .nav-card {
+  background: white;
+  border: 1px solid rgba(43,88,118,0.12);
+  border-radius: 14px;
+  padding: 1.1rem 0.75rem;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.mypage-section .nav-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(43,88,118,0.14);
+  border-color: rgba(43,88,118,0.28);
+  text-decoration: none;
+  color: inherit;
+}
+.mypage-section .nav-card-icon {
+  width: 42px;
+  height: 42px;
+  background: var(--primary-gradient);
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1rem;
+}
+.mypage-section .nav-card-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #2b5876;
+}
+.mypage-section .nav-card-desc {
+  font-size: 0.72rem;
+  color: #6c757d;
+  line-height: 1.3;
+}
+
+/* Password section — redesigned as action card */
+.mypage-section .profile-card .password-section {
+  border-top: 1px solid rgba(0,0,0,0.07);
+  padding-top: 1.5rem;
+  margin-top: 2rem;
+}
+.mypage-section .password-card {
+  background: linear-gradient(135deg, rgba(43,88,118,0.05), rgba(78,67,118,0.04));
+  border: 1px solid rgba(43,88,118,0.15);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.mypage-section .password-card-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+.mypage-section .password-card-icon {
+  width: 46px;
+  height: 46px;
+  background: var(--primary-gradient);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.mypage-section .password-card-text .pw-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2b5876;
+  margin: 0 0 0.15rem;
+}
+.mypage-section .password-card-text .pw-sub {
+  font-size: 0.78rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+@media (max-width: 576px) {
+  .mypage-section .stats-grid { padding: 1rem 1.25rem 0; }
+  .mypage-section .stat-tile-value { font-size: 1.4rem; }
+  .mypage-section .nav-cards { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .mypage-section .nav-card { padding: 0.8rem 0.4rem; }
+  .mypage-section .nav-card-icon { width: 34px; height: 34px; font-size: 0.85rem; }
+  .mypage-section .nav-card-title { font-size: 0.72rem; }
+  .mypage-section .nav-card-desc { display: none; }
+  .mypage-section .password-card { flex-direction: column; align-items: flex-start; }
 }
 .hero-section {
   position: relative;

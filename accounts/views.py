@@ -42,8 +42,7 @@ def mypage(request):
 def update_user_info(request):
     if request.method == 'POST':
         user = request.user
-        user.first_name = request.POST.get('first_name', user.first_name)
-        user.last_name = request.POST.get('last_name', user.last_name)
+        user.real_name = request.POST.get('real_name', user.real_name)
         user.email = request.POST.get('email', user.email)
         user.training_hospital = request.POST.get('training_hospital', user.training_hospital)
         user.save()
