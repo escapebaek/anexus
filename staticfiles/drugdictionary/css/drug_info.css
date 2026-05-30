@@ -1,148 +1,536 @@
-/* 새 색상 팔레트 */
-:root {
-  --primary-color: #2a2a72;
-  --primary-dark: #1d1d50;
-  --secondary-color: #ff6f61;
-  --accent-color: #ffa07a;
-  --warning-color: #f39c12;
-  --danger-color: #e74c3c;
-  --success-color: #27ae60;
-  --text-color: #333333;
-  --text-muted: #777777;
-  --background-light: #f4f4f4;
-  --background-white: #ffffff;
-  --border-color: #dddddd;
-  --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+/* ============================================================
+   Drug Information — project palette (#2b5876 / #4e4376)
+   ============================================================ */
+
+/* Hero + Search -------------------------------------------- */
+.drug-hero {
+  background: linear-gradient(135deg, #2b5876, #4e4376);
+  color: white;
+  padding: 3rem 0 3.5rem;
+  text-align: center;
 }
 
-/* 기본 타이포그래피 */
-body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--background-light);
-  color: var(--text-color);
-  margin: 0;
-  padding: 0;
+.drug-hero-icon {
+  width: 62px;
+  height: 62px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  margin: 0 auto 1rem;
+  backdrop-filter: blur(10px);
 }
 
-/* 컨테이너 */
-.container {
-  max-width: 1200px;
-  margin: auto;
-  padding: 20px;
+.drug-hero-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
 }
 
-/* 헤더 스타일 */
-header {
-  background: var(--primary-color);
-  color: var(--background-white);
+.drug-hero-subtitle {
+  opacity: 0.82;
+  font-size: 0.92rem;
+  margin-bottom: 1.75rem;
 }
 
-/* 카드 기본 스타일 */
-.card {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background-color: var(--background-white);
-  transition: all 0.3s ease;
+.drug-search-wrap { max-width: 620px; margin: 0 auto; }
+
+.drug-search-bar {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255,255,255,0.7);
+  border-radius: 50px;
+  padding: 0.35rem 0.4rem 0.35rem 1.25rem;
+  gap: 0.5rem;
+  transition: box-shadow 0.2s;
 }
 
-/* 검색 인풋 & 버튼 */
-.search-input {
-  padding: 12px 20px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  font-size: 16px;
+.drug-search-bar:focus-within {
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.35);
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(42, 42, 114, 0.15);
-}
+.drug-search-icon { color: #7a9bb5; font-size: 0.9rem; flex-shrink: 0; }
 
-.search-button {
-  background-color: var(--primary-color);
-  color: var(--background-white);
+.drug-search-input {
+  flex: 1;
+  background: transparent;
   border: none;
-  padding: 12px 25px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
+  outline: none;
+  color: #1d3a50;
+  font-size: 0.92rem;
+  padding: 0.5rem 0;
+  min-width: 0;
+}
+
+.drug-search-input::placeholder { color: #9eaab5; }
+
+.drug-search-btn {
+  background: linear-gradient(135deg, #2b5876, #4e4376);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 0.55rem 1.4rem;
+  font-weight: 700;
+  font-size: 0.88rem;
   cursor: pointer;
-  transition: background-color 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+  transition: opacity 0.2s, transform 0.15s;
 }
 
-.search-button:hover {
-  background-color: var(--primary-dark);
-  box-shadow: var(--shadow-sm);
+.drug-search-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
-/* 버튼 활성 상태 */
-.btn.active,
-.btn:active {
-  background-color: var(--primary-dark) !important;
-  border-color: var(--primary-dark) !important;
-  color: #fff !important;
+/* Main ---------------------------------------------------- */
+.drug-main {
+  background: #f0f4f8;
+  min-height: 60vh;
+  padding: 2rem 0 4rem;
 }
 
-/* 아코디언 영역 */
-.section-content-area {
-  background-color: #f9f9f9;
-  padding: 0;
-  overflow: hidden;
-  max-height: 0;
-  opacity: 0;
-  transition: max-height 0.5s ease, opacity 0.5s ease, padding 0.5s ease;
+.drug-results-meta {
+  font-size: 0.83rem;
+  color: #6c757d;
+  margin-bottom: 1.25rem;
 }
 
-.section-content-area.expanded {
-  padding: 1rem;
-  max-height: 2000px;
-  opacity: 1;
+/* Alerts -------------------------------------------------- */
+.drug-alert {
+  padding: 0.9rem 1.1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* 약 검색 결과 그리드 레이아웃 */
-.drug-list {
+.drug-alert-error {
+  background: rgba(220,73,74,0.07);
+  border: 1px solid rgba(220,73,74,0.2);
+  color: #b02a2a;
+}
+
+.drug-alert-warning {
+  background: rgba(245,166,35,0.07);
+  border: 1px solid rgba(245,166,35,0.25);
+  color: #856404;
+}
+
+/* Grid ---------------------------------------------------- */
+.drug-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
-  width: 100%;
-  align-items: start; /* Align items to the top */
+  align-items: start;
 }
 
-/* 각 약 카드 스타일 */
+/* Card ---------------------------------------------------- */
 .drug-card {
-  display: flex;
+  background: white;
+  border-radius: 14px;
+  border: 1px solid rgba(43,88,118,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  overflow: hidden;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+
+.drug-card:hover {
+  box-shadow: 0 6px 20px rgba(43,88,118,0.13);
+  border-color: rgba(43,88,118,0.2);
+  transform: translateY(-2px);
+}
+
+/* Expanded: full-row, two-column layout */
+.drug-card.is-expanded {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: auto 1fr;
+  transform: none;
+  box-shadow: 0 8px 28px rgba(43,88,118,0.18);
+  border-color: rgba(43,88,118,0.3);
+}
+
+.drug-card.is-expanded .drug-card-header {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.drug-card.is-expanded .drug-tabs {
+  grid-column: 1;
+  grid-row: 2;
   flex-direction: column;
-  transition: all 0.3s ease;
-  break-inside: avoid;
-  grid-column: span 1;
+  align-items: stretch;
+  padding: 0 0.75rem 0.75rem;
+  border-right: 1px solid rgba(43,88,118,0.08);
+  gap: 0.3rem;
 }
 
-/* 확장된 카드 스타일 */
-.drug-card.expanded-card {
-  grid-column: 1 / -1; /* 전체 행 차지 */
-  order: -1; /* 확장된 카드를 맨 위로 */
-  display: block; /* Ensure flexible width for expanded content */
+.drug-card.is-expanded .drug-tab {
+  border-radius: 8px;
+  justify-content: flex-start;
+  padding: 0.4rem 0.7rem;
 }
 
-/* 반응형 디자인 */
-@media (max-width: 992px) {
-  .drug-list {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.drug-card.is-expanded .drug-panel {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  max-height: 500px;
+  border-top: none;
+  border-left: 1px solid rgba(43,88,118,0.08);
+  overflow-y: auto;
 }
 
-@media (max-width: 768px) {
-  .drug-list {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.drug-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 1rem 1rem 0.6rem;
 }
 
-@media (max-width: 576px) {
-  .drug-list {
+.drug-card-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #2b5876, #4e4376);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.drug-card-info { min-width: 0; }
+
+.drug-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #2b5876;
+  margin: 0 0 0.2rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drug-labeler {
+  font-size: 0.7rem;
+  color: #6c757d;
+  margin: 0 0 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drug-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  background: rgba(43,88,118,0.08);
+  color: #2b5876;
+  border-radius: 4px;
+  padding: 0.12rem 0.4rem;
+  display: inline-block;
+}
+
+/* Tabs ---------------------------------------------------- */
+.drug-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.drug-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: rgba(43,88,118,0.06);
+  border: 1px solid rgba(43,88,118,0.12);
+  border-radius: 20px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: #2b5876;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.drug-tab:hover {
+  background: rgba(43,88,118,0.12);
+  border-color: rgba(43,88,118,0.25);
+}
+
+.drug-tab.active {
+  background: linear-gradient(135deg, #2b5876, #4e4376);
+  border-color: transparent;
+  color: white;
+}
+
+/* Panel --------------------------------------------------- */
+.drug-panel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+}
+
+.drug-card.is-expanded .drug-panel {
+  max-height: 500px;
+  border-top: 1px solid rgba(43,88,118,0.1);
+}
+
+.drug-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.25rem;
+  background: linear-gradient(135deg, rgba(43,88,118,0.06), rgba(78,67,118,0.04));
+  border-bottom: 1px solid rgba(43,88,118,0.08);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.drug-panel-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #2b5876;
+}
+
+.drug-panel-close {
+  background: none;
+  border: none;
+  color: #adb5bd;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.drug-panel-close:hover {
+  color: #2b5876;
+  background: rgba(43,88,118,0.07);
+}
+
+.drug-panel-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  max-height: 430px;
+}
+
+/* Custom scrollbar */
+.drug-panel-body::-webkit-scrollbar { width: 5px; }
+.drug-panel-body::-webkit-scrollbar-track { background: transparent; }
+.drug-panel-body::-webkit-scrollbar-thumb {
+  background: rgba(43,88,118,0.22);
+  border-radius: 3px;
+}
+.drug-panel-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(43,88,118,0.4);
+}
+
+/* Loading ------------------------------------------------- */
+.drug-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #6c757d;
+  font-size: 0.83rem;
+  padding: 0.25rem 0;
+}
+
+.drug-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(43,88,118,0.15);
+  border-top-color: #2b5876;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: drugSpin 0.7s linear infinite;
+}
+
+@keyframes drugSpin { to { transform: rotate(360deg); } }
+
+/* SPL content --------------------------------------------- */
+.drug-spl-content {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: #3a3a3a;
+}
+
+.drug-spl-content p {
+  margin-bottom: 0.75rem;
+  color: #3a3a3a;
+}
+
+/* linebreaks filter generates <p> tags — give them good spacing */
+.drug-spl-content > p:first-child { margin-top: 0; }
+
+.drug-section-subtitle,
+.drug-spl-content h1, .drug-spl-content h2, .drug-spl-content h3,
+.drug-spl-content h4, .drug-spl-content h5, .drug-spl-content h6 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #2b5876;
+  margin: 1rem 0 0.35rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(43,88,118,0.1);
+}
+
+.drug-spl-content ul, .drug-spl-content ol {
+  padding-left: 1.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.drug-spl-content li { margin-bottom: 0.2rem; }
+
+.drug-spl-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin: 0.75rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.drug-spl-content th, .drug-spl-content td {
+  padding: 0.4rem 0.65rem;
+  border: 1px solid rgba(43,88,118,0.12);
+  vertical-align: top;
+}
+
+.drug-spl-content th {
+  background: rgba(43,88,118,0.07);
+  font-weight: 600;
+  color: #2b5876;
+}
+
+.drug-spl-content tr:nth-child(even) td {
+  background: rgba(43,88,118,0.02);
+}
+
+.drug-content-error {
+  font-size: 0.85rem;
+  color: #b02a2a;
+  background: rgba(220,73,74,0.06);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+}
+
+.drug-content-empty {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+/* Empty state --------------------------------------------- */
+.drug-empty-state {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: #6c757d;
+}
+
+.drug-empty-icon {
+  font-size: 2.8rem;
+  color: rgba(43,88,118,0.18);
+  margin-bottom: 1rem;
+}
+
+.drug-empty-state h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2b5876;
+  margin-bottom: 0.5rem;
+}
+
+.drug-empty-state p {
+  font-size: 0.88rem;
+  max-width: 400px;
+  margin: 0 auto 1.5rem;
+}
+
+.drug-suggestions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.drug-suggestion-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2b5876;
+}
+
+.drug-suggestion-chip {
+  background: white;
+  border: 1px solid rgba(43,88,118,0.2);
+  border-radius: 50px;
+  padding: 0.28rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2b5876;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.drug-suggestion-chip:hover {
+  background: #2b5876;
+  color: white;
+  border-color: transparent;
+  text-decoration: none;
+}
+
+/* Responsive ---------------------------------------------- */
+@media (max-width: 1200px) {
+  .drug-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .drug-grid { grid-template-columns: repeat(2, 1fr); }
+  .drug-hero { padding: 2.5rem 0 3rem; }
+  .drug-hero-title { font-size: 1.75rem; }
+}
+
+@media (max-width: 640px) {
+  /* On small screens, expanded card stays single column */
+  .drug-card.is-expanded {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
   }
+  .drug-card.is-expanded .drug-card-header { grid-column: 1; grid-row: 1; }
+  .drug-card.is-expanded .drug-tabs {
+    grid-column: 1; grid-row: 2;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid rgba(43,88,118,0.08);
+  }
+  .drug-card.is-expanded .drug-tab { border-radius: 20px; justify-content: center; }
+  .drug-card.is-expanded .drug-panel {
+    grid-column: 1; grid-row: 3;
+    border-left: none;
+    border-top: 1px solid rgba(43,88,118,0.1);
+    max-height: 400px;
+  }
+  .drug-panel-body { padding: 1rem; }
+}
+
+@media (max-width: 480px) {
+  .drug-grid { grid-template-columns: 1fr; }
+  .drug-hero-title { font-size: 1.5rem; }
+  .drug-search-btn { padding: 0.5rem 1rem; }
 }

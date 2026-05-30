@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Drug Information Lookup{% endblock %}
 
 {% block custom_css %}
 <link href="{% static 'drugdictionary/css/drug_info.css' %}" rel="stylesheet" />
@@ -8,133 +7,167 @@
 
 {% block page_content %}
 
-<!-- Hero Header -->
+<!-- Hero + Search -->
 <div class="drug-hero">
-  <div class="drug-hero-content">
+  <div class="container">
     <div class="drug-hero-icon"><i class="fas fa-pills"></i></div>
     <h1 class="drug-hero-title">Drug Information</h1>
     <p class="drug-hero-subtitle">Search FDA-approved drug labels</p>
-  </div>
-  <div class="drug-hero-wave">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 56" preserveAspectRatio="none">
-      <path fill="#f8f9fa" d="M0,28 C240,56 480,0 720,28 C960,56 1200,0 1440,28 L1440,56 L0,56 Z"/>
-    </svg>
-  </div>
-</div>
-
-<!-- Search -->
-<div class="drug-search-section">
-  <div class="search-container">
-    <form method="get">
-      <div class="search-bar">
-        <i class="fas fa-search search-bar-icon"></i>
-        <input
-          type="text"
-          name="q"
-          class="search-input"
-          placeholder="e.g. Propofol, Midazolam, Fentanyl, Ketamine..."
-          value="{{ query|default:'' }}"
-          autocomplete="off"
-        />
-        <button class="search-btn" type="submit">
-          <i class="fas fa-search"></i> Search
-        </button>
-      </div>
-      <p class="search-hint">Search by brand name or generic name</p>
-    </form>
-  </div>
-</div>
-
-<!-- Main -->
-<div class="drug-main">
-
-  {% if error %}
-  <div class="drug-alert drug-alert-error">
-    <i class="fas fa-exclamation-circle"></i> {{ error }}
-  </div>
-  {% endif %}
-
-  {% if query and not results and not error %}
-  <div class="drug-alert drug-alert-warning">
-    <i class="fas fa-search"></i>
-    No results found for "<strong>{{ query }}</strong>". Try a different spelling or generic name.
-  </div>
-  {% endif %}
-
-  {% if results %}
-  <p class="results-meta">
-    <i class="fas fa-list-ul"></i>
-    Found <strong>{{ results|length }}</strong> result{{ results|length|pluralize }}
-    for &ldquo;<em>{{ query }}</em>&rdquo;
-  </p>
-
-  <div class="drug-grid" id="drugGrid">
-    {% for drug in results %}
-    <div class="drug-card animate-fade-in" data-drug-id="{{ drug.id }}">
-
-      <!-- Left/top: always visible drug info -->
-      <div class="drug-card-info">
-        <div class="drug-icon"><i class="fas fa-capsules"></i></div>
-        <h3 class="drug-brand-name">{{ drug.brand_names.0|default:"Unknown" }}</h3>
-        {% if drug.generic_names.0 %}
-        <p class="drug-generic-name">{{ drug.generic_names.0 }}</p>
-        {% endif %}
-        {% if drug.manufacturer.0 and drug.manufacturer.0 != "Unknown" %}
-        <p class="drug-mfr"><i class="fas fa-industry"></i>{{ drug.manufacturer.0 }}</p>
-        {% endif %}
-        <div class="drug-tabs">
-          <button class="drug-tab tab-indications section-btn"
-            data-section="indications" data-drug-id="{{ drug.id }}">
-            <i class="fas fa-check-circle"></i> Indications
-          </button>
-          <button class="drug-tab tab-dosage section-btn"
-            data-section="dosage" data-drug-id="{{ drug.id }}">
-            <i class="fas fa-prescription"></i> Dosage
-          </button>
-          <button class="drug-tab tab-warnings section-btn"
-            data-section="warnings" data-drug-id="{{ drug.id }}">
-            <i class="fas fa-exclamation-triangle"></i> Warnings
-          </button>
-          <button class="drug-tab tab-adverse section-btn"
-            data-section="adverse_reactions" data-drug-id="{{ drug.id }}">
-            <i class="fas fa-allergies"></i> Adverse
-          </button>
-          <button class="drug-tab tab-contra section-btn"
-            data-section="contraindications" data-drug-id="{{ drug.id }}">
-            <i class="fas fa-ban"></i> Contraindications
-          </button>
+    <div class="drug-search-wrap">
+      <form method="get">
+        <div class="drug-search-bar">
+          <i class="fas fa-search drug-search-icon"></i>
+          <input type="text" name="q" class="drug-search-input"
+                 placeholder="e.g. Propofol, Midazolam, Fentanyl, Ketamine..."
+                 value="{{ query|default:'' }}" autocomplete="off">
+          <button type="submit" class="drug-search-btn">Search</button>
         </div>
-      </div>
-
-      <!-- Right: content panel (shown when expanded) -->
-      <div class="drug-panel">
-        <div class="drug-panel-header">
-          <h4 class="drug-panel-title"><i class="fas fa-info-circle"></i></h4>
-          <button type="button" class="drug-panel-close" title="Close">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="drug-panel-body">
-          <!-- AJAX content -->
-        </div>
-      </div>
-
+      </form>
     </div>
-    {% endfor %}
   </div>
-  {% endif %}
+</div>
 
+<!-- Results -->
+<div class="drug-main">
+  <div class="container">
+
+    {% if error %}
+    <div class="drug-alert drug-alert-error">
+      <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+    </div>
+    {% endif %}
+
+    {% if query and not results and not error %}
+    <div class="drug-alert drug-alert-warning">
+      <i class="fas fa-search me-2"></i>
+      No results for "<strong>{{ query }}</strong>". Try a different spelling or generic name.
+    </div>
+    {% endif %}
+
+    {% if results %}
+    <p class="drug-results-meta">
+      <i class="fas fa-list-ul me-1"></i>
+      <strong>{{ results|length }}</strong> result{{ results|length|pluralize }}
+      for "<em>{{ query }}</em>"
+    </p>
+
+    <div class="drug-grid">
+      {% for drug in results %}
+      <div class="drug-card">
+
+        <!-- Card Header -->
+        <div class="drug-card-header">
+          <div class="drug-card-icon"><i class="fas fa-capsules"></i></div>
+          <div class="drug-card-info">
+            <h3 class="drug-name" title="{{ drug.brand_name }}">{{ drug.brand_name }}</h3>
+            {% if drug.generic_name %}
+            <p class="drug-labeler">{{ drug.generic_name }}</p>
+            {% endif %}
+            {% if drug.manufacturer %}
+            <p class="drug-labeler"><i class="fas fa-industry me-1"></i>{{ drug.manufacturer }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Tab Buttons -->
+        <div class="drug-tabs">
+          <button class="drug-tab section-btn" data-section="indications">
+            <i class="fas fa-check-circle"></i><span>Indications</span>
+          </button>
+          <button class="drug-tab section-btn" data-section="dosage">
+            <i class="fas fa-prescription"></i><span>Dosage</span>
+          </button>
+          <button class="drug-tab section-btn" data-section="warnings">
+            <i class="fas fa-exclamation-triangle"></i><span>Warnings</span>
+          </button>
+          <button class="drug-tab section-btn" data-section="adverse_reactions">
+            <i class="fas fa-allergies"></i><span>Adverse</span>
+          </button>
+          <button class="drug-tab section-btn" data-section="contraindications">
+            <i class="fas fa-ban"></i><span>Contra.</span>
+          </button>
+        </div>
+
+        <!-- Expandable Panel -->
+        <div class="drug-panel">
+          <div class="drug-panel-header">
+            <span class="drug-panel-title"></span>
+            <button type="button" class="drug-panel-close" title="Close">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="drug-panel-body">
+
+            <div class="drug-section-content" data-section="indications">
+              {% if drug.indications %}
+              <div class="drug-spl-content">{{ drug.indications|linebreaks }}</div>
+              {% else %}
+              <p class="drug-content-empty">Not available for this drug label.</p>
+              {% endif %}
+            </div>
+
+            <div class="drug-section-content" data-section="dosage">
+              {% if drug.dosage %}
+              <div class="drug-spl-content">{{ drug.dosage|linebreaks }}</div>
+              {% else %}
+              <p class="drug-content-empty">Not available for this drug label.</p>
+              {% endif %}
+            </div>
+
+            <div class="drug-section-content" data-section="warnings">
+              {% if drug.warnings %}
+              <div class="drug-spl-content">{{ drug.warnings|linebreaks }}</div>
+              {% else %}
+              <p class="drug-content-empty">Not available for this drug label.</p>
+              {% endif %}
+            </div>
+
+            <div class="drug-section-content" data-section="adverse_reactions">
+              {% if drug.adverse_reactions %}
+              <div class="drug-spl-content">{{ drug.adverse_reactions|linebreaks }}</div>
+              {% else %}
+              <p class="drug-content-empty">Not available for this drug label.</p>
+              {% endif %}
+            </div>
+
+            <div class="drug-section-content" data-section="contraindications">
+              {% if drug.contraindications %}
+              <div class="drug-spl-content">{{ drug.contraindications|linebreaks }}</div>
+              {% else %}
+              <p class="drug-content-empty">Not available for this drug label.</p>
+              {% endif %}
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not query %}
+    <div class="drug-empty-state">
+      <div class="drug-empty-icon"><i class="fas fa-pills"></i></div>
+      <h3>Search for a drug</h3>
+      <p>Enter a brand name or generic name to find FDA-approved drug label information.</p>
+      <div class="drug-suggestions">
+        <span class="drug-suggestion-label">Try:</span>
+        <a href="?q=Propofol" class="drug-suggestion-chip">Propofol</a>
+        <a href="?q=Midazolam" class="drug-suggestion-chip">Midazolam</a>
+        <a href="?q=Fentanyl" class="drug-suggestion-chip">Fentanyl</a>
+        <a href="?q=Ketamine" class="drug-suggestion-chip">Ketamine</a>
+        <a href="?q=Rocuronium" class="drug-suggestion-chip">Rocuronium</a>
+        <a href="?q=Dexmedetomidine" class="drug-suggestion-chip">Dexmedetomidine</a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const ICONS = {
-    indications:       'fas fa-check-circle',
-    dosage:            'fas fa-prescription',
-    warnings:          'fas fa-exclamation-triangle',
-    adverse_reactions: 'fas fa-allergies',
-    contraindications: 'fas fa-ban',
-  };
   const LABELS = {
     indications:       'Indications & Usage',
     dosage:            'Dosage & Administration',
@@ -142,71 +175,47 @@ document.addEventListener('DOMContentLoaded', function () {
     adverse_reactions: 'Adverse Reactions',
     contraindications: 'Contraindications',
   };
+  const ICONS = {
+    indications:       'fas fa-check-circle',
+    dosage:            'fas fa-prescription',
+    warnings:          'fas fa-exclamation-triangle',
+    adverse_reactions: 'fas fa-allergies',
+    contraindications: 'fas fa-ban',
+  };
+
+  // Hide all section content divs initially
+  document.querySelectorAll('.drug-section-content').forEach(d => d.style.display = 'none');
 
   function collapseCard(card) {
     card.classList.remove('is-expanded');
-    const panel = card.querySelector('.drug-panel');
-    panel.classList.remove('is-open');
     card.querySelectorAll('.drug-tab').forEach(b => b.classList.remove('active'));
+    card.querySelectorAll('.drug-section-content').forEach(d => d.style.display = 'none');
   }
 
   document.querySelectorAll('.section-btn').forEach(btn => {
     btn.addEventListener('click', function () {
-      const card      = this.closest('.drug-card');
-      const panel     = card.querySelector('.drug-panel');
-      const titleEl   = panel.querySelector('.drug-panel-title');
-      const bodyEl    = panel.querySelector('.drug-panel-body');
-      const section   = this.dataset.section;
-      const drugId    = this.dataset.drugId;
-      const isSameBtn = this.classList.contains('active');
+      const card    = this.closest('.drug-card');
+      const section = this.dataset.section;
+      const isSame  = this.classList.contains('active');
 
-      // Collapse all other cards
-      document.querySelectorAll('.drug-card').forEach(c => {
-        if (c !== card) collapseCard(c);
-      });
+      document.querySelectorAll('.drug-card').forEach(c => { if (c !== card) collapseCard(c); });
 
-      // Toggle off if same button clicked again
-      if (isSameBtn) { collapseCard(card); return; }
+      if (isSame) { collapseCard(card); return; }
 
-      // Expand this card
       card.classList.add('is-expanded');
       card.querySelectorAll('.drug-tab').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
 
-      // Set title
-      titleEl.innerHTML = `<i class="${ICONS[section]}"></i> ${LABELS[section]}`;
+      // Update panel title
+      card.querySelector('.drug-panel-title').innerHTML =
+        `<i class="${ICONS[section]} me-1"></i>${LABELS[section]}`;
 
-      // Show loading
-      bodyEl.innerHTML = `
-        <div class="drug-loading">
-          <div class="drug-spinner"></div><span>Loading...</span>
-        </div>`;
+      // Show matching content, hide others
+      card.querySelectorAll('.drug-section-content').forEach(d => {
+        d.style.display = d.dataset.section === section ? 'block' : 'none';
+      });
 
-      // Fade panel in
-      requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.add('is-open')));
-
-      // Scroll into view
-      setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
-
-      // Fetch content
-      fetch(`/drugdictionary/get-section/?drug_id=${drugId}&section=${section}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.content && data.content.length) {
-            bodyEl.innerHTML = data.content
-              .map(p => `<p class="drug-content-para">${p}</p>`)
-              .join('');
-          } else if (data.error) {
-            bodyEl.innerHTML =
-              `<div class="drug-content-error"><i class="fas fa-exclamation-circle"></i> ${data.error}</div>`;
-          } else {
-            bodyEl.innerHTML = '<p class="drug-content-empty">No information available.</p>';
-          }
-        })
-        .catch(() => {
-          bodyEl.innerHTML =
-            '<div class="drug-content-error"><i class="fas fa-exclamation-circle"></i> Error loading content. Please try again.</div>';
-        });
+      setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
     });
   });
 
