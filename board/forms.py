@@ -2,10 +2,10 @@
 
 from django import forms
 from .models import Board, Comment
-from ckeditor.widgets import CKEditorWidget
+from django_ckeditor_5.widgets import CKEditor5Widget
 
 class BoardForm(forms.ModelForm):
-    contents = forms.CharField(widget=CKEditorWidget())
+    contents = forms.CharField(widget=CKEditor5Widget(config_name='default'))
 
     class Meta:
         model = Board

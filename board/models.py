@@ -2,13 +2,13 @@
 
 from django.db import models
 from django.utils import timezone
-from ckeditor.fields import RichTextField
+from django_ckeditor_5.fields import CKEditor5Field
 from django.conf import settings
 
 class Board(models.Model):
     id = models.IntegerField(primary_key=True, editable=False)
     title = models.CharField(max_length=255, default='default')
-    contents = RichTextField(default='default')
+    contents = CKEditor5Field(config_name='default', default='default')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_date = models.DateTimeField(default=timezone.now)
     modified_date = models.DateTimeField(default=timezone.now)

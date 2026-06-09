@@ -38,7 +38,7 @@ urlpatterns = [
     path('drugdictionary/', include('drugdictionary.urls')),
     path('schedule/', include('schedule.urls')),
     path('record/', include('record.urls')),
-    path('ckeditor/', include('ckeditor_uploader.urls')),
+    path('ckeditor5/', include('django_ckeditor_5.urls')),
     path('api/', include('schedule.urls')),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
