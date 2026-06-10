@@ -151,6 +151,7 @@ MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/
 
 ############################################################################
 # CKEditor 5 (MIT license, v43+)
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = 'authenticated'  # 로그인 사용자만 업로드 가능
 CKEDITOR_5_CONFIGS = {
     'default': {
         'toolbar': {
@@ -158,8 +159,15 @@ CKEDITOR_5_CONFIGS = {
                 'heading', '|',
                 'bold', 'italic', 'underline', '|',
                 'link', 'bulletedList', 'numberedList', '|',
+                'imageUpload', 'mediaEmbed', '|',
                 'blockQuote', '|',
                 'undo', 'redo',
+            ],
+        },
+        'image': {
+            'toolbar': [
+                'imageTextAlternative', '|',
+                'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight',
             ],
         },
         'height': 300,

@@ -4,10 +4,10 @@
 
 {% block custom_css %}
   <link href="{% static 'css/pages/board_form.css' %}" rel="stylesheet" />
+  {{ form.media.css }}
 {% endblock %}
 {% block extra_js %}
-{# CKEditor 스크립트 로드를 위해 form.media를 사용하므로 이 블록은 비워둘 수 있습니다. #}
-{{ form.media }}
+{{ form.media.js }}
 {% endblock %}
 
 {% block page_content %}

@@ -68,70 +68,68 @@
     <!-- 댓글 섹션 -->
     <div class="comments-wrapper">
       <div class="comments-header">
-        <i class="fas fa-comments"></i>
-        <span>댓글</span>
-        <span class="badge rounded-pill bg-primary ms-1">{{ board.comments.count }}</span>
+        <i class="fas fa-comment-alt"></i>
+        <span>댓글 {{ board.comments.count }}개</span>
       </div>
 
       <div class="comments-list">
         {% for comment in comments %}
         <div class="comment-item" id="comment-{{ comment.id }}">
-          <div class="comment-header">
-            <div class="comment-author">
-              <i class="fas fa-user-circle"></i>
-              <span>{{ comment.author }}</span>
+          <div class="comment-avatar">{{ comment.author.username|slice:":1"|upper }}</div>
+          <div class="comment-body">
+            <div class="comment-bubble">
+              <span class="comment-username">{{ comment.author }}</span>
+              <span class="comment-text">{{ comment.content|linebreaksbr }}</span>
             </div>
-            <div class="comment-date">{{ comment.created_date|date:'Y.m.d H:i' }}</div>
-          </div>
-
-          <p class="comment-content">{{ comment.content|linebreaksbr }}</p>
-
-          <div class="comment-actions">
-            <button type="button" class="btn btn-action-glass btn-sm reply-toggle"
-                    data-target="reply-form-{{ comment.id }}">
-              <i class="fas fa-reply"></i> 답글
-            </button>
-            {% if comment.author == user or user.is_superuser %}
-            <a href="{% url 'comment_edit' comment.id %}" class="btn btn-action-glass btn-sm">수정</a>
-            <a href="{% url 'comment_delete' comment.id %}" class="btn btn-action-glass danger btn-sm"
-               onclick="return confirm('정말로 삭제하시겠습니까?')">삭제</a>
-            {% endif %}
-          </div>
-
-          <!-- 대댓글 목록 -->
-          {% for reply in comment.replies.all %}
-          <div class="reply-item">
-            <div class="comment-header">
-              <div class="comment-author">
-                <i class="fas fa-reply reply-arrow"></i>
-                <i class="fas fa-user-circle"></i>
-                <span>{{ reply.author }}</span>
-              </div>
-              <div class="comment-date">{{ reply.created_date|date:'Y.m.d H:i' }}</div>
-            </div>
-            <p class="comment-content reply-content">{{ reply.content|linebreaksbr }}</p>
-            {% if reply.author == user or user.is_superuser %}
-            <div class="comment-actions">
-              <a href="{% url 'comment_edit' reply.id %}" class="btn btn-action-glass btn-sm">수정</a>
-              <a href="{% url 'comment_delete' reply.id %}" class="btn btn-action-glass danger btn-sm"
+            <div class="comment-meta">
+              <span class="comment-time">{{ comment.created_date|date:'Y.m.d H:i' }}</span>
+              <button type="button" class="meta-action reply-toggle" data-target="reply-form-{{ comment.id }}">답글 달기</button>
+              {% if comment.author == user or user.is_superuser %}
+              <a href="{% url 'comment_edit' comment.id %}" class="meta-action">수정</a>
+              <a href="{% url 'comment_delete' comment.id %}" class="meta-action danger"
                  onclick="return confirm('정말로 삭제하시겠습니까?')">삭제</a>
+              {% endif %}
+            </div>
+
+            <!-- 대댓글 목록 -->
+            {% if comment.replies.all %}
+            <div class="replies-list">
+              {% for reply in comment.replies.all %}
+              <div class="reply-item">
+                <div class="comment-avatar reply-avatar">{{ reply.author.username|slice:":1"|upper }}</div>
+                <div class="comment-body">
+                  <div class="comment-bubble">
+                    <span class="comment-username">{{ reply.author }}</span>
+                    <span class="comment-text">{{ reply.content|linebreaksbr }}</span>
+                  </div>
+                  <div class="comment-meta">
+                    <span class="comment-time">{{ reply.created_date|date:'Y.m.d H:i' }}</span>
+                    {% if reply.author == user or user.is_superuser %}
+                    <a href="{% url 'comment_edit' reply.id %}" class="meta-action">수정</a>
+                    <a href="{% url 'comment_delete' reply.id %}" class="meta-action danger"
+                       onclick="return confirm('정말로 삭제하시겠습니까?')">삭제</a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
             </div>
             {% endif %}
-          </div>
-          {% endfor %}
 
-          <!-- 답글 작성 폼 (기본 숨김) -->
-          <div class="reply-form-wrapper" id="reply-form-{{ comment.id }}" style="display:none">
-            <form method="post" class="reply-form">
-              {% csrf_token %}
-              <input type="hidden" name="parent_id" value="{{ comment.id }}">
-              <textarea name="content" rows="2" placeholder="답글을 입력하세요..." required></textarea>
-              <div class="reply-form-actions">
-                <button type="submit" class="btn btn-gradient btn-sm">등록</button>
-                <button type="button" class="btn btn-action-glass btn-sm reply-cancel"
-                        data-target="reply-form-{{ comment.id }}">취소</button>
+            <!-- 답글 폼 (기본 숨김) -->
+            <div class="reply-form-wrapper" id="reply-form-{{ comment.id }}" style="display:none">
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                <div class="reply-input-row">
+                  <textarea name="content" rows="1" placeholder="답글을 입력하세요..." class="autogrow" required></textarea>
+                  <button type="submit" class="btn-send sm"><i class="fas fa-paper-plane"></i></button>
+                </div>
+              </form>
+              <div class="reply-cancel-row">
+                <button type="button" class="meta-action reply-cancel" data-target="reply-form-{{ comment.id }}">취소</button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
         {% empty %}
@@ -142,14 +140,23 @@
         {% endfor %}
       </div>
 
-      <!-- 댓글 작성 폼 -->
-      <div class="comment-form-wrapper">
-        <form method="post" class="comment-form">
+      <!-- 새 댓글 입력 -->
+      {% if user.is_authenticated %}
+      <div class="new-comment-row">
+        <div class="comment-avatar">{{ user.username|slice:":1"|upper }}</div>
+        <form method="post" class="comment-form-inline">
           {% csrf_token %}
-          {{ comment_form.content.as_textarea }}
-          <button type="submit" class="btn btn-gradient btn-submit">등록</button>
+          <div class="comment-input-wrap">
+            <textarea name="content" rows="1" placeholder="따뜻한 댓글을 남겨주세요..." class="autogrow" required></textarea>
+            <button type="submit" class="btn-send"><i class="fas fa-paper-plane"></i></button>
+          </div>
         </form>
       </div>
+      {% else %}
+      <div class="comment-login-prompt">
+        <a href="{% url 'login' %}?next={{ request.path }}">로그인</a> 후 댓글을 작성할 수 있습니다.
+      </div>
+      {% endif %}
     </div>
 
   </div>
@@ -161,7 +168,6 @@ document.querySelectorAll('.reply-toggle').forEach(function(btn) {
     var targetId = this.dataset.target;
     var form = document.getElementById(targetId);
     var isVisible = form.style.display !== 'none';
-    // 모든 답글 폼 닫기
     document.querySelectorAll('.reply-form-wrapper').forEach(function(f) {
       f.style.display = 'none';
     });
@@ -174,9 +180,17 @@ document.querySelectorAll('.reply-toggle').forEach(function(btn) {
 
 document.querySelectorAll('.reply-cancel').forEach(function(btn) {
   btn.addEventListener('click', function() {
-    var targetId = this.dataset.target;
-    document.getElementById(targetId).style.display = 'none';
+    document.getElementById(this.dataset.target).style.display = 'none';
   });
+});
+
+// Auto-grow textarea
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+document.querySelectorAll('.autogrow').forEach(function(el) {
+  el.addEventListener('input', function() { autoGrow(this); });
 });
 </script>
 {% endblock page_content %}

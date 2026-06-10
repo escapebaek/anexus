@@ -18,54 +18,149 @@
   box-shadow: 0 2px 8px rgba(43, 88, 118, 0.25);
 }
 
-/* 모바일 반응형 */
-@media (max-width: 768px) {
-  .notice-badge {
-    font-size: 0.72rem;
-    padding: 4px 8px;
-  }
-}
-
 /* =============================================
-   대댓글 (REPLIES)
+   COMMENTS — Instagram / Facebook style
    ============================================= */
 
-.reply-item {
-  margin: 0.4rem 0 0 2rem;
-  padding: 0.6rem 1rem;
-  background: linear-gradient(135deg, rgba(43, 88, 118, 0.04), rgba(78, 67, 118, 0.03));
-  border-left: 3px solid rgba(43, 88, 118, 0.22);
-  border-radius: 0 8px 8px 0;
+.comments-wrapper {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 20px rgba(43, 88, 118, 0.1);
+  padding: 1.5rem;
+  margin-top: 1.5rem;
 }
 
-.reply-item .comment-header {
-  margin-bottom: 0.25rem;
+.comments-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(43, 88, 118, 0.08);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #2c3e50;
 }
 
-.reply-item .comment-author {
-  font-size: 0.78rem;
+.comments-header i {
+  color: #2b5876;
 }
 
-.reply-arrow {
+/* ---- Avatar ---- */
+.comment-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2b5876, #4e4376);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.reply-avatar {
+  width: 28px;
+  height: 28px;
   font-size: 0.7rem;
-  color: rgba(43, 88, 118, 0.5);
-  margin-right: 0.1rem;
-  transform: scaleX(-1);
+}
+
+/* ---- Comment item ---- */
+.comment-item {
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 1.1rem;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Speech bubble */
+.comment-bubble {
   display: inline-block;
+  max-width: 100%;
+  background: #f0f2f5;
+  border-radius: 18px;
+  padding: 0.55rem 1rem 0.6rem;
 }
 
-.reply-content {
-  padding-left: 2rem !important;
-  font-size: 0.85rem !important;
+.comment-username {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #2b5876;
+  margin-bottom: 0.15rem;
 }
 
-/* 답글 작성 폼 */
+.comment-text {
+  font-size: 0.9rem;
+  color: #2c3e50;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+/* Meta row: time · actions */
+.comment-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.28rem;
+  padding-left: 0.5rem;
+}
+
+.comment-time {
+  font-size: 0.72rem;
+  color: #aaa;
+}
+
+.meta-action {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #666;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.meta-action:hover {
+  color: #2b5876;
+  text-decoration: none;
+}
+
+.meta-action.danger:hover {
+  color: #e74c3c;
+}
+
+/* ---- Replies ---- */
+.replies-list {
+  margin-top: 0.6rem;
+  margin-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border-left: 2px solid rgba(43, 88, 118, 0.12);
+  padding-left: 0.75rem;
+}
+
+.reply-item {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ---- Reply form ---- */
 .reply-form-wrapper {
-  margin: 0.5rem 0 0 2rem;
-  padding: 0.75rem 1rem;
-  background: rgba(43, 88, 118, 0.05);
-  border: 1px solid rgba(43, 88, 118, 0.14);
-  border-radius: 10px;
+  margin-top: 0.55rem;
+  margin-left: 1.1rem;
   animation: fadeSlideIn 0.15s ease-out;
 }
 
@@ -74,41 +169,185 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.reply-form textarea {
-  width: 100%;
-  border: 1px solid rgba(43, 88, 118, 0.2);
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  resize: vertical;
-  outline: none;
-  transition: border-color 0.2s;
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.reply-form textarea:focus {
-  border-color: rgba(43, 88, 118, 0.45);
-  box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.08);
-}
-
-.reply-form-actions {
+.reply-input-row {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
-  justify-content: flex-end;
-  margin-top: 0.4rem;
+  background: #f0f2f5;
+  border-radius: 24px;
+  padding: 0.35rem 0.4rem 0.35rem 0.85rem;
+  border: 1.5px solid transparent;
+  transition: border-color 0.2s, background 0.2s;
 }
 
-/* 답글 버튼 */
-.reply-toggle {
-  font-size: 0.72rem !important;
-  padding: 0.2rem 0.55rem !important;
-  color: rgba(43, 88, 118, 0.75) !important;
+.reply-input-row:focus-within {
+  border-color: rgba(43, 88, 118, 0.28);
+  background: #fff;
+}
+
+.reply-input-row textarea {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  resize: none;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  min-height: 22px;
+  max-height: 80px;
+  overflow-y: auto;
+  font-family: inherit;
+}
+
+.reply-cancel-row {
+  margin-top: 0.25rem;
+  text-align: right;
+  padding-right: 0.25rem;
+}
+
+/* ---- Main comment input ---- */
+.new-comment-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding-top: 1rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid rgba(43, 88, 118, 0.08);
+}
+
+.comment-form-inline {
+  flex: 1;
+}
+
+.comment-input-wrap {
+  display: flex;
+  align-items: center;
+  background: #f0f2f5;
+  border-radius: 24px;
+  padding: 0.5rem 0.45rem 0.5rem 1rem;
+  gap: 0.5rem;
+  border: 1.5px solid transparent;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.comment-input-wrap:focus-within {
+  border-color: rgba(43, 88, 118, 0.3);
+  background: #fff;
+}
+
+.comment-input-wrap textarea {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  resize: none;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  min-height: 24px;
+  max-height: 100px;
+  overflow-y: auto;
+  font-family: inherit;
+}
+
+/* ---- Send button ---- */
+.btn-send {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2b5876, #4e4376);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.btn-send:hover {
+  transform: scale(1.1);
+  opacity: 0.9;
+}
+
+.btn-send.sm {
+  width: 28px;
+  height: 28px;
+  font-size: 0.65rem;
+}
+
+/* ---- Empty state ---- */
+.empty-comments {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #bbb;
+}
+
+.empty-comments i {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  display: block;
+  opacity: 0.35;
+}
+
+.empty-comments p {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: #aaa;
+}
+
+/* ---- Login prompt ---- */
+.comment-login-prompt {
+  text-align: center;
+  padding: 1rem;
+  border-top: 1px solid rgba(43, 88, 118, 0.08);
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: #888;
+}
+
+.comment-login-prompt a {
+  color: #2b5876;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.comment-login-prompt a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Mobile ---- */
+@media (max-width: 768px) {
+  .notice-badge {
+    font-size: 0.72rem;
+    padding: 4px 8px;
+  }
 }
 
 @media (max-width: 576px) {
-  .reply-item,
+  .comments-wrapper {
+    padding: 1rem 0.85rem;
+  }
+
+  .comment-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.78rem;
+  }
+
+  .reply-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 0.62rem;
+  }
+
+  .replies-list,
   .reply-form-wrapper {
-    margin-left: 0.75rem;
+    margin-left: 0.6rem;
+  }
+
+  .comment-bubble {
+    padding: 0.5rem 0.8rem;
   }
 }
