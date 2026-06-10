@@ -2352,7 +2352,7 @@ footer p {
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 .mypage-section .profile-card .profile-subtitle {
-  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.92);
   font-size: 1.1rem;
   margin-bottom: 0;
 }
@@ -2432,6 +2432,41 @@ footer p {
   text-decoration: none;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(43, 88, 118, 0.35);
+}
+
+/* ---- Header special badge ---- */
+.mypage-section .profile-card .header-special-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.3rem 1rem;
+  border-radius: 50px;
+  margin-top: 0.65rem;
+  letter-spacing: 0.03em;
+}
+.mypage-section .profile-card .header-special-badge i {
+  color: #ffd700;
+}
+
+/* ---- Status control (계정 등급 read-only field) ---- */
+.mypage-section .profile-card .status-control {
+  background: #f5f6f8 !important;
+  color: #6c757d;
+  cursor: default;
+  pointer-events: none;
+  font-weight: 500;
+}
+.mypage-section .profile-card .status-control.is-special {
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.13), rgba(247, 201, 72, 0.07)) !important;
+  color: #7a4500;
+  font-weight: 700;
+}
+.mypage-section .profile-card .text-special {
+  color: #f5a623 !important;
 }
 
 /* Quick stats bar */

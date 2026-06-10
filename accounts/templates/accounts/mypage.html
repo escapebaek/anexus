@@ -15,6 +15,11 @@
             <p class="profile-subtitle">
               {{ user.real_name }}{% if user.real_name and user.username %} · {% endif %}{{ user.username }}
             </p>
+            {% if user.is_specially_approved %}
+            <div class="header-special-badge">
+              <i class="fas fa-star me-1"></i>Specially Approved
+            </div>
+            {% endif %}
           </div>
 
           <!-- Card Body -->
@@ -22,6 +27,7 @@
 
             <!-- Account Info -->
             <div class="section-heading">계정 정보</div>
+
             <form method="POST" action="{% url 'update_user_info' %}" class="profile-form">
               {% csrf_token %}
               <div class="row g-3">
@@ -43,7 +49,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="col-12">
+                <div class="col-md-6">
                   <div class="form-group">
                     <label for="training_hospital" class="form-label">Training Hospital</label>
                     <div class="input-group">
@@ -55,6 +61,18 @@
                         </option>
                         {% endfor %}
                       </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-label">계정 등급</label>
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="fas fa-shield-alt {% if user.is_specially_approved %}text-special{% endif %}"></i>
+                      </span>
+                      <input type="text" class="form-control status-control {% if user.is_specially_approved %}is-special{% endif %}"
+                             value="{% if user.is_specially_approved %}★  특별 승인{% else %}일반 회원{% endif %}" readonly>
                     </div>
                   </div>
                 </div>
