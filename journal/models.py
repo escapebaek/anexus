@@ -56,7 +56,14 @@ class Paper(models.Model):
     issue = models.ForeignKey(Issue, related_name='papers', on_delete=models.CASCADE, verbose_name='Issue')
     title = models.CharField(max_length=500, verbose_name='Title')
     authors = models.CharField(max_length=500, blank=True, verbose_name='Authors')
-    ai_summary = models.TextField(blank=True, verbose_name='AI Summary')
+    short_summary = models.CharField(
+        max_length=300, blank=True, verbose_name='Short Summary',
+        help_text='One-line summary shown in the issue paper list.'
+    )
+    ai_summary = models.TextField(
+        blank=True, verbose_name='AI Summary',
+        help_text='Full multi-paragraph summary shown on the paper detail page.'
+    )
     pdf_file = models.FileField(
         upload_to='papers/', storage=PaperStorage(), blank=True, null=True, verbose_name='PDF File'
     )

@@ -26,7 +26,7 @@
   <div class="paper-title">{{ paper.title }}</div>
   {% if paper.authors %}<div class="paper-authors">{{ paper.authors }}</div>{% endif %}
   <div class="paper-summary-preview">
-    {% if paper.ai_summary %}{{ paper.ai_summary }}{% else %}<em>AI summary coming soon.</em>{% endif %}
+    {% if paper.short_summary %}{{ paper.short_summary }}{% else %}<em>AI summary coming soon.</em>{% endif %}
   </div>
 </a>
 {% endfor %}
