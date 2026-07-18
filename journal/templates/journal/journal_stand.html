@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Journal Stand | ANExuS{% endblock %}
+
+{% block custom_css %}
+<link href="{% static 'css/pages/journal_stand.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block page_content %}
+<div class="journal-header">
+  <h2 class="section-title text-gradient">Journal Stand</h2>
+  <p class="text-muted">과 구성원을 위해 큐레이션된 학술지 모음입니다.</p>
+</div>
+
+<div class="journal-stand-section">
+  <div class="container-fluid">
+    {% if journals %}
+    <div class="row g-4">
+      {% for journal in journals %}
+      <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+        <a href="{{ journal.get_absolute_url }}" class="text-decoration-none">
+          <div class="journal-card">
+            <div class="journal-cover">
+              {% if journal.cover_image %}
+              <img src="{{ journal.cover_image.url }}" alt="{{ journal.name }}">
+              {% else %}
+              <div class="journal-cover-placeholder"><i class="fas fa-book"></i></div>
+              {% endif %}
+            </div>
+            <div class="journal-card-body">
+              <div class="journal-card-title">{{ journal.name }}</div>
+              <div class="journal-card-desc">{{ journal.description|truncatewords:15 }}</div>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="journal-empty-state">
+      <i class="fas fa-book-open fa-3x mb-3"></i>
+      <p>아직 등록된 학술지가 없습니다.<br>관리자 페이지에서 학술지를 추가해주세요.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

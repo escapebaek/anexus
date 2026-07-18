@@ -1,0 +1,85 @@
+.paper-detail-header {
+  padding: 30px 20px 10px;
+}
+
+.paper-detail-title {
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.paper-detail-authors {
+  color: var(--text-muted);
+}
+
+.paper-detail-body {
+  padding: 10px 20px 60px;
+}
+
+.pdf-reader-panel {
+  background: #fff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 15px var(--shadow-light);
+  overflow: hidden;
+  height: 80vh;
+  min-height: 500px;
+}
+
+.pdf-reader-panel iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.pdf-reader-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-panel {
+  background: #fff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 15px var(--shadow-light);
+  padding: 24px;
+  height: 80vh;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-panel-header {
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-content {
+  overflow-y: auto;
+  flex: 1;
+  color: var(--text-dark);
+  line-height: 1.7;
+}
+
+.summary-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.download-btn-wrap {
+  margin-top: 16px;
+}
+
+@media (max-width: 991.98px) {
+  .pdf-reader-panel,
+  .summary-panel {
+    height: 60vh;
+    margin-bottom: 20px;
+  }
+}

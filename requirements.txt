@@ -1,4 +1,5 @@
 asgiref>=3.8.1
+boto3==1.43.51
 certifi==2024.7.4
 channels==4.1.0
 charset-normalizer==3.3.2

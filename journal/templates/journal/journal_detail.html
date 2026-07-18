@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ journal.name }} | ANExuS{% endblock %}
+
+{% block custom_css %}
+<link href="{% static 'css/pages/journal_detail.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block page_content %}
+<div class="journal-header">
+  <p><a href="{% url 'journal:journal_stand' %}"><i class="fas fa-arrow-left me-1"></i>Journal Stand</a></p>
+  <h2 class="section-title text-gradient">{{ journal.name }}</h2>
+  {% if journal.description %}<p class="text-muted">{{ journal.description }}</p>{% endif %}
+</div>
+
+{% if issue %}
+<div class="issue-meta">
+  <strong>{{ issue }}</strong> · {{ issue.publish_date|date:"Y.m.d" }}
+  {% if is_latest_issue %}<span class="badge bg-success ms-2">최신호</span>{% endif %}
+</div>
+
+{% if papers %}
+{% for paper in papers %}
+<a href="{% url 'journal:paper_detail' paper.pk %}" class="paper-card">
+  <div class="paper-title">{{ paper.title }}</div>
+  {% if paper.authors %}<div class="paper-authors">{{ paper.authors }}</div>{% endif %}
+  <div class="paper-summary-preview">
+    {% if paper.ai_summary %}{{ paper.ai_summary }}{% else %}<em>AI 요약 준비 중입니다.</em>{% endif %}
+  </div>
+</a>
+{% endfor %}
+{% else %}
+<p class="text-muted px-4">이 호에는 아직 등록된 논문이 없습니다.</p>
+{% endif %}
+
+{% if past_issues %}
+<div class="past-issues-section">
+  <h5>지난 호</h5>
+  {% for past in past_issues %}
+  <a href="{% url 'journal:issue_detail' journal.slug past.pk %}" class="past-issue-pill">
+    {{ past }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% else %}
+<p class="text-muted px-4">아직 등록된 호가 없습니다.</p>
+{% endif %}
+{% endblock %}

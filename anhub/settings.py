@@ -14,7 +14,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['.vercel.app', '.onrender.com', 'www.anexus.cloud', 'anexus.cloud', '127.0.0.1']
+ALLOWED_HOSTS = ['.onrender.com', 'www.anexus.cloud', 'anexus.cloud', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'drugdictionary.apps.DrugdictionaryConfig',
     'schedule.apps.ScheduleConfig',
     'record.apps.RecordConfig',
+    'journal.apps.JournalConfig',
     # django default
     'django.contrib.admin',
     'django.contrib.auth',
@@ -82,7 +83,7 @@ DATABASES = {
         'HOST': config('DB_HOST'),
         'PASSWORD': config('DB_PASSWORD'),
         'PORT': config('DB_PORT'),
-        'CONN_MAX_AGE': 0,  # Serverless: no persistent connections
+        'CONN_MAX_AGE': 0,  # TODO: Render는 상시 프로세스라 커넥션 재사용이 가능함 — Supabase pooler(6543) 전환 시 값 조정 검토
         'OPTIONS': {
             'connect_timeout': 10,
             'sslmode': 'require',
@@ -150,6 +151,18 @@ SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET')
 MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/'
 
 ############################################################################
+# Cloudflare R2 - private storage for journal paper PDFs
+# Bucket stays private; papers are only ever served via short-lived presigned
+# URLs (see anhub/storage_backends.generate_paper_url), gated behind login.
+# Defaults are blank so the site still boots before R2 is provisioned —
+# the journal app's upload/view features simply won't work until these are set.
+CLOUDFLARE_R2_ACCESS_KEY_ID = config('CLOUDFLARE_R2_ACCESS_KEY_ID', default='')
+CLOUDFLARE_R2_SECRET_ACCESS_KEY = config('CLOUDFLARE_R2_SECRET_ACCESS_KEY', default='')
+CLOUDFLARE_R2_BUCKET = config('CLOUDFLARE_R2_BUCKET', default='')
+CLOUDFLARE_R2_ENDPOINT_URL = config('CLOUDFLARE_R2_ENDPOINT_URL', default='')  # https://<account_id>.r2.cloudflarestorage.com
+CLOUDFLARE_R2_PRESIGNED_URL_EXPIRE = config('CLOUDFLARE_R2_PRESIGNED_URL_EXPIRE', default=300, cast=int)  # seconds
+
+############################################################################
 # CKEditor 5 (MIT license, v43+)
 CKEDITOR_5_FILE_UPLOAD_PERMISSION = 'authenticated'  # 로그인 사용자만 업로드 가능
 CKEDITOR_5_CONFIGS = {
@@ -205,11 +218,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
 # HTTPS 관련 설정
-# 주의: Vercel은 자체적으로 HTTPS를 처리하므로 SECURE_SSL_REDIRECT를 True로 설정하면
-# 무한 리디렉션 루프가 발생할 수 있습니다. Vercel에서는 False로 유지합니다.
+# 주의: Render는 로드밸런서에서 자체적으로 HTTPS를 처리하므로 SECURE_SSL_REDIRECT를 True로 설정하면
+# 무한 리디렉션 루프가 발생할 수 있습니다. False로 유지합니다.
 SECURE_SSL_REDIRECT = False
 
-# 프록시 뒤에서 HTTPS 감지 (Vercel/로드밸런서 환경용)
+# 프록시(Render 로드밸런서) 뒤에서 HTTPS 감지
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # HTTPS에서만 세션 쿠키 전송 (프로덕션에서 보안 강화)
@@ -219,14 +232,12 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
 # HSTS (HTTP Strict Transport Security) - 브라우저가 HTTPS만 사용하도록 강제
-# Vercel은 자체 HSTS를 설정하므로 Django에서는 짧은 시간으로 설정
-SECURE_HSTS_SECONDS = 3600  # 1시간 (Vercel이 이미 HSTS 처리)
+SECURE_HSTS_SECONDS = 3600  # 1시간
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = False  # Vercel 환경에서는 비활성화 권장
+SECURE_HSTS_PRELOAD = False
 
-# CSRF 신뢰 도메인 설정 (Vercel 배포용)
+# CSRF 신뢰 도메인 설정
 CSRF_TRUSTED_ORIGINS = [
-    'https://*.vercel.app',
     'https://www.anexus.cloud',
     'https://anexus.cloud',
 ]

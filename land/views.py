@@ -10,6 +10,7 @@ def home(request):
         {"title": "Schedule", "text": "Surgery schedule for today.", "url": reverse('schedule_dashboard'), "icon": "fas fa-calendar-alt"},
         {"title": "Anes Chat", "text": "Chat with other anesthesiologists.", "url": "https://escapebaek.github.io/chat/", "icon": "fas fa-comments"},
         {"title": "Record", "text": "Anesthesia record for today.", "url": reverse('anesthesia_record'), "icon": "fas fa-pencil-alt"},
+        {"title": "Journal Stand", "text": "Read the latest issues from our curated journals.", "url": reverse('journal:journal_stand'), "icon": "fas fa-book-open"},
         {"title": "Drug Dictionary", "text": "Find the latest drug information.", "url": reverse('drugdictionary:drug_info'), "icon": "fas fa-pills"},
         {"title": "Trends in Anesthesia", "text": "Recents anesthesia trends in major journals.", "url": "https://escapebaek.github.io/trends_anesthesia/", "icon": "fas fa-link"},
         {"title": "SNUH Anesthesia", "text": "More information for alumni.", "url": "https://dept.snuh.org/dept/AN/index.do", "icon": "fas fa-hospital"},

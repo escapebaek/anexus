@@ -38,6 +38,7 @@ urlpatterns = [
     path('drugdictionary/', include('drugdictionary.urls')),
     path('schedule/', include('schedule.urls')),
     path('record/', include('record.urls')),
+    path('journal/', include('journal.urls')),
     path('ckeditor5/', include('django_ckeditor_5.urls')),
     path('api/', include('schedule.urls')),
     

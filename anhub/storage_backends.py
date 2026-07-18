@@ -1,9 +1,13 @@
 import os
+import re
 import requests
 import jwt
+import boto3
+from botocore.config import Config as BotoConfig
 from django.core.files.storage import Storage
 from django.conf import settings
 from datetime import datetime, timedelta
+from storages.backends.s3boto3 import S3Boto3Storage
 
 class SupabaseStorage(Storage):
     def __init__(self):
@@ -49,3 +53,58 @@ class SupabaseStorage(Storage):
             'Authorization': f"Bearer {settings.SUPABASE_KEY}"
         })
         return int(response.headers.get('Content-Length', 0))
+
+
+class PaperStorage(S3Boto3Storage):
+    """
+    Private object storage for journal PDFs, backed by Cloudflare R2 (S3-compatible).
+    Bucket is kept private; access is only ever granted via short-lived presigned
+    URLs issued from generate_paper_url() to logged-in/approved users.
+    """
+    bucket_name = settings.CLOUDFLARE_R2_BUCKET
+    endpoint_url = settings.CLOUDFLARE_R2_ENDPOINT_URL
+    access_key = settings.CLOUDFLARE_R2_ACCESS_KEY_ID
+    secret_key = settings.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+    region_name = 'auto'
+    default_acl = 'private'
+    file_overwrite = False
+    querystring_auth = True
+    custom_domain = None
+
+
+def _r2_client():
+    return boto3.client(
+        's3',
+        endpoint_url=settings.CLOUDFLARE_R2_ENDPOINT_URL,
+        aws_access_key_id=settings.CLOUDFLARE_R2_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+        config=BotoConfig(signature_version='s3v4'),
+        region_name='auto',
+    )
+
+
+def _safe_filename(name, fallback='paper.pdf'):
+    name = re.sub(r'[^A-Za-z0-9._\-]+', '_', name).strip('_')
+    return f"{name}.pdf" if name else fallback
+
+
+def generate_paper_url(key, disposition='inline', filename=None, expires_in=None):
+    """
+    Issue a short-lived presigned R2 URL for a paper PDF.
+    disposition='inline' -> render in the in-page PDF reader
+    disposition='attachment' -> force a browser download
+    Callers must gate access (login/approval check) before calling this.
+    """
+    if not key:
+        return None
+    expires_in = expires_in or settings.CLOUDFLARE_R2_PRESIGNED_URL_EXPIRE
+    params = {
+        'Bucket': settings.CLOUDFLARE_R2_BUCKET,
+        'Key': key,
+        'ResponseContentType': 'application/pdf',
+    }
+    if disposition == 'attachment':
+        params['ResponseContentDisposition'] = f'attachment; filename="{_safe_filename(filename or key)}"'
+    else:
+        params['ResponseContentDisposition'] = 'inline'
+    return _r2_client().generate_presigned_url('get_object', Params=params, ExpiresIn=expires_in)
