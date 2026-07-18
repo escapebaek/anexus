@@ -151,16 +151,17 @@ SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET')
 MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/'
 
 ############################################################################
-# Cloudflare R2 - private storage for journal paper PDFs
+# Backblaze B2 - private storage for journal paper PDFs (S3-compatible API)
 # Bucket stays private; papers are only ever served via short-lived presigned
 # URLs (see anhub/storage_backends.generate_paper_url), gated behind login.
-# Defaults are blank so the site still boots before R2 is provisioned —
+# Defaults are blank so the site still boots before B2 is provisioned —
 # the journal app's upload/view features simply won't work until these are set.
-CLOUDFLARE_R2_ACCESS_KEY_ID = config('CLOUDFLARE_R2_ACCESS_KEY_ID', default='')
-CLOUDFLARE_R2_SECRET_ACCESS_KEY = config('CLOUDFLARE_R2_SECRET_ACCESS_KEY', default='')
-CLOUDFLARE_R2_BUCKET = config('CLOUDFLARE_R2_BUCKET', default='')
-CLOUDFLARE_R2_ENDPOINT_URL = config('CLOUDFLARE_R2_ENDPOINT_URL', default='')  # https://<account_id>.r2.cloudflarestorage.com
-CLOUDFLARE_R2_PRESIGNED_URL_EXPIRE = config('CLOUDFLARE_R2_PRESIGNED_URL_EXPIRE', default=300, cast=int)  # seconds
+B2_KEY_ID = config('B2_KEY_ID', default='')
+B2_APPLICATION_KEY = config('B2_APPLICATION_KEY', default='')
+B2_BUCKET = config('B2_BUCKET', default='')
+B2_ENDPOINT_URL = config('B2_ENDPOINT_URL', default='')  # e.g. https://s3.us-west-004.backblazeb2.com
+B2_REGION = config('B2_REGION', default='us-west-004')  # e.g. us-west-004 (must match the endpoint's region)
+B2_PRESIGNED_URL_EXPIRE = config('B2_PRESIGNED_URL_EXPIRE', default=300, cast=int)  # seconds
 
 ############################################################################
 # CKEditor 5 (MIT license, v43+)

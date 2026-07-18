@@ -17,7 +17,7 @@
 {% if issue %}
 <div class="issue-meta">
   <strong>{{ issue }}</strong> · {{ issue.publish_date|date:"Y.m.d" }}
-  {% if is_latest_issue %}<span class="badge bg-success ms-2">최신호</span>{% endif %}
+  {% if is_latest_issue %}<span class="badge bg-success ms-2">Latest Issue</span>{% endif %}
 </div>
 
 {% if papers %}
@@ -26,17 +26,17 @@
   <div class="paper-title">{{ paper.title }}</div>
   {% if paper.authors %}<div class="paper-authors">{{ paper.authors }}</div>{% endif %}
   <div class="paper-summary-preview">
-    {% if paper.ai_summary %}{{ paper.ai_summary }}{% else %}<em>AI 요약 준비 중입니다.</em>{% endif %}
+    {% if paper.ai_summary %}{{ paper.ai_summary }}{% else %}<em>AI summary coming soon.</em>{% endif %}
   </div>
 </a>
 {% endfor %}
 {% else %}
-<p class="text-muted px-4">이 호에는 아직 등록된 논문이 없습니다.</p>
+<p class="text-muted px-4">No papers have been added to this issue yet.</p>
 {% endif %}
 
 {% if past_issues %}
 <div class="past-issues-section">
-  <h5>지난 호</h5>
+  <h5>Past Issues</h5>
   {% for past in past_issues %}
   <a href="{% url 'journal:issue_detail' journal.slug past.pk %}" class="past-issue-pill">
     {{ past }}
@@ -46,6 +46,6 @@
 {% endif %}
 
 {% else %}
-<p class="text-muted px-4">아직 등록된 호가 없습니다.</p>
+<p class="text-muted px-4">No issues have been added yet.</p>
 {% endif %}
 {% endblock %}

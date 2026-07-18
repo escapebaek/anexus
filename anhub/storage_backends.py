@@ -57,29 +57,29 @@ class SupabaseStorage(Storage):
 
 class PaperStorage(S3Boto3Storage):
     """
-    Private object storage for journal PDFs, backed by Cloudflare R2 (S3-compatible).
+    Private object storage for journal PDFs, backed by Backblaze B2 (S3-compatible API).
     Bucket is kept private; access is only ever granted via short-lived presigned
     URLs issued from generate_paper_url() to logged-in/approved users.
     """
-    bucket_name = settings.CLOUDFLARE_R2_BUCKET
-    endpoint_url = settings.CLOUDFLARE_R2_ENDPOINT_URL
-    access_key = settings.CLOUDFLARE_R2_ACCESS_KEY_ID
-    secret_key = settings.CLOUDFLARE_R2_SECRET_ACCESS_KEY
-    region_name = 'auto'
+    bucket_name = settings.B2_BUCKET
+    endpoint_url = settings.B2_ENDPOINT_URL
+    access_key = settings.B2_KEY_ID
+    secret_key = settings.B2_APPLICATION_KEY
+    region_name = settings.B2_REGION
     default_acl = 'private'
     file_overwrite = False
     querystring_auth = True
     custom_domain = None
 
 
-def _r2_client():
+def _b2_client():
     return boto3.client(
         's3',
-        endpoint_url=settings.CLOUDFLARE_R2_ENDPOINT_URL,
-        aws_access_key_id=settings.CLOUDFLARE_R2_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+        endpoint_url=settings.B2_ENDPOINT_URL,
+        aws_access_key_id=settings.B2_KEY_ID,
+        aws_secret_access_key=settings.B2_APPLICATION_KEY,
         config=BotoConfig(signature_version='s3v4'),
-        region_name='auto',
+        region_name=settings.B2_REGION,
     )
 
 
@@ -90,16 +90,16 @@ def _safe_filename(name, fallback='paper.pdf'):
 
 def generate_paper_url(key, disposition='inline', filename=None, expires_in=None):
     """
-    Issue a short-lived presigned R2 URL for a paper PDF.
+    Issue a short-lived presigned B2 URL for a paper PDF.
     disposition='inline' -> render in the in-page PDF reader
     disposition='attachment' -> force a browser download
     Callers must gate access (login/approval check) before calling this.
     """
     if not key:
         return None
-    expires_in = expires_in or settings.CLOUDFLARE_R2_PRESIGNED_URL_EXPIRE
+    expires_in = expires_in or settings.B2_PRESIGNED_URL_EXPIRE
     params = {
-        'Bucket': settings.CLOUDFLARE_R2_BUCKET,
+        'Bucket': settings.B2_BUCKET,
         'Key': key,
         'ResponseContentType': 'application/pdf',
     }
@@ -107,4 +107,4 @@ def generate_paper_url(key, disposition='inline', filename=None, expires_in=None
         params['ResponseContentDisposition'] = f'attachment; filename="{_safe_filename(filename or key)}"'
     else:
         params['ResponseContentDisposition'] = 'inline'
-    return _r2_client().generate_presigned_url('get_object', Params=params, ExpiresIn=expires_in)
+    return _b2_client().generate_presigned_url('get_object', Params=params, ExpiresIn=expires_in)
