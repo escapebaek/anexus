@@ -83,7 +83,7 @@ DATABASES = {
         'HOST': config('DB_HOST'),
         'PASSWORD': config('DB_PASSWORD'),
         'PORT': config('DB_PORT'),
-        'CONN_MAX_AGE': 0,  # TODO: Render는 상시 프로세스라 커넥션 재사용이 가능함 — Supabase pooler(6543) 전환 시 값 조정 검토
+        'CONN_MAX_AGE': 0,  # TODO: Render는 상시 프로세스라 커넥션 재사용이 가능함 - Supabase pooler(6543) 전환 시 값 조정 검토
         'OPTIONS': {
             'connect_timeout': 10,
             'sslmode': 'require',
@@ -154,7 +154,7 @@ MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/
 # Backblaze B2 - private storage for journal paper PDFs (S3-compatible API)
 # Bucket stays private; papers are only ever served via short-lived presigned
 # URLs (see anhub/storage_backends.generate_paper_url), gated behind login.
-# Defaults are blank so the site still boots before B2 is provisioned —
+# Defaults are blank so the site still boots before B2 is provisioned -
 # the journal app's upload/view features simply won't work until these are set.
 B2_KEY_ID = config('B2_KEY_ID', default='')
 B2_APPLICATION_KEY = config('B2_APPLICATION_KEY', default='')
@@ -244,7 +244,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 ############################################################################
-# Logging — full traceback to console (visible in Render logs)
+# Logging - full traceback to console (visible in Render logs)
 ############################################################################
 LOGGING = {
     'version': 1,
