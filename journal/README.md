@@ -102,6 +102,11 @@ python manage.py import_papers --list-issues
 `--issue` 값으로 그대로 쓰면 됨. **id 숫자를 쓰는 게 제일 간단하고 실수가 적음** (number가 비어있는
 issue는 참조 문자열 끝에 콜론만 남아 헷갈리기 쉬움).
 
+예: `id=1  --issue "bja:137:2"   (BJA Volume 137 Issue 2)`
+- `--issue "bja:137:2"` = 실제 매칭에 쓰이는 값 (volume/number 원본 그대로 조합)
+- `(BJA Volume 137 Issue 2)` = 사람이 보기 좋은 설명 문구일 뿐(`Issue.__str__`). 이 표기 형식이
+  바뀌어도(예: Vol./No. -> Volume/Issue) `--issue` 문자열 자체는 영향받지 않음.
+
 ### 4-4. 미리보기 (dry-run)
 
 ```
