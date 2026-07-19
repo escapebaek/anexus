@@ -32,7 +32,7 @@ class Journal(models.Model):
 class Issue(models.Model):
     journal = models.ForeignKey(Journal, related_name='issues', on_delete=models.CASCADE, verbose_name='Journal')
     volume = models.CharField(max_length=50, blank=True, verbose_name='Volume')
-    number = models.CharField(max_length=50, blank=True, verbose_name='Number')
+    number = models.CharField(max_length=50, blank=True, verbose_name='Issue Number')
     publish_date = models.DateField(default=timezone.now, verbose_name='Publish Date')
 
     class Meta:
@@ -42,8 +42,8 @@ class Issue(models.Model):
 
     def __str__(self):
         label = ' '.join(p for p in [
-            f"Vol.{self.volume}" if self.volume else '',
-            f"No.{self.number}" if self.number else '',
+            f"Volume {self.volume}" if self.volume else '',
+            f"Issue {self.number}" if self.number else '',
         ] if p)
         return f"{self.journal.name} {label}".strip()
 

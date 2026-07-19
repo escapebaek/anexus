@@ -140,8 +140,8 @@ python manage.py import_papers "C:\papers\vol1_no1" --issue 1
 | 필드 | 위치 | 용도 |
 |---|---|---|
 | `Journal.name / slug / description / cover_image / is_active / order` | 학술지 목록 카드 | is_active 꺼두면 스탠드에서 숨김 |
-| `Issue.volume / number / publish_date / cover_image` | 호 정보 | 최신호는 publish_date가 가장 최근인 것으로 자동 결정 |
-| `Paper.title / authors / short_summary / ai_summary / pdf_file / order` | 논문 | short_summary = 목록 미리보기(1줄), ai_summary = 상세페이지 전체 요약 |
+| `Issue.volume / number / publish_date` | 호 정보 | 화면/문자열 표기는 "Volume {volume} Issue {number}" (예: BJA Volume 137 Issue 2). 최신호는 publish_date가 가장 최근인 것으로 자동 결정 |
+| `Paper.title / authors / short_summary / ai_summary / cover_image / pdf_file / order` | 논문 | short_summary = 목록 미리보기(1줄), ai_summary = 상세페이지 전체 요약, cover_image = 있을 때만 목록에 작은 표지 썸네일 표시 |
 
 ## 7. 코드 위치
 
