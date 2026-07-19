@@ -1,33 +1,87 @@
-.paper-detail-header {
-  padding: 30px 20px 10px;
+.paper-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 4px;
+  flex-wrap: wrap;
 }
 
-.paper-detail-title {
-  font-weight: 800;
+.paper-toolbar-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.paper-back-link {
+  color: var(--primary-dark);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.paper-toolbar-text {
+  min-width: 0;
+}
+
+.paper-toolbar-heading {
+  font-weight: 700;
   color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55vw;
 }
 
-.paper-detail-authors {
+.paper-toolbar-authors {
+  font-size: 0.8rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55vw;
 }
 
-.paper-detail-body {
-  padding: 10px 20px 60px;
+.paper-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.pdf-reader-panel {
+/* Reader + AI summary sidebar: side-by-side split on desktop, so the reader
+   resizes to make room instead of anything overlapping it. */
+.paper-workspace {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  height: calc(100vh - 130px);
+  min-height: 480px;
+}
+
+.pdf-reader-fullpage {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
   background: #fff;
   border-radius: var(--border-radius);
   box-shadow: 0 4px 15px var(--shadow-light);
   overflow: hidden;
-  height: 80vh;
-  min-height: 500px;
+  will-change: width;
 }
 
-.pdf-reader-panel iframe {
+.pdf-reader-fullpage iframe {
   width: 100%;
   height: 100%;
   border: none;
+  display: block;
+}
+
+/* An iframe's document can't reflow smoothly at 60fps while its container is
+   mid-transition, which reads as stutter. Hide it for the brief transition
+   window and reveal it once the pane has settled at its final size. */
+.paper-workspace.is-resizing .pdf-reader-fullpage iframe {
+  visibility: hidden;
 }
 
 .pdf-reader-placeholder {
@@ -40,27 +94,55 @@
   gap: 12px;
 }
 
-.summary-panel {
-  background: #fff;
+.summary-overlay {
+  display: none;
+}
+
+.summary-sidebar {
+  flex: 0 0 auto;
+  width: 0;
+  height: 100%;
+  overflow: hidden;
   border-radius: var(--border-radius);
   box-shadow: 0 4px 15px var(--shadow-light);
-  padding: 24px;
-  height: 80vh;
-  min-height: 500px;
+  transition: width 0.3s ease;
+  will-change: width;
+}
+
+.summary-sidebar.open {
+  width: 420px;
+}
+
+.summary-sidebar-inner {
+  width: 420px;
+  height: 100%;
+  background: #fff;
   display: flex;
   flex-direction: column;
 }
 
-.summary-panel-header {
-  font-weight: 700;
-  color: var(--primary-dark);
-  margin-bottom: 12px;
+.summary-sidebar-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  padding: 18px 20px;
+  background: var(--primary-gradient);
+  color: var(--text-light);
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.summary-content {
+.summary-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.summary-sidebar-body {
+  padding: 20px;
   overflow-y: auto;
   flex: 1;
   color: var(--text-dark);
@@ -72,14 +154,53 @@
   font-style: italic;
 }
 
-.download-btn-wrap {
-  margin-top: 16px;
-}
-
+/* Below this width a 420px side panel would squeeze the reader unusably
+   thin, so the summary becomes a full overlay drawer instead of a split pane. */
 @media (max-width: 991.98px) {
-  .pdf-reader-panel,
-  .summary-panel {
-    height: 60vh;
-    margin-bottom: 20px;
+  .paper-toolbar-heading,
+  .paper-toolbar-authors {
+    max-width: 45vw;
+    font-size: 0.85rem;
+  }
+
+  .paper-workspace {
+    position: relative;
+    height: calc(100vh - 150px);
+    min-height: 400px;
+  }
+
+  .summary-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease;
+    z-index: 1040;
+  }
+
+  .summary-overlay.open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .summary-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 100vh;
+    z-index: 1050;
+    box-shadow: -6px 0 24px var(--shadow-medium);
+    transition: width 0.3s ease;
+  }
+
+  .summary-sidebar.open {
+    width: min(420px, 90vw);
+  }
+
+  .summary-sidebar-inner {
+    width: min(420px, 90vw);
   }
 }

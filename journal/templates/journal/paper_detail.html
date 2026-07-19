@@ -8,45 +8,106 @@
 {% endblock %}
 
 {% block page_content %}
-<div class="paper-detail-header">
-  <p><a href="{% url 'journal:journal_detail' paper.issue.journal.slug %}"><i class="fas fa-arrow-left me-1"></i>{{ paper.issue.journal.name }}</a></p>
-  <h2 class="paper-detail-title">{{ paper.title }}</h2>
-  {% if paper.authors %}<p class="paper-detail-authors">{{ paper.authors }}</p>{% endif %}
+<div class="paper-toolbar">
+  <div class="paper-toolbar-title">
+    <a href="{% url 'journal:journal_detail' paper.issue.journal.slug %}" class="paper-back-link" title="{{ paper.issue.journal.name }}">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+    <div class="paper-toolbar-text">
+      <div class="paper-toolbar-heading">{{ paper.title }}</div>
+      {% if paper.authors %}<div class="paper-toolbar-authors">{{ paper.authors }}</div>{% endif %}
+    </div>
+  </div>
+  <div class="paper-toolbar-actions">
+    {% if download_url %}
+    <a href="{{ download_url }}" class="btn btn-gradient btn-sm">
+      <i class="fas fa-download me-1"></i>Download
+    </a>
+    {% endif %}
+    <button type="button" class="btn btn-outline-gradient btn-sm" id="toggleSummaryBtn" aria-expanded="false" aria-controls="summarySidebar">
+      <i class="fas fa-robot me-1"></i>AI Summary
+    </button>
+  </div>
 </div>
 
-<div class="paper-detail-body">
-  <div class="row g-4">
-    <div class="col-lg-7">
-      <div class="pdf-reader-panel">
-        {% if view_url %}
-        <iframe src="{{ view_url }}" title="{{ paper.title }}" referrerpolicy="no-referrer"></iframe>
-        {% else %}
-        <div class="pdf-reader-placeholder">
-          <i class="fas fa-file-pdf fa-3x"></i>
-          <p>The PDF file is not available yet.</p>
-        </div>
-        {% endif %}
-      </div>
+<div class="paper-workspace">
+  <div class="pdf-reader-fullpage">
+    {% if view_url %}
+    <iframe src="{{ view_url }}" title="{{ paper.title }}" referrerpolicy="no-referrer"></iframe>
+    {% else %}
+    <div class="pdf-reader-placeholder">
+      <i class="fas fa-file-pdf fa-3x"></i>
+      <p>The PDF file is not available yet.</p>
     </div>
-    <div class="col-lg-5">
-      <div class="summary-panel">
-        <div class="summary-panel-header"><i class="fas fa-robot"></i> AI Summary</div>
-        <div class="summary-content">
-          {% if paper.ai_summary %}
-            {{ paper.ai_summary|linebreaks }}
-          {% else %}
-            <p class="summary-empty">The AI summary is not available yet.</p>
-          {% endif %}
-        </div>
-        {% if download_url %}
-        <div class="download-btn-wrap">
-          <a href="{{ download_url }}" class="btn btn-gradient w-100">
-            <i class="fas fa-download me-2"></i>Download PDF
-          </a>
-        </div>
+    {% endif %}
+  </div>
+
+  <div class="summary-overlay" id="summaryOverlay"></div>
+  <div class="summary-sidebar" id="summarySidebar">
+    <div class="summary-sidebar-inner">
+      <div class="summary-sidebar-header">
+        <span><i class="fas fa-robot me-2"></i>AI Summary</span>
+        <button type="button" class="summary-close-btn" id="closeSummaryBtn" aria-label="Close AI summary">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="summary-sidebar-body">
+        {% if paper.ai_summary %}
+          {{ paper.ai_summary|linebreaks }}
+        {% else %}
+          <p class="summary-empty">The AI summary is not available yet.</p>
         {% endif %}
       </div>
     </div>
   </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var workspace = document.querySelector('.paper-workspace');
+  var sidebar = document.getElementById('summarySidebar');
+  var overlay = document.getElementById('summaryOverlay');
+  var openBtn = document.getElementById('toggleSummaryBtn');
+  var closeBtn = document.getElementById('closeSummaryBtn');
+  if (!sidebar || !openBtn) return;
+
+  // Hide the PDF iframe for the duration of the resize so its internal
+  // reflow (which can't keep up with the CSS transition) isn't visible as
+  // stutter, then reveal it once the pane has settled at its final width.
+  sidebar.addEventListener('transitionend', function (e) {
+    if (e.propertyName === 'width') {
+      workspace.classList.remove('is-resizing');
+    }
+  });
+
+  function openSidebar() {
+    workspace.classList.add('is-resizing');
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+    openBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeSidebar() {
+    workspace.classList.add('is-resizing');
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+    openBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  openBtn.addEventListener('click', function () {
+    if (sidebar.classList.contains('open')) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+  closeBtn.addEventListener('click', closeSidebar);
+  overlay.addEventListener('click', closeSidebar);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
+});
+</script>
+{% endblock extra_js %}
