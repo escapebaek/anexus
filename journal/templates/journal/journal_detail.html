@@ -21,15 +21,24 @@
 </div>
 
 {% if papers %}
-{% for paper in papers %}
-<a href="{% url 'journal:paper_detail' paper.pk %}" class="paper-card">
-  <div class="paper-title">{{ paper.title }}</div>
-  {% if paper.authors %}<div class="paper-authors">{{ paper.authors }}</div>{% endif %}
-  <div class="paper-summary-preview">
-    {% if paper.short_summary %}{{ paper.short_summary }}{% else %}<em>AI summary coming soon.</em>{% endif %}
-  </div>
-</a>
-{% endfor %}
+<div class="papers-grid">
+  {% for paper in papers %}
+  <a href="{% url 'journal:paper_detail' paper.pk %}" class="paper-card">
+    {% if paper.cover_image %}
+    <div class="paper-cover">
+      <img src="{{ paper.cover_image.url }}" alt="{{ paper.title }}">
+    </div>
+    {% endif %}
+    <div class="paper-card-text">
+      <div class="paper-title">{{ paper.title }}</div>
+      {% if paper.authors %}<div class="paper-authors">{{ paper.authors }}</div>{% endif %}
+      <div class="paper-summary-preview">
+        {% if paper.short_summary %}{{ paper.short_summary }}{% else %}<em>AI summary coming soon.</em>{% endif %}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
 {% else %}
 <p class="text-muted px-4">No papers have been added to this issue yet.</p>
 {% endif %}

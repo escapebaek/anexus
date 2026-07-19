@@ -34,7 +34,6 @@ class Issue(models.Model):
     volume = models.CharField(max_length=50, blank=True, verbose_name='Volume')
     number = models.CharField(max_length=50, blank=True, verbose_name='Number')
     publish_date = models.DateField(default=timezone.now, verbose_name='Publish Date')
-    cover_image = models.ImageField(upload_to='issue_covers/', blank=True, null=True, verbose_name='Cover Image')
 
     class Meta:
         ordering = ['-publish_date']
@@ -64,6 +63,7 @@ class Paper(models.Model):
         blank=True, verbose_name='AI Summary',
         help_text='Full multi-paragraph summary shown on the paper detail page.'
     )
+    cover_image = models.ImageField(upload_to='paper_covers/', blank=True, null=True, verbose_name='Cover Image')
     pdf_file = models.FileField(
         upload_to='papers/', storage=PaperStorage(), blank=True, null=True, verbose_name='PDF File'
     )

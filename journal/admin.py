@@ -5,13 +5,13 @@ from .models import Journal, Issue, Paper
 class PaperInline(admin.TabularInline):
     model = Paper
     extra = 1
-    fields = ('title', 'authors', 'pdf_file', 'short_summary', 'ai_summary', 'order')
+    fields = ('title', 'authors', 'cover_image', 'pdf_file', 'short_summary', 'ai_summary', 'order')
 
 
 class IssueInline(admin.TabularInline):
     model = Issue
     extra = 0
-    fields = ('volume', 'number', 'publish_date', 'cover_image')
+    fields = ('volume', 'number', 'publish_date')
     show_change_link = True
 
 
