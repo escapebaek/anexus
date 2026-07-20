@@ -22,8 +22,8 @@
         <a href="{{ journal.get_absolute_url }}" class="text-decoration-none">
           <div class="journal-card">
             <div class="journal-cover">
-              {% if journal.cover_image %}
-              <img src="{{ journal.cover_image.url }}" alt="{{ journal.name }}">
+              {% if journal.cover_image_url %}
+              <img src="{{ journal.cover_image_url }}" alt="{{ journal.name }}">
               {% else %}
               <div class="journal-cover-placeholder"><i class="fas fa-book"></i></div>
               {% endif %}

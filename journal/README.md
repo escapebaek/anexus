@@ -2,7 +2,9 @@
 
 과 구성원 전용 학술지 열람 기능. 구조: Journal(학술지) -> Issue(호) -> Paper(논문).
 논문 PDF는 Backblaze B2(private)에 저장되고, 로그인 + 승인된 사용자에게만 짧은 유효시간의
-서명 URL로 열람/다운로드를 제공한다. Journal/Issue의 표지 이미지는 기존 Supabase storage(공개)를 그대로 쓴다.
+서명 URL로 열람/다운로드를 제공한다. Journal/Paper의 표지는 파일 업로드가 아니라
+**외부 이미지 URL을 붙여넣는 방식**(`cover_image_url`)이다 (Supabase storage 업로드 경로에서
+원인 불명의 실패가 있어 더 간단하고 안정적인 방식으로 대체함. 자세한 배경은 6번 참고).
 
 ## 1. 화면 구조
 
@@ -18,12 +20,14 @@
 
 `/admin/` 접속 후:
 
-1. **Journal** 추가: 이름 입력하면 slug 자동 생성(직접 확인/수정 가능), 표지 이미지는 선택사항, `is_active`
-   체크해야 스탠드 화면에 노출됨.
+1. **Journal** 추가: 이름 입력하면 slug 자동 생성(직접 확인/수정 가능), `is_active` 체크해야 스탠드
+   화면에 노출됨. Cover Image URL은 파일 업로드가 아니라 **이미지 주소(링크)를 붙여넣는 칸**임 (예:
+   저널 공식 홈페이지의 표지 이미지 링크, 이미지 호스팅 서비스 링크 등). 비워두면 책 아이콘 placeholder가 뜸.
 2. Journal 안의 인라인에서 **Issue** 추가: volume/number/발행일 입력. number는 비워도 됨(비우면 나중에
    bulk import 시 issue 참조 문자열이 `slug:volume:` 처럼 끝에 콜론만 붙는 형태가 되니 주의).
-3. Issue 안의 인라인에서 **Paper** 추가: title/authors/short_summary/ai_summary/pdf_file/order 직접 입력
-   가능. 논문 한두 개만 추가할 땐 이 방법이 제일 간단함.
+3. Issue 안의 인라인에서 **Paper** 추가: title/authors/short_summary/ai_summary/cover_image_url/pdf_file/order
+   직접 입력 가능 (cover_image_url도 Journal과 마찬가지로 링크 붙여넣기 방식). 논문 한두 개만 추가할 땐
+   이 방법이 제일 간단함.
 
 논문이 많을 땐 아래 3번 bulk import 명령을 쓰는 게 훨씬 편함.
 
@@ -144,9 +148,17 @@ python manage.py import_papers "C:\papers\vol1_no1" --issue 1
 
 | 필드 | 위치 | 용도 |
 |---|---|---|
-| `Journal.name / slug / description / cover_image / is_active / order` | 학술지 목록 카드 | is_active 꺼두면 스탠드에서 숨김 |
+| `Journal.name / slug / description / cover_image_url / is_active / order` | 학술지 목록 카드 | is_active 꺼두면 스탠드에서 숨김. cover_image_url은 파일 업로드가 아니라 외부 이미지 링크 |
 | `Issue.volume / number / publish_date` | 호 정보 | 화면/문자열 표기는 "Volume {volume} Issue {number}" (예: BJA Volume 137 Issue 2). 최신호는 publish_date가 가장 최근인 것으로 자동 결정 |
-| `Paper.title / authors / short_summary / ai_summary / cover_image / pdf_file / order` | 논문 | short_summary = 목록 미리보기(1줄), ai_summary = 상세페이지 전체 요약, cover_image = 있을 때만 목록에 작은 표지 썸네일 표시 |
+| `Paper.title / authors / short_summary / ai_summary / cover_image_url / pdf_file / order` | 논문 | short_summary = 목록 미리보기(1줄), ai_summary = 상세페이지 전체 요약, cover_image_url = 있을 때만 목록에 작은 표지 썸네일 표시 (역시 외부 이미지 링크 방식) |
+
+### 왜 표지는 파일 업로드가 아니라 URL 방식인가
+원래는 Journal/Paper 표지도 논문 PDF와 마찬가지로 파일 업로드(Django ImageField, 기존 Supabase storage
+경유)로 만들었는데, admin에서 업로드하면 에러 없이 "성공적으로 변경했습니다"라고 뜨고 DB에도 파일 경로가
+저장되는데 정작 Supabase 버킷에는 파일이 전혀 생성되지 않는 원인 불명의 문제가 있었다. 버킷이 Public인 것도,
+경로/버킷 이름이 맞는 것도 다 확인했지만 원인을 못 찾아서, 더 간단하고 확실한 방식(외부 URL 붙여넣기)으로
+대체했다. 표지 이미지는 어차피 저널 홈페이지나 이미지 호스팅 서비스에 이미 있는 경우가 많아서 이 방식이
+실용적이기도 함. (논문 PDF는 이 문제와 무관 - B2 업로드는 별도 코드 경로라 정상 동작.)
 
 ## 7. 코드 위치
 

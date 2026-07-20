@@ -9,7 +9,10 @@ class Journal(models.Model):
     name = models.CharField(max_length=255, verbose_name='Journal Name')
     slug = models.SlugField(max_length=255, unique=True)
     description = models.TextField(blank=True, verbose_name='Description')
-    cover_image = models.ImageField(upload_to='journal_covers/', blank=True, null=True, verbose_name='Cover Image')
+    cover_image_url = models.URLField(
+        blank=True, verbose_name='Cover Image URL',
+        help_text='Direct link to a cover image (e.g. from the journal\'s website). No upload needed.'
+    )
     is_active = models.BooleanField(default=True, verbose_name='Active')
     order = models.PositiveIntegerField(default=0, verbose_name='Order')
 
@@ -63,7 +66,10 @@ class Paper(models.Model):
         blank=True, verbose_name='AI Summary',
         help_text='Full multi-paragraph summary shown on the paper detail page.'
     )
-    cover_image = models.ImageField(upload_to='paper_covers/', blank=True, null=True, verbose_name='Cover Image')
+    cover_image_url = models.URLField(
+        blank=True, verbose_name='Cover Image URL',
+        help_text='Direct link to a cover image. No upload needed.'
+    )
     pdf_file = models.FileField(
         upload_to='papers/', storage=PaperStorage(), blank=True, null=True, verbose_name='PDF File'
     )

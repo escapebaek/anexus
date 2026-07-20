@@ -24,9 +24,9 @@
 <div class="papers-grid">
   {% for paper in papers %}
   <a href="{% url 'journal:paper_detail' paper.pk %}" class="paper-card">
-    {% if paper.cover_image %}
+    {% if paper.cover_image_url %}
     <div class="paper-cover">
-      <img src="{{ paper.cover_image.url }}" alt="{{ paper.title }}">
+      <img src="{{ paper.cover_image_url }}" alt="{{ paper.title }}">
     </div>
     {% endif %}
     <div class="paper-card-text">

@@ -5,7 +5,7 @@ from .models import Journal, Issue, Paper
 class PaperInline(admin.TabularInline):
     model = Paper
     extra = 1
-    fields = ('title', 'authors', 'cover_image', 'pdf_file', 'short_summary', 'ai_summary', 'order')
+    fields = ('title', 'authors', 'cover_image_url', 'pdf_file', 'short_summary', 'ai_summary', 'order')
 
 
 class IssueInline(admin.TabularInline):
