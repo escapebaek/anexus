@@ -147,6 +147,12 @@ SUPABASE_KEY = config('SUPABASE_KEY')
 SUPABASE_JWT_SECRET = config('SUPABASE_JWT_SECRET')
 SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET')
 
+############################################################################
+# Gemini API - parses uploaded schedule files (any institution's format)
+# into a structured JSON schedule (see schedule/gemini_client.py).
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-3.1-flash-lite')
+
 # Supabase - media storage
 MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/'
 

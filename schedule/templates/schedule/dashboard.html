@@ -139,17 +139,29 @@
             </div>
             <h3>새로운 수술 스케줄 업로드</h3>
             <p class="upload-description">
-              엑셀 파일을 업로드하여 수술 일정을 등록하세요
+              기관에서 사용하는 엑셀/메모 파일을 그대로 업로드하세요. AI가 내용을 읽어 자동으로 일정을 등록합니다.
             </p>
           </div>
+          {% if error_message %}
+            <div class="upload-error">
+              <i class="fas fa-exclamation-triangle"></i>
+              {{ error_message }}
+            </div>
+          {% endif %}
+          {% if form.file.errors %}
+            <div class="upload-error">
+              <i class="fas fa-exclamation-triangle"></i>
+              {{ form.file.errors|join:" " }}
+            </div>
+          {% endif %}
           <form method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
             {% csrf_token %}
             <div class="file-drop-area">
-              <input type="file" name="file" id="fileInput" class="file-input" accept=".xlsx,.xls"/>
+              <input type="file" name="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.csv,.txt"/>
               <label for="fileInput" class="file-label">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <span>파일을 선택하거나 끌어다 놓으세요</span>
-                <span class="file-type-hint">Supported: Excel (.xlsx, .xls)</span>
+                <span class="file-type-hint">Supported: Excel (.xlsx, .xls), CSV, TXT</span>
               </label>
             </div>
             <div class="upload-actions">
@@ -354,6 +366,18 @@
     fileInput.files = files;
     fileLabel.textContent = files[0].name;
   }
+
+  // AI parsing takes a few seconds - disable buttons so the user doesn't double-submit.
+  document.getElementById("uploadForm").addEventListener("submit", (e) => {
+    if (!fileInput.files.length) return;
+    document.querySelectorAll(".btn-upload").forEach((btn) => {
+      btn.disabled = true;
+    });
+    const clicked = e.submitter;
+    if (clicked) {
+      clicked.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI가 파일을 분석 중입니다...';
+    }
+  });
     </script>
     {% endblock %}
   </div>

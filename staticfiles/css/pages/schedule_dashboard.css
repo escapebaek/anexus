@@ -228,6 +228,19 @@
         margin-top: 0.5rem;
       }
 
+      .upload-error {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0 2rem 1.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+        font-size: 0.9rem;
+      }
+
       .file-drop-area {
         border: 2px dashed #e2e8f0;
         border-radius: 1rem;
