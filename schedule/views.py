@@ -64,16 +64,12 @@ def schedule_dashboard(request):
             uploaded_file = form.cleaned_data["file"]
             try:
                 source_text = extract_text_from_upload(uploaded_file)
+                records = extract_schedules_from_text(source_text, uploaded_file.name)
                 if action == 'replace':
-                    records = extract_schedules_from_text(source_text, uploaded_file.name)
                     SurgerySchedule.objects.filter(user=request.user).delete()
                     create_schedules_from_records(records, request.user)
                 else:
                     existing_schedules = list(SurgerySchedule.objects.filter(user=request.user))
-                    existing_payload = [_schedule_to_payload(s) for s in existing_schedules]
-                    records = extract_schedules_from_text(
-                        source_text, uploaded_file.name, existing_schedules=existing_payload
-                    )
                     update_schedules_from_records(records, request.user, existing_schedules)
             except (ScheduleExtractionError, ValueError) as exc:
                 error_message = str(exc)
@@ -150,10 +146,10 @@ def _has_identity(data):
     continuation" row some OR exports include (same surgery_name/duration as the row
     above, but every identifying field blank, just to record a second surgeon). There's
     nothing to display or match such a row against, and letting it through used to
-    create phantom "no room" cards and, worse, could steal an existing schedule's
-    matched_existing_id and blank it out. The extraction prompt now asks Gemini to fold
-    these into the real row's surgeon field instead of emitting them, but we still
-    filter defensively in case one slips through."""
+    create phantom "no room" cards and, worse, could collide with a real case's
+    _case_key and overwrite it. The extraction prompt now asks Gemini to fold these
+    into the real row's surgeon field instead of emitting them, but we still filter
+    defensively in case one slips through."""
     return bool(data["patient_name"] or data["room"] or data["time_slot"])
 
 
@@ -167,64 +163,33 @@ def create_schedules_from_records(records, user):
         SurgerySchedule.objects.create(user=user, **data)
 
 
-def _schedule_to_payload(schedule):
-    """SurgerySchedule -> the minimal dict Gemini needs to match against it (see
-    schedule/gemini_client.py). Includes "id" so a match can be reported back."""
-    return {
-        "id": schedule.id,
-        "date": str(schedule.date),
-        "room": schedule.room,
-        "time_slot": schedule.time_slot,
-        "surgery_name": schedule.surgery_name,
-        "department": schedule.department,
-        "surgeon": schedule.surgeon,
-        "patient_name": schedule.patient_name,
-        "patient_info": schedule.patient_info,
-        "status": schedule.status,
-    }
-
-
-def _record_identity(patient_name, surgery_name, date, room, time_slot):
-    """Fallback identity match, used only when Gemini didn't return a
-    matched_existing_id for a record (e.g. it had no existing schedules to compare
-    against, or genuinely couldn't tell). Keyed on (date, patient, surgery): date is
-    kept so the same patient having the same-named procedure on a *different* day
-    doesn't get merged into one row. Falls back further to the (date, room, time_slot)
-    slot when there's no patient name to key off of (e.g. a memo file listing only
-    times, no patient identifiers)."""
-    if patient_name:
-        return ("patient", date, patient_name, surgery_name)
-    return ("slot", date, room, time_slot)
+def _case_key(patient_name, surgery_name, surgeon):
+    """Identity for "is this the same real-world case" - deliberately plain equality on
+    (patient_name, surgery_name, surgeon), no LLM judgment involved. An earlier version
+    had Gemini itself decide the match (given the existing schedule list in the prompt),
+    but that decision varied between calls even with few-shot examples, which showed up
+    as memos silently disappearing after an "update" upload. Plain equality has no such
+    variance - the cost is that if a re-uploaded file rewords the surgery name or
+    surgeon differently, it won't match (the extraction prompt now asks Gemini to keep
+    that wording verbatim from the source specifically to make this comparison viable)."""
+    return (patient_name, surgery_name, surgeon)
 
 
 def update_schedules_from_records(records, user, existing_schedules):
-    """Gemini-extracted records -> upserted SurgerySchedule rows.
+    """Gemini-extracted records -> synced SurgerySchedule rows for `user`.
 
-    existing_schedules is the list of SurgerySchedule rows that was shown to Gemini
-    (see _schedule_to_payload / gemini_client.extract_schedules_from_text). Each record
-    is matched, in order of preference, to:
-      1. the existing row Gemini pointed at via "matched_existing_id" - it saw both
-         files and can tell "same case, reworded" from "actually a different case";
-      2. an exact (date, patient_name, surgery_name) match, as a safety net for
-         whichever records Gemini didn't confidently match;
-      3. otherwise it's inserted as a new case.
-    Matching onto an existing row updates it in place (same pk), so its memo is kept.
-
-    Each existing row can only be claimed by ONE record per upload (tracked via
-    `claimed`): without this, two records both pointing at the same
-    matched_existing_id would update the same row twice, and the second write
-    (e.g. a stray, mostly-blank record) would silently blank out the first's data -
-    memo stays attached to the row, but the row itself looks broken/misplaced.
+    Each existing row is matched against the new records by _case_key (patient name +
+    surgery name + surgeon, exact match). A match updates that row in place (same pk),
+    so its memo is kept even if date/room/time/status changed. A new record with no
+    match is inserted fresh (no memo yet, as expected for a genuinely new case). An
+    existing row with no match in the new upload is treated as no longer part of the
+    schedule (cancelled, or just not in this file) and is deleted - PatientMemo cascades
+    on delete, so its memo goes with it, per how this was asked to behave.
     """
-    by_id = {schedule.id: schedule for schedule in existing_schedules}
-    by_identity = {
-        _record_identity(
-            schedule.patient_name, schedule.surgery_name,
-            schedule.date, schedule.room, schedule.time_slot,
-        ): schedule
+    by_key = {
+        _case_key(schedule.patient_name, schedule.surgery_name, schedule.surgeon): schedule
         for schedule in existing_schedules
     }
-    claimed = set()
 
     for raw_record in records:
         data = _normalize_record(raw_record)
@@ -232,26 +197,10 @@ def update_schedules_from_records(records, user, existing_schedules):
             logger.warning("Skipping unidentifiable schedule record: %r", raw_record)
             continue
 
-        schedule = None
-        matched_id = str(raw_record.get("matched_existing_id") or "").strip()
-        if matched_id and matched_id != "NONE":
-            try:
-                candidate = by_id.get(int(matched_id))
-            except ValueError:
-                candidate = None
-            if candidate is not None and candidate.id not in claimed:
-                schedule = candidate
-        if schedule is None:
-            key = _record_identity(
-                data["patient_name"], data["surgery_name"],
-                data["date"], data["room"], data["time_slot"],
-            )
-            candidate = by_identity.get(key)
-            if candidate is not None and candidate.id not in claimed:
-                schedule = candidate
+        key = _case_key(data["patient_name"], data["surgery_name"], data["surgeon"])
+        schedule = by_key.pop(key, None)
 
         if schedule:
-            claimed.add(schedule.id)
             changed = any(getattr(schedule, field) != value for field, value in data.items())
             if changed:
                 for field, value in data.items():
@@ -259,6 +208,12 @@ def update_schedules_from_records(records, user, existing_schedules):
                 schedule.save()
         else:
             SurgerySchedule.objects.create(user=user, **data)
+
+    # Whatever's left in by_key wasn't matched by anything in this upload - the case is
+    # no longer part of the schedule, so remove it (and its memo along with it).
+    stale_ids = [schedule.id for schedule in by_key.values()]
+    if stale_ids:
+        SurgerySchedule.objects.filter(id__in=stale_ids).delete()
 
 
 @login_required
