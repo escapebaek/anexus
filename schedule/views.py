@@ -5,7 +5,9 @@ from .forms import ScheduleUploadForm
 from collections import defaultdict
 from dateutil import parser as date_parser
 import openpyxl
+import os
 import re
+import subprocess
 from io import BytesIO
 from .models import SurgerySchedule, PatientMemo
 from .gemini_client import extract_schedules_from_text, ScheduleExtractionError
@@ -17,6 +19,24 @@ import logging
 from accounts.decorators import user_is_specially_approved
 
 logger = logging.getLogger(__name__)
+
+
+def _get_build_version():
+    """Short git commit hash of whatever's actually running, shown in a corner of the
+    schedule dashboard. Purely a deploy-sanity-check: several rounds of "the fix still
+    isn't working" turned out to be testing against a not-yet-deployed commit, so this
+    lets that be confirmed by eye in the browser instead of by digging through logs."""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+    except Exception:
+        return "unknown"
+
+
+BUILD_VERSION = _get_build_version()
 
 # Matches the registration/chart number gemini_client.py asks Gemini to put first in
 # patient_info (e.g. "71203438 (M/42)"). Requiring 4+ digits avoids treating a stray
@@ -87,6 +107,7 @@ def schedule_dashboard(request):
         "summary_by_room": summary_by_room,
         "form": form,
         "error_message": error_message,
+        "build_version": BUILD_VERSION,
     })
 
 
