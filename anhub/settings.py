@@ -283,5 +283,15 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': False,
         },
+        # Without this, logger.info/warning calls in schedule/views.py fall through to
+        # the root logger, which has no handler configured here - Python's logging
+        # module silently drops INFO there and only prints WARNING+ via its bare-bones
+        # "last resort" handler, so the schedule-update matching diagnostics were never
+        # actually reaching the deploy logs.
+        'schedule': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
