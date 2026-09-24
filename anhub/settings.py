@@ -158,6 +158,15 @@ GEMINI_FALLBACK_MODELS = config(
     default='gemini-flash-lite-latest,gemini-2.5-flash-lite,gemini-flash-latest,gemini-2.5-flash',
 )
 
+# 수술 스케줄 AI 분석: 표 형식 파일은 AI 없이 읽고, 그 밖의 파일만 아래 순서로 무료 AI 에 요청.
+# API 키가 설정된 제공자만 사용됨.
+SCHEDULE_AI_PROVIDERS = config('SCHEDULE_AI_PROVIDERS', default='groq,gemini,openrouter')
+SCHEDULE_AI_TIME_BUDGET = config('SCHEDULE_AI_TIME_BUDGET', default=240, cast=int)  # 초, 백그라운드 작업 기준
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
+GROQ_MODELS = config('GROQ_MODELS', default='llama-3.3-70b-versatile,openai/gpt-oss-120b,openai/gpt-oss-20b')
+OPENROUTER_API_KEY = config('OPENROUTER_API_KEY', default='')
+OPENROUTER_MODELS = config('OPENROUTER_MODELS', default='meta-llama/llama-3.3-70b-instruct:free,deepseek/deepseek-chat-v3-0324:free')
+
 # Supabase - media storage
 MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/'
 

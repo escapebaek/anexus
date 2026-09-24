@@ -26,6 +26,7 @@
         <span class="lg lg-oncall"><span class="fa fa-moon"></span>당직 <b id="countOnCall">{{ board.counts.on_call }}</b></span>
         <span class="lg lg-hold"><span class="fa fa-pause-circle"></span>Hold <b id="countHold">{{ board.counts.hold }}</b></span>
       </div>
+      <div class="orb-legend orb-anes-legend" id="anesLegend"></div>
       <div class="orb-progress" id="progressBox">
         <div class="orb-progress-bar"><span id="progressFill"></span></div>
         <span class="orb-progress-text">남은 <b id="countRemaining">{{ board.remaining }}</b> / 전체 <span id="countTotal">{{ board.total }}</span></span>
@@ -42,6 +43,13 @@
       <button type="button" class="orb-btn" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
     </div>
   </header>
+
+  {% if job %}
+  <div class="orb-job orb-job-{{ job.status }}" id="jobBanner" data-job-id="{{ job.id }}" data-state="{{ job.status }}">
+    <i class="fas {% if job.status == 'running' %}fa-spinner fa-spin{% elif job.status == 'done' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+    <span id="jobText">{% if job.status == 'running' %}'{{ job.filename }}' 을(를) AI가 분석 중입니다… 표 형식이 아닌 파일은 1~3분 걸릴 수 있어요. 이 화면을 그대로 두세요.{% else %}{{ job.message }}{% endif %}</span>
+  </div>
+  {% endif %}
 
   <div class="orb-body">
     <!-- ===== 방별 보드 (JS가 화면 너비에 맞춰 여러 열로 배치) ===== -->
@@ -62,10 +70,16 @@
         <ul class="side-list" id="holdList"></ul>
       </section>
 
+      <section class="side-card side-notice">
+        <h4 class="side-head"><i class="fas fa-bullhorn"></i> 공지 · 메모 <span class="notice-status" id="noticeStatus"></span></h4>
+        <textarea id="noticeText" class="notice-text" maxlength="20000"
+                  placeholder="전체 공지나 오늘의 메모를 적어두세요. (자동 저장)&#10;예) 11시 전체 회의 / 3번 방 초음파 기계 점검 중">{{ notice.content|default:"" }}</textarea>
+      </section>
+
       <section class="side-card" id="uploadCard">
         <h4 class="side-head"><i class="fas fa-file-upload"></i> 일정 업로드</h4>
         <p class="side-hint">
-          기관 엑셀/메모 파일을 그대로 올리면 AI가 읽어 일정을 등록합니다.
+          날짜·방·시간·수술명·환자명 같은 <b>열 이름이 있는 엑셀/CSV</b>는 AI 없이 바로 읽고, 그 밖의 메모 형식만 AI가 분석합니다.
           <b>업데이트</b>는 방·순서가 바뀌어도 같은 환자의 메모·마취의·당직/Hold 표시를 유지합니다.
         </p>
         {% if error_message %}
@@ -109,6 +123,8 @@
   <button type="button" class="rm-opt" data-status="ongoing"><i class="fas fa-play-circle"></i> 수술 진행중</button>
   <button type="button" class="rm-opt" data-status="finished"><i class="fas fa-check-circle"></i> 수술 완료</button>
   <button type="button" class="rm-opt" data-status="pending"><i class="far fa-clock"></i> 예정</button>
+  <div class="rm-group">마취 방법</div>
+  <div class="rm-anes" id="roomMenuAnes"></div>
   <div class="rm-group">표시</div>
   <button type="button" class="rm-opt" data-flag="on_call"><i class="fas fa-moon"></i> 당직으로 넘김</button>
   <button type="button" class="rm-opt" data-flag="hold"><i class="fas fa-pause-circle"></i> Hold</button>
@@ -145,6 +161,14 @@
   // ===================== 수술 현황판 =====================
   const BOARD = JSON.parse(document.getElementById("board-data").textContent);
   const SCHEDULE_URL = (id) => "{% url 'schedule_update' 0 %}".replace("/0/", `/${id}/`);
+  const NOTICE_URL = "{% url 'schedule_notice' %}";
+  // 마취 방법: 코드 -> 표시 이름 (색은 CSS .at-코드)
+  const ANES_TYPES = [
+    ["GA", "전신"], ["SA", "척추"], ["EA", "경막외"], ["CSE", "CSE"], ["BL", "Block"], ["MAC", "MAC"], ["LA", "국소"],
+  ];
+  const ANES_LABEL = Object.fromEntries(ANES_TYPES);
+  const anesBadge = (code) => code
+    ? `<span class="at at-${ANES_LABEL[code] ? code : "etc"}" title="마취: ${esc(ANES_LABEL[code] || code)}">${esc(code)}</span>` : "";
   const expanded = new Set();
   let compact = false;  // 좁은 화면: 환자 열 생략
 
@@ -175,7 +199,7 @@
       <td class="c-time"><span>${esc(c.time_slot) || "-"}</span>${extraTime || ""}</td>
       <td class="c-op"><div class="op-bar op-${c.group}" title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
         ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
-        <div class="op-text"><span class="op-name">${esc(c.surgery_name) || "-"}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div></div></td>
+        ${anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${esc(c.surgery_name) || "-"}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div></div></td>
       <td class="c-anes" data-anes="${c.id}" title="클릭해서 마취의 입력">${c.anesthesiologist ? esc(c.anesthesiologist) : '<span class="anes-empty">+ 입력</span>'}</td>
       ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
       <td class="c-memo"><button type="button" class="memo-btn${c.memo ? " has-memo" : ""}" data-memo="${c.id}"
@@ -233,11 +257,14 @@
 
   function recalcCounts() {
     const counts = { ongoing: 0, pending: 0, finished: 0, on_call: 0, hold: 0 };
+    const anes = {};
     BOARD.rooms.forEach(r => r.cases.forEach(c => {
       counts[c.group] += 1;
+      if (c.anesthesia_type) anes[c.anesthesia_type] = (anes[c.anesthesia_type] || 0) + 1;
       if (c.group !== "finished") { counts.on_call += c.on_call ? 1 : 0; counts.hold += c.hold ? 1 : 0; }
     }));
     BOARD.counts = counts;
+    BOARD.anesthesia_counts = anes;
     BOARD.total = counts.ongoing + counts.pending + counts.finished;
     BOARD.remaining = BOARD.total - counts.finished;
   }
@@ -260,6 +287,12 @@
     set("countOngoing", C.ongoing); set("countPending", C.pending); set("countFinished", C.finished);
     set("countOnCall", C.on_call); set("countHold", C.hold);
     set("countRemaining", BOARD.remaining); set("countTotal", BOARD.total);
+    const anes = BOARD.anesthesia_counts || {};
+    const known = ANES_TYPES.filter(([code]) => anes[code]).map(([code, label]) =>
+      `<span class="lg"><span class="at at-${code}">${code}</span>${esc(label)} <b>${anes[code]}</b></span>`);
+    const others = Object.keys(anes).filter(k => !ANES_LABEL[k]).reduce((n, k) => n + anes[k], 0);
+    if (others) known.push(`<span class="lg"><span class="at at-etc">기타</span><b>${others}</b></span>`);
+    document.getElementById("anesLegend").innerHTML = known.join("");
     document.getElementById("progressBox").title = `완료 ${C.finished} / 전체 ${BOARD.total}`;
     document.getElementById("progressFill").style.width =
       (BOARD.total ? Math.round(C.finished / BOARD.total * 100) : 0) + "%";
@@ -291,6 +324,9 @@
       b.disabled = on;
     });
     menu.querySelectorAll("[data-flag]").forEach(b => b.classList.toggle("is-on", !!c[b.dataset.flag]));
+    document.getElementById("roomMenuAnes").innerHTML = ANES_TYPES.map(([code, label]) =>
+      `<button type="button" class="rm-at${c.anesthesia_type === code ? " is-on" : ""}" data-anes-type="${code}" title="${esc(label)}"><span class="at at-${code}">${code}</span></button>`).join("") +
+      (c.anesthesia_type ? '<button type="button" class="rm-at rm-at-clear" data-anes-type="" title="마취 방법 지우기">지움</button>' : "");
     const exp = menu.querySelector("[data-expand]");
     exp.hidden = r.cases.length < 2;
     exp.innerHTML = expanded.has(r.room) ? '<i class="fas fa-compress-alt"></i> 일정 접기' : '<i class="fas fa-list"></i> 전체 일정 보기';
@@ -313,7 +349,7 @@
   async function updateCase(caseId, patch) {
     const c = findCase(caseId);
     if (!c) return;
-    const optimistic = ["on_call", "hold", "anesthesiologist"].some(k => k in patch);
+    const optimistic = ["on_call", "hold", "anesthesiologist", "anesthesia_type"].some(k => k in patch);
     const prev = Object.assign({}, c);
     if (optimistic) { Object.assign(c, patch); renderBoard(); renderSide(); }
     try {
@@ -334,6 +370,11 @@
     if (status && !status.disabled) {
       closeRoomMenu();
       return updateCase(id, { status: status.dataset.status });
+    }
+    const at = e.target.closest("[data-anes-type]");
+    if (at) {
+      closeRoomMenu();
+      return updateCase(id, { anesthesia_type: at.dataset.anesType });
     }
     const flag = e.target.closest("[data-flag]");
     if (flag) {
@@ -534,7 +575,59 @@
     fileLabel.textContent = files[0].name;
   });
 
-  // AI parsing takes a few seconds - disable buttons so the user doesn't double-submit.
+  // ----- 공지 · 메모 (입력 후 잠시 멈추면 자동 저장) -----
+  const noticeText = document.getElementById("noticeText");
+  const noticeStatus = document.getElementById("noticeStatus");
+  let noticeTimer = null, noticeSaved = noticeText.value, noticeSaving = false;
+  async function saveNotice() {
+    clearTimeout(noticeTimer);
+    const content = noticeText.value;
+    if (content === noticeSaved || noticeSaving) return;
+    noticeSaving = true;
+    noticeStatus.textContent = "저장 중…";
+    try {
+      const data = await postJSON(NOTICE_URL, { content });
+      noticeSaved = content;
+      noticeStatus.textContent = `저장됨 ${data.updated_at}`;
+    } catch (err) {
+      noticeStatus.textContent = "저장 실패";
+    } finally {
+      noticeSaving = false;
+      if (noticeText.value !== noticeSaved) noticeTimer = setTimeout(saveNotice, 800);
+    }
+  }
+  noticeText.addEventListener("input", () => {
+    noticeStatus.textContent = "● 입력 중";
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(saveNotice, 800);
+  });
+  noticeText.addEventListener("blur", saveNotice);
+  window.addEventListener("beforeunload", (e) => {
+    if (noticeText.value !== noticeSaved) { saveNotice(); e.preventDefault(); e.returnValue = ""; }
+  });
+
+  // ----- 백그라운드 AI 분석 작업 진행 확인 -----
+  const jobBanner = document.getElementById("jobBanner");
+  if (jobBanner && jobBanner.dataset.state === "running") {
+    const JOB_URL = "{% url 'schedule_upload_job' 0 %}".replace("/0/", `/${jobBanner.dataset.jobId}/`);
+    const poll = async () => {
+      try {
+        const res = await fetch(JOB_URL, { credentials: "same-origin" });
+        const data = await res.json();
+        if (data.job && data.job.state !== "running") {
+          if (data.job.state === "done") { location.reload(); return; }
+          jobBanner.className = "orb-job orb-job-error";
+          jobBanner.querySelector("i").className = "fas fa-exclamation-triangle";
+          document.getElementById("jobText").textContent = data.job.message;
+          return;
+        }
+      } catch (e) { /* 일시적 네트워크 오류 - 계속 확인 */ }
+      setTimeout(poll, 3000);
+    };
+    setTimeout(poll, 3000);
+  }
+
+  // Uploading can take a moment - disable buttons so the user doesn't double-submit.
   document.getElementById("uploadForm").addEventListener("submit", (e) => {
     if (!fileInput.files.length) return;
     if (e.submitter && e.submitter.value === "replace" && BOARD.total &&
@@ -544,7 +637,7 @@
     }
     document.getElementById("uploadAction").value = e.submitter && e.submitter.value === "replace" ? "replace" : "update";
     document.querySelectorAll(".btn-upload").forEach((btn) => { btn.disabled = true; });
-    if (e.submitter) e.submitter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI 분석 중...';
+    if (e.submitter) e.submitter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 업로드 중...';
   });
 </script>
 {% endblock %}

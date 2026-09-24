@@ -66,6 +66,13 @@ SCHEDULE_ITEM_SCHEMA = {
                 "Empty string if the source has no such column/mention."
             ),
         },
+        "anesthesia_type": {
+            "type": "STRING",
+            "description": (
+                "Anesthesia method (마취 방법) exactly as written in the source, e.g. 전신/GA/General, "
+                "척추/Spinal, 경막외/Epidural, CSE, Block, MAC/Sedation, 국소/Local. Empty string if not stated."
+            ),
+        },
         "duration": {"type": "INTEGER", "description": "Expected duration in minutes, 0 if unknown"},
         "patient_name": {"type": "STRING"},
         "patient_info": {
@@ -113,6 +120,8 @@ a title), apply it to every row.
 - Leave a field as an empty string ("") rather than guessing if it truly isn't present.
 - "anesthesiologist" is only for an anesthesia doctor column/mention (마취의, 마취과, 마취 담당). \
 Never copy the surgeon (집도의) into it; leave it "" if the file has no anesthesiologist.
+- "anesthesia_type" is the anesthesia method (전신/척추/경막외/CSE/Block/MAC/국소 or their English \
+forms), not a person's name; "" if the file doesn't say.
 - Do not invent surgeries that aren't in the source.
 - Some exports include a "co-surgeon" continuation row directly below a real case: it repeats \
 the same surgery_name/duration but has no room, patient name, or registration number of its own \
@@ -136,22 +145,22 @@ BASE_EXAMPLES = [
     {
         "input": (
             "[Sheet: Sheet1]\n"
-            "날짜\t방\t시간\t수술명\t진료과\t집도의\t마취의\t수술시간\t환자명\t등록번호\t나이/성별\t상태\n"
-            "2025-03-10\t3번방\t09:30\t복강경담낭절제술\t외과\t이민호\t최유진\t1시간 30분\t정수현\t88213456\t52/M\t대기\n"
-            "2025-03-10\t4번방\t11:00\t갑상선절제술\t외과\t박서준\t\t2:00\t김하은\t77120934\t45/F\t수술중\n"
+            "날짜\t방\t시간\t수술명\t진료과\t집도의\t마취의\t마취\t수술시간\t환자명\t등록번호\t나이/성별\t상태\n"
+            "2025-03-10\t3번방\t09:30\t복강경담낭절제술\t외과\t이민호\t최유진\t전신\t1시간 30분\t정수현\t88213456\t52/M\t대기\n"
+            "2025-03-10\t4번방\t11:00\t갑상선절제술\t외과\t박서준\t\tMAC\t2:00\t김하은\t77120934\t45/F\t수술중\n"
         ),
         "output": [
             {
                 "date": "2025-03-10", "room": "3번방", "time_slot": "09:30",
                 "surgery_name": "복강경담낭절제술", "department": "외과", "surgeon": "이민호",
-                "anesthesiologist": "최유진",
+                "anesthesiologist": "최유진", "anesthesia_type": "전신",
                 "duration": 90, "patient_name": "정수현", "patient_info": "88213456 (52/M)",
                 "status": "예정",
             },
             {
                 "date": "2025-03-10", "room": "4번방", "time_slot": "11:00",
                 "surgery_name": "갑상선절제술", "department": "외과", "surgeon": "박서준",
-                "anesthesiologist": "",
+                "anesthesiologist": "", "anesthesia_type": "MAC",
                 "duration": 120, "patient_name": "김하은", "patient_info": "77120934 (45/F)",
                 "status": "진행중",
             },
@@ -166,13 +175,13 @@ BASE_EXAMPLES = [
         "output": [
             {
                 "date": "2025-07-25", "room": "1번방", "time_slot": "09:00",
-                "surgery_name": "충수돌기절제술", "department": "", "surgeon": "", "anesthesiologist": "",
+                "surgery_name": "충수돌기절제술", "department": "", "surgeon": "", "anesthesiologist": "", "anesthesia_type": "",
                 "duration": 0, "patient_name": "홍길동", "patient_info": "35/남",
                 "status": "예정",
             },
             {
                 "date": "2025-07-25", "room": "1번방", "time_slot": "14:00",
-                "surgery_name": "담낭절제", "department": "", "surgeon": "", "anesthesiologist": "",
+                "surgery_name": "담낭절제", "department": "", "surgeon": "", "anesthesiologist": "", "anesthesia_type": "",
                 "duration": 0, "patient_name": "박영희", "patient_info": "",
                 "status": "진행중",
             },
@@ -190,7 +199,7 @@ BASE_EXAMPLES = [
             {
                 "date": "2025-06-01", "room": "E1", "time_slot": "",
                 "surgery_name": "부신절제술 (우측 / 개복)", "department": "GS",
-                "surgeon": "김남규, 박신균", "anesthesiologist": "", "duration": 240, "patient_name": "배동규",
+                "surgeon": "김남규, 박신균", "anesthesiologist": "", "anesthesia_type": "", "duration": 240, "patient_name": "배동규",
                 "patient_info": "71203438 (M/42)", "status": "예정",
             },
         ],

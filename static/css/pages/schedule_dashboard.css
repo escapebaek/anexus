@@ -123,6 +123,55 @@
 .orb-btn:hover,
 .orb-btn.is-active { background: rgba(255, 255, 255, 0.28); }
 
+/* ---------- 마취 방법 배지 ---------- */
+.at {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 30px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: #8a97a8;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+.at-GA { background: #e07b39; }   /* 전신 */
+.at-SA { background: #c2548f; }   /* 척추 */
+.at-EA { background: #8e5ea2; }   /* 경막외 */
+.at-CSE { background: #a8508f; }  /* 척추경막외 병용 */
+.at-BL { background: #16a085; }   /* 신경차단 */
+.at-MAC { background: #2e9b5c; }  /* MAC */
+.at-LA { background: #fff; color: #5b6b7d; box-shadow: inset 0 0 0 1px #b8c3d1; }  /* 국소 */
+.at-etc { background: #8a97a8; }
+.op-finished .at { opacity: 0.55; }
+.orb-anes-legend { margin-top: -1px; }
+.orb-anes-legend:empty { display: none; }
+.orb-anes-legend .lg { gap: 4px; }
+.orb-anes-legend .at { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
+
+/* ---------- 업로드 작업 안내 ---------- */
+.orb-job {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 12px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  border: 1px solid var(--orb-border);
+  background: #fff;
+  color: var(--orb-primary);
+}
+.orb-job i { font-size: 16px; }
+.orb-job-running { background: rgba(43, 88, 118, 0.06); border-color: rgba(43, 88, 118, 0.25); }
+.orb-job-done { background: #e9f6ef; border-color: #b5dfc6; color: #1f7a4a; }
+.orb-job-error { background: #fdecea; border-color: #f5c2bd; color: #b3261e; }
+
 /* ---------- 본문: 보드 + 사이드바 ---------- */
 .orb-body {
   display: grid;
@@ -344,6 +393,37 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
 .rm-opt.is-on[data-flag="on_call"] i { color: #4e4376; }
 .rm-opt.is-on::after { content: "\2713"; margin-left: auto; }
 .rm-opt[hidden] { display: none; }
+.rm-anes { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 8px 5px; max-width: 230px; }
+.rm-at {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: none;
+  padding: 2px;
+  cursor: pointer;
+  line-height: 0;
+}
+.rm-at:hover { background: #f1f4f9; }
+.rm-at.is-on { border-color: #2b5876; background: #eef2f8; }
+.rm-at-clear { font-size: 11px; line-height: 1.4; color: #6b7a8c; padding: 2px 6px; }
+
+/* 공지 · 메모 */
+.side-notice .side-head { border-left-color: var(--orb-primary-2); color: var(--orb-primary-2); }
+.notice-status { float: right; font-size: 10.5px; font-weight: 500; color: var(--orb-muted); }
+.notice-text {
+  display: block;
+  width: 100%;
+  min-height: 150px;
+  border: none;
+  outline: none;
+  resize: vertical;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--orb-text);
+  background: #fffdf6;
+}
+.notice-text:focus { box-shadow: inset 0 0 0 2px rgba(78, 67, 118, 0.25); }
 
 .orb-empty {
   grid-column: 1 / -1;

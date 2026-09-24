@@ -9,11 +9,19 @@ import os
 import re
 import subprocess
 from io import BytesIO
-from .models import SurgerySchedule, PatientMemo
+from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice
+from . import table_parser
+from .ai_client import extract_schedules
+from django.contrib import messages
+from django.db import connection
+from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
+import threading
 from difflib import SequenceMatcher
 from django.db import transaction
 from django.views.decorators.http import require_POST
-from .gemini_client import extract_schedules_from_text, ScheduleExtractionError
+from .gemini_client import ScheduleExtractionError
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -55,6 +63,7 @@ FIELD_MAX_LENGTHS = {
     "department": 50,
     "surgeon": 50,
     "anesthesiologist": 50,
+    "anesthesia_type": 20,
     "patient_name": 50,
     "patient_info": 20,
     "status": 50,
@@ -98,6 +107,7 @@ def build_board(schedules, memos=None):
 
     board_rooms = []
     counts = {"ongoing": 0, "pending": 0, "finished": 0, "on_call": 0, "hold": 0}
+    anesthesia_counts = {}
     for room in sorted(rooms, key=_room_sort_key):
         cases = []
         for s in rooms[room]:
@@ -111,6 +121,7 @@ def build_board(schedules, memos=None):
                 "department": s.department,
                 "surgeon": s.surgeon,
                 "anesthesiologist": s.anesthesiologist,
+                "anesthesia_type": s.anesthesia_type,
                 "duration": s.duration,
                 "patient_name": s.patient_name,
                 "patient_info": s.patient_info,
@@ -124,6 +135,8 @@ def build_board(schedules, memos=None):
             if group != "finished":
                 counts["on_call"] += s.on_call
                 counts["hold"] += s.hold
+            if s.anesthesia_type:
+                anesthesia_counts[s.anesthesia_type] = anesthesia_counts.get(s.anesthesia_type, 0) + 1
         groups = [c["group"] for c in cases]
         # 방 행에 보여줄 케이스: 진행 중 > 다음 예정 > 마지막 완료
         if "ongoing" in groups:
@@ -145,6 +158,7 @@ def build_board(schedules, memos=None):
         "counts": counts,
         "total": total,
         "remaining": total - counts["finished"],
+        "anesthesia_counts": anesthesia_counts,
         "dates": sorted({c["date"] for r in board_rooms for c in r["cases"]}),
     }
 
@@ -216,38 +230,62 @@ def schedule_dashboard(request):
         if form.is_valid():
             uploaded_file = form.cleaned_data["file"]
             try:
-                source_text = extract_text_from_upload(uploaded_file)
-                records = extract_schedules_from_text(source_text, uploaded_file.name)
-                with transaction.atomic():
-                    if action == 'replace':
-                        SurgerySchedule.objects.filter(user=request.user).delete()
-                        create_schedules_from_records(records, request.user)
-                    else:
-                        existing_schedules = list(SurgerySchedule.objects.filter(user=request.user))
-                        update_schedules_from_records(records, request.user, existing_schedules)
+                records, source_text = read_upload(uploaded_file)
+                if records is not None:
+                    # 표 형식 파일: AI 없이 바로 반영
+                    count = apply_records(records, request.user, action)
+                    messages.success(request, f"'{uploaded_file.name}' 에서 {count}건을 표 형식으로 읽어 반영했습니다.")
+                    return redirect("schedule_dashboard")
+                # 자유 형식 파일: AI 분석은 오래 걸릴 수 있어 백그라운드 작업으로 처리
+                job = ScheduleUploadJob.objects.create(user=request.user, filename=uploaded_file.name[:255], action=action)
+                start_background(run_upload_job, job.id, source_text)
+                return redirect(f"{reverse('schedule_dashboard')}?job={job.id}")
             except (ScheduleExtractionError, ValueError) as exc:
                 error_message = str(exc)
-            else:
-                return redirect("schedule_dashboard")
+            except Exception:
+                logger.exception("Schedule upload failed for user=%s", request.user)
+                error_message = "일정을 처리하는 중 예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+
+    job = None
+    job_id = request.GET.get("job", "")
+    if job_id.isdigit():
+        job = ScheduleUploadJob.objects.filter(id=int(job_id), user=request.user).first()
 
     return render(request, "schedule/dashboard.html", {
         "board": board,
         "form": form,
         "error_message": error_message,
         "build_version": BUILD_VERSION,
+        "job": job,
+        "notice": BoardNotice.objects.filter(user=request.user).first(),
     })
 
 
-def extract_text_from_upload(uploaded_file):
-    """Turns an uploaded Excel/CSV/text file into a plain-text dump for Gemini to read."""
+def _decode_text(raw):
+    for encoding in ("utf-8-sig", "utf-8", "cp949"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ValueError("파일의 텍스트 인코딩을 해석할 수 없습니다.")
+
+
+def read_upload(uploaded_file):
+    """-> (records, source_text). records is set when the file is a table table_parser could
+    read by column name (no AI needed); otherwise None and source_text is the plain-text
+    dump for AI extraction."""
     name = uploaded_file.name.lower()
     raw = uploaded_file.read()
+    today = timezone.localdate()
 
     if name.endswith((".xlsx", ".xls")):
         try:
             workbook = openpyxl.load_workbook(BytesIO(raw), data_only=True)
         except Exception as exc:
-            raise ValueError("엑셀 파일을 읽을 수 없습니다. 파일이 손상되지 않았는지 확인해주세요.") from exc
+            raise ValueError("엑셀 파일을 읽을 수 없습니다. .xls(구형 엑셀)라면 .xlsx 로 다시 저장해서 올려주세요.") from exc
+        records = table_parser.parse_workbook(workbook, uploaded_file.name, today)
+        if records:
+            return records, ""
         lines = []
         for sheet in workbook.worksheets:
             lines.append(f"[Sheet: {sheet.title}]")
@@ -255,14 +293,71 @@ def extract_text_from_upload(uploaded_file):
                 cells = ["" if cell is None else str(cell) for cell in row]
                 if any(cell.strip() for cell in cells):
                     lines.append("\t".join(cells))
-        return "\n".join(lines)
+        return None, "\n".join(lines)
 
-    for encoding in ("utf-8-sig", "utf-8", "cp949"):
+    text = _decode_text(raw)
+    records = table_parser.parse_delimited_text(text, uploaded_file.name, today)
+    return (records, "") if records else (None, text)
+
+
+def extract_text_from_upload(uploaded_file):
+    """Plain-text dump of an upload (kept for callers that always want AI extraction)."""
+    return read_upload(uploaded_file)[1]
+
+
+def apply_records(records, user, action):
+    """Saves extracted records for user (replace = wipe first; update = match and keep memos)."""
+    records = [r for r in records if isinstance(r, dict)]
+    if not records:
+        raise ScheduleExtractionError("파일에서 수술 일정을 찾지 못했습니다.")
+    with transaction.atomic():
+        if action == 'replace':
+            SurgerySchedule.objects.filter(user=user).delete()
+            create_schedules_from_records(records, user)
+        else:
+            update_schedules_from_records(records, user, list(SurgerySchedule.objects.filter(user=user)))
+    return len(records)
+
+
+def start_background(func, *args):
+    """Runs func(*args) in a daemon thread and closes that thread's DB connection after."""
+    def target():
         try:
-            return raw.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    raise ValueError("파일의 텍스트 인코딩을 해석할 수 없습니다.")
+            func(*args)
+        finally:
+            connection.close()
+    threading.Thread(target=target, daemon=True).start()
+
+
+def run_upload_job(job_id, source_text):
+    job = ScheduleUploadJob.objects.select_related("user").get(id=job_id)
+    try:
+        records = extract_schedules(source_text, job.filename)
+        count = apply_records(records, job.user, job.action)
+        job.status, job.message = "done", f"'{job.filename}' 에서 {count}건을 AI로 읽어 반영했습니다."
+    except (ScheduleExtractionError, ValueError) as exc:
+        job.status, job.message = "error", str(exc)
+    except Exception:
+        logger.exception("Schedule upload job %s failed", job_id)
+        job.status, job.message = "error", "일정을 처리하는 중 예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+    job.save(update_fields=["status", "message", "updated_at"])
+
+
+# 이보다 오래 '처리 중'이면 서버 재시작 등으로 작업이 끊긴 것으로 봄
+STALE_JOB_AFTER = timedelta(minutes=8)
+
+
+@login_required
+@user_is_specially_approved
+def upload_job_status(request, job_id):
+    job = ScheduleUploadJob.objects.filter(id=job_id, user=request.user).first()
+    if job is None:
+        return JsonResponse({"status": "error", "message": "Job not found"}, status=404)
+    if job.status == "running" and timezone.now() - job.updated_at > STALE_JOB_AFTER:
+        job.status, job.message = "error", "처리가 중단되었습니다 (서버 재시작 등). 다시 업로드해주세요."
+        job.save(update_fields=["status", "message", "updated_at"])
+    return JsonResponse({"status": "success", "job": {"id": job.id, "state": job.status, "message": job.message,
+                                                      "filename": job.filename}})
 
 
 def _normalize_record(record):
@@ -286,6 +381,7 @@ def _normalize_record(record):
         "department": str(record.get("department") or "").strip(),
         "surgeon": str(record.get("surgeon") or "").strip(),
         "anesthesiologist": str(record.get("anesthesiologist") or "").strip(),
+        "anesthesia_type": table_parser.normalize_anesthesia(record.get("anesthesia_type")),
         "duration": duration,
         "patient_name": str(record.get("patient_name") or "").strip(),
         "patient_info": str(record.get("patient_info") or "").strip(),
@@ -311,6 +407,8 @@ def _has_identity(data):
 def create_schedules_from_records(records, user):
     """Gemini-extracted records -> new SurgerySchedule rows."""
     for raw_record in records:
+        if not isinstance(raw_record, dict):
+            continue
         data = _normalize_record(raw_record)
         if not _has_identity(data):
             logger.warning("Skipping unidentifiable schedule record: %r", raw_record)
@@ -402,6 +500,8 @@ def update_schedules_from_records(records, user, existing_schedules):
     """
     datas = []
     for raw_record in records:
+        if not isinstance(raw_record, dict):
+            continue
         data = _normalize_record(raw_record)
         if not _has_identity(data):
             logger.warning("Skipping unidentifiable schedule record: %r", raw_record)
@@ -445,8 +545,10 @@ def update_schedules_from_records(records, user, existing_schedules):
             created_count += 1
             SurgerySchedule.objects.create(user=user, **data)
             continue
-        if not data["anesthesiologist"]:
-            data["anesthesiologist"] = schedule.anesthesiologist
+        # 파일에 없으면 현황판에서 직접 입력한 값 유지
+        for manual_field in ("anesthesiologist", "anesthesia_type"):
+            if not data[manual_field]:
+                data[manual_field] = getattr(schedule, manual_field)
         if schedule.status_locked:
             # 현황판에서 수동으로 바꾼 상태(완료/진행중 등)는 파일 상태로 되돌리지 않음
             data["status"] = schedule.status
@@ -495,6 +597,9 @@ def update_schedule(request, schedule_id):
         if "anesthesiologist" in data:
             schedule.anesthesiologist = str(data.get("anesthesiologist") or "").strip()[:FIELD_MAX_LENGTHS["anesthesiologist"]]
             fields.append("anesthesiologist")
+        if "anesthesia_type" in data:
+            schedule.anesthesia_type = table_parser.normalize_anesthesia(data.get("anesthesia_type"))[:FIELD_MAX_LENGTHS["anesthesia_type"]]
+            fields.append("anesthesia_type")
         for flag in ("on_call", "hold"):
             if flag in data:
                 setattr(schedule, flag, bool(data[flag]))
@@ -507,6 +612,20 @@ def update_schedule(request, schedule_id):
     room_cases = _room_schedules(request.user, schedule.room)
     board = build_board(room_cases, _memo_map(request.user, [c.id for c in room_cases]))
     return JsonResponse({"status": "success", "room": board["rooms"][0]})
+
+
+@login_required
+@user_is_specially_approved
+@require_POST
+def save_notice(request):
+    """현황판 공지·메모 칸 저장 (자동 저장)."""
+    try:
+        data = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    content = str((data or {}).get("content") or "")[:20000]
+    notice, _ = BoardNotice.objects.update_or_create(user=request.user, defaults={"content": content})
+    return JsonResponse({"status": "success", "updated_at": timezone.localtime(notice.updated_at).strftime("%H:%M")})
 
 
 @login_required
