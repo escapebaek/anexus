@@ -21,26 +21,15 @@ class SurgerySchedule(models.Model):
     patient_name = models.CharField(max_length=50)
     patient_info = models.CharField(max_length=20)
     status = models.CharField(max_length=50, default="예정")
+    # 현황판에서 수동으로 상태를 바꾼 경우 True - 스케줄 업데이트 파일의 상태로 덮어쓰지 않음
+    status_locked = models.BooleanField(default=False)
+    # 현황판에서 수술 단위로 지정: 당직으로 넘길 수술 / Hold 수술 (업데이트 시 유지)
+    on_call = models.BooleanField(default=False)
+    hold = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.date} - {self.room} - {self.surgery_name} ({self.status})"
     
-class RoomFlag(models.Model):
-    """사용자가 현황판에서 방에 직접 지정하는 표시: 당직으로 넘길 방 / Hold 방.
-    스케줄 '업데이트'에는 유지되고 '전체 교체' 시 초기화된다."""
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='room_flags')
-    room = models.CharField(max_length=10)
-    on_call = models.BooleanField(default=False)
-    hold = models.BooleanField(default=False)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=['user', 'room'], name='unique_room_flag')]
-
-    def __str__(self):
-        return f"{self.user} {self.room} (on_call={self.on_call}, hold={self.hold})"
-
-
 class PatientMemo(models.Model):
     schedule = models.ForeignKey(
         SurgerySchedule,

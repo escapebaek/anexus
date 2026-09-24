@@ -20,15 +20,15 @@
 
     <div class="orb-stats">
       <div class="orb-legend">
-        <span class="lg lg-ongoing"><i></i>진행중 <b>{{ board.counts.ongoing }}</b></span>
-        <span class="lg lg-pending"><i></i>예정 <b>{{ board.counts.pending }}</b></span>
-        <span class="lg lg-finished"><i></i>완료 <b>{{ board.counts.finished }}</b></span>
+        <span class="lg lg-ongoing"><i></i>진행중 <b id="countOngoing">{{ board.counts.ongoing }}</b></span>
+        <span class="lg lg-pending"><i></i>예정 <b id="countPending">{{ board.counts.pending }}</b></span>
+        <span class="lg lg-finished"><i></i>완료 <b id="countFinished">{{ board.counts.finished }}</b></span>
         <span class="lg lg-oncall"><span class="fa fa-moon"></span>당직 <b id="countOnCall">{{ board.counts.on_call }}</b></span>
         <span class="lg lg-hold"><span class="fa fa-pause-circle"></span>Hold <b id="countHold">{{ board.counts.hold }}</b></span>
       </div>
-      <div class="orb-progress" title="완료 {{ board.counts.finished }} / 전체 {{ board.total }}">
+      <div class="orb-progress" id="progressBox">
         <div class="orb-progress-bar"><span id="progressFill"></span></div>
-        <span class="orb-progress-text">남은 <b>{{ board.remaining }}</b> / 전체 {{ board.total }}</span>
+        <span class="orb-progress-text">남은 <b id="countRemaining">{{ board.remaining }}</b> / 전체 <span id="countTotal">{{ board.total }}</span></span>
       </div>
     </div>
 
@@ -101,9 +101,15 @@
   </div>
 </div>
 
-<!-- 방 메뉴 (방 번호 클릭) -->
+<!-- 수술 메뉴 (방 번호 / 펼친 일정 행 클릭) -->
 <div class="room-menu" id="roomMenu" hidden>
   <div class="rm-title" id="roomMenuTitle"></div>
+  <div class="rm-sub" id="roomMenuSub"></div>
+  <div class="rm-group">상태</div>
+  <button type="button" class="rm-opt" data-status="ongoing"><i class="fas fa-play-circle"></i> 수술 진행중</button>
+  <button type="button" class="rm-opt" data-status="finished"><i class="fas fa-check-circle"></i> 수술 완료</button>
+  <button type="button" class="rm-opt" data-status="pending"><i class="far fa-clock"></i> 예정</button>
+  <div class="rm-group">표시</div>
   <button type="button" class="rm-opt" data-flag="on_call"><i class="fas fa-moon"></i> 당직으로 넘김</button>
   <button type="button" class="rm-opt" data-flag="hold"><i class="fas fa-pause-circle"></i> Hold</button>
   <button type="button" class="rm-opt rm-expand" data-expand><i class="fas fa-list"></i> 전체 일정 보기</button>
@@ -138,7 +144,6 @@
 <script>
   // ===================== 수술 현황판 =====================
   const BOARD = JSON.parse(document.getElementById("board-data").textContent);
-  const ROOM_FLAG_URL = "{% url 'schedule_room_flag' %}";
   const SCHEDULE_URL = (id) => "{% url 'schedule_update' 0 %}".replace("/0/", `/${id}/`);
   const expanded = new Set();
   let compact = false;  // 좁은 화면: 환자 열 생략
@@ -177,20 +182,29 @@
         title="${c.memo ? esc(c.memo.length > 200 ? c.memo.slice(0, 200) + "…" : c.memo) : "메모 작성"}"><i class="fas ${c.memo ? "fa-sticky-note" : "fa-pen-fancy"}"></i></button></td>`;
   }
 
+  const flagIcons = (c) =>
+    (c.on_call ? '<i class="fas fa-moon" title="당직으로 넘김"></i>' : "") +
+    (c.hold ? '<i class="fas fa-pause-circle" title="Hold"></i>' : "");
+
   function roomBody(r) {
     const cur = r.cases[r.current];
     const others = r.cases.length - 1;
     const open = expanded.has(r.room);
     const more = others ? `<span class="more" title="이 방의 다른 일정 ${others}건">+${others}</span>` : "";
-    const flags = (r.on_call ? '<i class="fas fa-moon" title="당직으로 넘김"></i>' : "") + (r.hold ? '<i class="fas fa-pause-circle" title="Hold"></i>' : "");
-    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}${r.hold ? " is-hold" : ""}${r.on_call ? " is-oncall" : ""}" data-room="${esc(r.room)}">
-      <tr class="main-row"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
-        <th class="c-room" data-room-menu title="방 메뉴: 당직 넘김 / Hold"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}</th>${caseCells(cur, more)}
+    // 방 칸: 지금 보이는 수술의 표시 + (접혀 있을 때) 다른 남은 수술에 걸린 표시는 흐리게
+    const hidden = open ? [] : r.cases.filter((c, i) => i !== r.current && c.group !== "finished");
+    const otherFlags = (hidden.some(c => c.on_call) ? '<i class="fas fa-moon is-other" title="다음 수술 중 당직 넘김 있음"></i>' : "") +
+      (hidden.some(c => c.hold) ? '<i class="fas fa-pause-circle is-other" title="다음 수술 중 Hold 있음"></i>' : "");
+    const flags = flagIcons(cur) + otherFlags;
+    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}" data-room="${esc(r.room)}">
+      <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
+        <th class="c-room" data-case-menu="${cur.id}" title="수술 메뉴: 완료·진행중 / 당직·Hold"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}</th>${caseCells(cur, more)}
       </tr>`;
     if (open) {
       r.cases.forEach((c, i) => {
         if (i === r.current) return;
-        html += `<tr class="sub-row"><th class="c-room"><span class="dot dot-${c.group}" title="${esc(c.status)}"></span></th>${caseCells(c)}</tr>`;
+        html += `<tr class="sub-row${c.hold ? " is-hold" : ""}${c.on_call ? " is-oncall" : ""}" data-case-menu="${c.id}" title="클릭: 수술 메뉴">
+          <th class="c-room"><span class="dot dot-${c.group}" title="${esc(c.status)}"></span>${flagIcons(c) ? `<span class="room-flags">${flagIcons(c)}</span>` : ""}</th>${caseCells(c)}</tr>`;
       });
     }
     return html + "</tbody>";
@@ -217,25 +231,38 @@
     board.style.setProperty("--cols", cols);
   }
 
+  function recalcCounts() {
+    const counts = { ongoing: 0, pending: 0, finished: 0, on_call: 0, hold: 0 };
+    BOARD.rooms.forEach(r => r.cases.forEach(c => {
+      counts[c.group] += 1;
+      if (c.group !== "finished") { counts.on_call += c.on_call ? 1 : 0; counts.hold += c.hold ? 1 : 0; }
+    }));
+    BOARD.counts = counts;
+    BOARD.total = counts.ongoing + counts.pending + counts.finished;
+    BOARD.remaining = BOARD.total - counts.finished;
+  }
+
   function renderSide() {
-    const held = BOARD.rooms.filter(r => r.hold);
+    recalcCounts();
+    const held = [];
+    BOARD.rooms.forEach(r => r.cases.forEach(c => { if (c.hold && c.group !== "finished") held.push([r, c]); }));
     document.getElementById("holdCount").textContent = held.length ? held.length : "";
-    document.getElementById("holdList").innerHTML = held.map(r => {
-      const c = r.cases[r.current];
-      const left = r.cases.filter(x => x.group !== "finished").length;
-      return `<li>
+    document.getElementById("holdList").innerHTML = held.map(([r, c]) => `<li>
         <span class="side-room">${esc(r.room)}</span>
         <div class="side-main">
           <span class="side-op" title="${esc(c.surgery_name)}">${esc(c.time_slot)} ${esc(c.surgery_name)}</span>
-          <span class="side-sub">${esc([c.surgeon, c.anesthesiologist && "마취 " + c.anesthesiologist, left > 1 ? `남은 ${left}건` : ""].filter(Boolean).join(" · "))}</span>
+          <span class="side-sub">${esc([c.patient_name, c.surgeon, c.anesthesiologist && "마취 " + c.anesthesiologist].filter(Boolean).join(" · "))}</span>
         </div>
-        <button type="button" class="side-release" data-release="${esc(r.room)}" title="Hold 해제"><i class="fas fa-play"></i></button>
-      </li>`;
-    }).join("") || '<li class="side-empty">Hold된 수술이 없습니다.<br><small>방 번호를 눌러 Hold를 지정하세요.</small></li>';
-    document.getElementById("countHold").textContent = held.length;
-    document.getElementById("countOnCall").textContent = BOARD.rooms.filter(r => r.on_call).length;
+        <button type="button" class="side-release" data-release="${c.id}" title="Hold 해제"><i class="fas fa-play"></i></button>
+      </li>`).join("") || '<li class="side-empty">Hold된 수술이 없습니다.<br><small>방 번호나 펼친 일정 행을 눌러 Hold를 지정하세요.</small></li>';
+    const C = BOARD.counts;
+    const set = (id, v) => { document.getElementById(id).textContent = v; };
+    set("countOngoing", C.ongoing); set("countPending", C.pending); set("countFinished", C.finished);
+    set("countOnCall", C.on_call); set("countHold", C.hold);
+    set("countRemaining", BOARD.remaining); set("countTotal", BOARD.total);
+    document.getElementById("progressBox").title = `완료 ${C.finished} / 전체 ${BOARD.total}`;
     document.getElementById("progressFill").style.width =
-      (BOARD.total ? Math.round(BOARD.counts.finished / BOARD.total * 100) : 0) + "%";
+      (BOARD.total ? Math.round(C.finished / BOARD.total * 100) : 0) + "%";
   }
 
   function tickClock() {
@@ -247,18 +274,26 @@
     document.getElementById("orbTime").textContent = `${parts.hour}:${parts.minute}:${parts.second}`;
   }
 
-  // ----- 방 메뉴: 당직 넘김 / Hold -----
+  // ----- 수술 메뉴: 상태(진행중/완료/예정) · 당직 넘김 · Hold -----
   const menu = document.getElementById("roomMenu");
-  let menuRoom = null;
-  function openRoomMenu(room, anchor) {
-    const r = BOARD.rooms.find(x => x.room === room);
-    if (!r) return;
-    menuRoom = room;
-    document.getElementById("roomMenuTitle").textContent = `${room}번 방`;
-    menu.querySelectorAll("[data-flag]").forEach(b => b.classList.toggle("is-on", !!r[b.dataset.flag]));
-    menu.querySelector("[data-expand]").hidden = r.cases.length < 2;
-    menu.querySelector("[data-expand]").innerHTML = expanded.has(room)
-      ? '<i class="fas fa-compress-alt"></i> 일정 접기' : '<i class="fas fa-list"></i> 전체 일정 보기';
+  let menuCaseId = null;
+  const roomOfCase = (id) => BOARD.rooms.find(r => r.cases.some(c => String(c.id) === String(id)));
+
+  function openCaseMenu(caseId, anchor) {
+    const c = findCase(caseId), r = roomOfCase(caseId);
+    if (!c || !r) return;
+    menuCaseId = String(caseId);
+    document.getElementById("roomMenuTitle").textContent = `${r.room}번 방 · ${c.time_slot || "-"}`;
+    document.getElementById("roomMenuSub").textContent = [c.surgery_name, c.patient_name].filter(Boolean).join(" · ");
+    menu.querySelectorAll("[data-status]").forEach(b => {
+      const on = b.dataset.status === c.group;
+      b.classList.toggle("is-on", on);
+      b.disabled = on;
+    });
+    menu.querySelectorAll("[data-flag]").forEach(b => b.classList.toggle("is-on", !!c[b.dataset.flag]));
+    const exp = menu.querySelector("[data-expand]");
+    exp.hidden = r.cases.length < 2;
+    exp.innerHTML = expanded.has(r.room) ? '<i class="fas fa-compress-alt"></i> 일정 접기' : '<i class="fas fa-list"></i> 전체 일정 보기';
     menu.hidden = false;
     const a = anchor.getBoundingClientRect();
     menu.style.left = Math.max(8, Math.min(a.left, window.innerWidth - menu.offsetWidth - 8)) + "px";
@@ -266,46 +301,58 @@
     menu.style.top = (below + menu.offsetHeight > window.innerHeight ? Math.max(8, a.top - menu.offsetHeight - 4) : below) + "px";
   }
   window.addEventListener("scroll", () => closeRoomMenu(), true);
-  function closeRoomMenu() { menu.hidden = true; menuRoom = null; }
+  function closeRoomMenu() { menu.hidden = true; menuCaseId = null; }
 
-  async function setFlag(room, patch) {
-    const r = BOARD.rooms.find(x => x.room === room);
-    if (!r) return;
-    const prev = { on_call: r.on_call, hold: r.hold };
-    Object.assign(r, patch);  // 낙관적 반영
-    renderBoard(); renderSide();
-    try {
-      const data = await postJSON(ROOM_FLAG_URL, Object.assign({ room }, patch));
-      r.on_call = data.on_call; r.hold = data.hold;
-    } catch (err) {
-      Object.assign(r, prev);
-      alert("표시를 저장하지 못했습니다: " + err.message);
-    }
+  // 서버가 돌려준 방 상태로 교체 (완료 → 다음 수술 진행중 같은 연쇄 변경 포함)
+  function replaceRoom(room) {
+    const i = BOARD.rooms.findIndex(r => r.room === room.room);
+    if (i !== -1) BOARD.rooms[i] = room;
     renderBoard(); renderSide();
   }
 
+  async function updateCase(caseId, patch) {
+    const c = findCase(caseId);
+    if (!c) return;
+    const optimistic = ["on_call", "hold", "anesthesiologist"].some(k => k in patch);
+    const prev = Object.assign({}, c);
+    if (optimistic) { Object.assign(c, patch); renderBoard(); renderSide(); }
+    try {
+      const data = await postJSON(SCHEDULE_URL(caseId), patch);
+      replaceRoom(data.room);
+    } catch (err) {
+      Object.assign(c, prev);
+      renderBoard(); renderSide();
+      alert("저장하지 못했습니다: " + err.message);
+    }
+  }
+
   menu.addEventListener("click", (e) => {
-    const room = menuRoom;
-    const r = BOARD.rooms.find(x => x.room === room);
-    if (!r) return;
+    const id = menuCaseId;
+    const c = findCase(id), r = roomOfCase(id);
+    if (!c || !r) return;
+    const status = e.target.closest("[data-status]");
+    if (status && !status.disabled) {
+      closeRoomMenu();
+      return updateCase(id, { status: status.dataset.status });
+    }
     const flag = e.target.closest("[data-flag]");
     if (flag) {
       closeRoomMenu();
-      return setFlag(room, { [flag.dataset.flag]: !r[flag.dataset.flag] });
+      return updateCase(id, { [flag.dataset.flag]: !c[flag.dataset.flag] });
     }
     if (e.target.closest("[data-expand]")) {
       closeRoomMenu();
-      expanded.has(room) ? expanded.delete(room) : expanded.add(room);
+      expanded.has(r.room) ? expanded.delete(r.room) : expanded.add(r.room);
       renderBoard();
     }
   });
   document.addEventListener("click", (e) => {
-    if (!menu.hidden && !menu.contains(e.target) && !e.target.closest("[data-room-menu]")) closeRoomMenu();
+    if (!menu.hidden && !menu.contains(e.target) && !e.target.closest("[data-case-menu]")) closeRoomMenu();
   });
 
   document.getElementById("holdList").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-release]");
-    if (btn) setFlag(btn.dataset.release, { hold: false });
+    if (btn) updateCase(btn.dataset.release, { hold: false });
   });
 
   // ----- 마취의 직접 입력 -----
@@ -322,17 +369,7 @@
       done = true;
       const value = input.value.trim();
       if (!save || value === c.anesthesiologist) return renderBoard();
-      const prev = c.anesthesiologist;
-      c.anesthesiologist = value;
-      renderBoard(); renderSide();
-      try {
-        const data = await postJSON(SCHEDULE_URL(c.id), { anesthesiologist: value });
-        c.anesthesiologist = data.anesthesiologist;
-      } catch (err) {
-        c.anesthesiologist = prev;
-        alert("마취의를 저장하지 못했습니다: " + err.message);
-      }
-      renderBoard(); renderSide();
+      updateCase(c.id, { anesthesiologist: value });
     };
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); finish(true); }
@@ -346,11 +383,10 @@
     if (memo) return openMemoModal(memo.dataset.memo);
     const anes = e.target.closest("[data-anes]");
     if (anes) return editAnesthesiologist(anes);
-    const roomCell = e.target.closest("[data-room-menu]");
-    if (roomCell) {
-      const room = roomCell.closest(".room").dataset.room;
-      if (menuRoom === room) return closeRoomMenu();
-      return openRoomMenu(room, roomCell);
+    const menuEl = e.target.closest("[data-case-menu]");
+    if (menuEl) {
+      if (menuCaseId === menuEl.dataset.caseMenu) return closeRoomMenu();
+      return openCaseMenu(menuEl.dataset.caseMenu, menuEl.closest("tr").querySelector(".c-room") || menuEl);
     }
     const row = e.target.closest(".main-row");
     if (!row) return;

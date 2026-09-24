@@ -152,6 +152,11 @@ SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET')
 # into a structured JSON schedule (see schedule/gemini_client.py).
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-3.1-flash-lite')
+# GEMINI_MODEL 이 과부하(503)·무료 한도 초과(429)·없음(404)일 때 차례로 시도할 무료 모델들 (쉼표 구분)
+GEMINI_FALLBACK_MODELS = config(
+    'GEMINI_FALLBACK_MODELS',
+    default='gemini-flash-lite-latest,gemini-2.5-flash-lite,gemini-flash-latest,gemini-2.5-flash',
+)
 
 # Supabase - media storage
 MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/'

@@ -196,12 +196,16 @@
 .room-flags .fa-pause-circle { color: var(--st-hold); }
 .room-flags .fa-moon { color: var(--st-oncall); }
 .room-ongoing .main-row .room-flags i { color: #fff; }
-/* Hold 방: 방 칸·수술명 바를 호박색으로 */
-.room.is-hold .main-row .c-room { background: var(--st-hold-bg); color: var(--st-hold); box-shadow: inset 3px 0 0 var(--st-hold); }
-.room.is-hold .main-row .room-flags i { color: var(--st-hold); }
-.room.is-hold .main-row .op-bar { background: var(--st-hold-bg); color: #8a5a12; border-left: 3px solid var(--st-hold); box-shadow: none; }
-/* 당직으로 넘길 방: 행 오른쪽 끝 표시 */
-.room.is-oncall .main-row td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
+.room-flags i.is-other { opacity: 0.45; }
+/* Hold 수술: 방 칸·수술명 바를 호박색으로 */
+.main-row.is-hold .c-room { background: var(--st-hold-bg) !important; color: var(--st-hold) !important; box-shadow: inset 3px 0 0 var(--st-hold); }
+.main-row.is-hold .room-flags i { color: var(--st-hold); }
+tr.is-hold .op-bar { background: var(--st-hold-bg); color: #8a5a12; border-left: 3px solid var(--st-hold); box-shadow: none; }
+/* 당직으로 넘길 수술: 행 오른쪽 끝 표시 */
+tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
+.sub-row { cursor: pointer; }
+.sub-row:hover td, .sub-row:hover th { background: #f3f5fa; }
+.sub-row .room-flags { margin-top: 2px; }
 
 .main-row { cursor: default; }
 .room:has(.more) .main-row { cursor: pointer; }
@@ -313,7 +317,12 @@
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
 }
 .room-menu[hidden] { display: none; }
-.rm-title { font-size: 12px; font-weight: 800; color: #2b5876; padding: 4px 8px 6px; border-bottom: 1px solid #e3e8ef; margin-bottom: 2px; }
+.rm-title { font-size: 12px; font-weight: 800; color: #2b5876; padding: 4px 8px 0; }
+.rm-sub { font-size: 11px; color: #6b7a8c; padding: 1px 8px 6px; border-bottom: 1px solid #e3e8ef; margin-bottom: 2px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rm-group { font-size: 10.5px; font-weight: 700; color: #9aa8b8; padding: 5px 8px 1px; letter-spacing: 0.04em; }
+.rm-opt:disabled { cursor: default; }
+.rm-opt.is-on[data-status] { background: #eef2f8; color: #2b5876; font-weight: 700; }
+.rm-opt.is-on[data-status] i { color: #2b5876; }
 .rm-opt {
   display: flex;
   align-items: center;

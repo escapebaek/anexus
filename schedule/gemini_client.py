@@ -35,11 +35,20 @@ GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{mode
 
 MAX_SOURCE_CHARS = 120_000
 
-# 429 (quota) and 503 (model overloaded) are the codes Google's own docs call out as
-# retryable - a short backoff clears most transient spikes without the user having to
-# manually re-submit the form.
-RETRYABLE_STATUS_CODES = {429, 503}
-RETRY_BACKOFF_SECONDS = [2, 5]
+# Free-tier friendly retry policy. On the free tier, 503 "model overloaded" is common
+# (free requests get the lowest priority on a busy model) and 429 means that model's
+# free quota (per minute or per day) is used up - but each model has its *own* free
+# quota and load, so instead of retrying one model until the user gives up, we retry an
+# overloaded model once briefly and then move on to the next free model in the chain.
+# 404/400 "model not found" just skips a model name that isn't available to this key.
+OVERLOADED_STATUS_CODES = {500, 503, 504}
+QUOTA_STATUS_CODES = {429}
+SKIP_MODEL_STATUS_CODES = {404}
+OVERLOAD_RETRY_WAIT_SECONDS = 3
+# Whole-upload time budget across all attempts; must stay below gunicorn's --timeout
+# (render.yaml) or the worker is killed mid-request and the user sees a bare 502.
+TOTAL_TIME_BUDGET_SECONDS = 150
+PER_REQUEST_TIMEOUT_SECONDS = 90
 
 SCHEDULE_ITEM_SCHEMA = {
     "type": "OBJECT",
@@ -193,6 +202,73 @@ class ScheduleExtractionError(Exception):
     """Raised when Gemini can't be reached or its response isn't usable."""
 
 
+def model_chain():
+    """GEMINI_MODEL first, then GEMINI_FALLBACK_MODELS (comma separated), without duplicates."""
+    names = [settings.GEMINI_MODEL] + [m.strip() for m in str(settings.GEMINI_FALLBACK_MODELS or "").split(",")]
+    chain = []
+    for name in names:
+        if name and name not in chain:
+            chain.append(name)
+    return chain
+
+
+def _post_with_fallback(api_key, payload):
+    """POSTs payload to each model in model_chain() until one answers 200.
+    Returns that response; raises ScheduleExtractionError describing why all failed."""
+    deadline = time.monotonic() + TOTAL_TIME_BUDGET_SECONDS
+    failures = []  # (model, status code or "timeout")
+    for model in model_chain():
+        url = GEMINI_ENDPOINT.format(model=model)
+        for attempt in range(2):  # 과부하면 같은 모델로 한 번만 더
+            remaining = deadline - time.monotonic()
+            if remaining < 5:
+                break
+            try:
+                response = requests.post(
+                    url, params={"key": api_key}, json=payload,
+                    timeout=min(PER_REQUEST_TIMEOUT_SECONDS, remaining),
+                )
+            except requests.Timeout:
+                logger.warning("Gemini model %s timed out", model)
+                failures.append((model, "timeout"))
+                break
+            except requests.RequestException as exc:
+                logger.error("Gemini API request failed: %s", exc)
+                raise ScheduleExtractionError("Gemini API 호출에 실패했습니다. 잠시 후 다시 시도해주세요.") from exc
+
+            if response.status_code == 200:
+                if failures:
+                    logger.info("Gemini fallback succeeded with %s after %s", model, failures)
+                return response
+            logger.warning("Gemini model %s returned %s: %s", model, response.status_code, response.text[:300])
+            failures.append((model, response.status_code))
+            if response.status_code in OVERLOADED_STATUS_CODES and attempt == 0:
+                if deadline - time.monotonic() > OVERLOAD_RETRY_WAIT_SECONDS + 5:
+                    time.sleep(OVERLOAD_RETRY_WAIT_SECONDS)
+                    continue
+            if (response.status_code in OVERLOADED_STATUS_CODES | QUOTA_STATUS_CODES | SKIP_MODEL_STATUS_CODES
+                    or (response.status_code == 400 and "model" in response.text.lower())):
+                break  # 다음 모델로
+            logger.error("Gemini API returned %s: %s", response.status_code, response.text[:1000])
+            if response.status_code in (401, 403) or (response.status_code == 400 and "api key" in response.text.lower()):
+                raise ScheduleExtractionError("Gemini API 키가 올바르지 않거나 권한이 없습니다. GEMINI_API_KEY 설정을 확인해주세요.")
+            raise ScheduleExtractionError(f"Gemini API 오류가 발생했습니다 (status {response.status_code}).")
+        if deadline - time.monotonic() < 5:
+            break  # 시간 예산 소진
+
+    codes = {code for _, code in failures}
+    tried = ", ".join(sorted({model for model, _ in failures})) or "-"
+    if codes and codes <= QUOTA_STATUS_CODES:
+        raise ScheduleExtractionError(
+            "Gemini 무료 사용량 한도에 도달했습니다 (분당 또는 일일 요청 수). 1분쯤 뒤에 다시 시도하고, "
+            f"계속되면 오늘 무료 할당량을 다 쓴 것이니 내일 다시 시도해주세요. (시도한 모델: {tried})"
+        )
+    raise ScheduleExtractionError(
+        "Gemini 서버가 혼잡해 무료 모델들이 모두 응답하지 않았습니다. 1~2분 뒤 다시 시도해주세요. "
+        f"(시도한 모델: {tried})"
+    )
+
+
 def _example_turns():
     """Few-shot examples as alternating user/model turns."""
     turns = []
@@ -222,7 +298,6 @@ def extract_schedules_from_text(source_text, source_filename=""):
     contents = _example_turns()
     contents.append({"role": "user", "parts": [{"text": final_text}]})
 
-    url = GEMINI_ENDPOINT.format(model=settings.GEMINI_MODEL)
     payload = {
         "systemInstruction": {"parts": [{"text": SYSTEM_INSTRUCTIONS}]},
         "contents": contents,
@@ -236,37 +311,7 @@ def extract_schedules_from_text(source_text, source_filename=""):
             "temperature": 0,
         },
     }
-
-    response = None
-    for attempt, wait in enumerate([0] + RETRY_BACKOFF_SECONDS):
-        if wait:
-            time.sleep(wait)
-        try:
-            response = requests.post(url, params={"key": api_key}, json=payload, timeout=120)
-        except requests.RequestException as exc:
-            logger.error("Gemini API request failed: %s", exc)
-            raise ScheduleExtractionError("Gemini API 호출에 실패했습니다. 잠시 후 다시 시도해주세요.") from exc
-        if response.status_code == 200 or response.status_code not in RETRYABLE_STATUS_CODES:
-            break
-        logger.warning(
-            "Gemini API returned %s (attempt %s/%s): %s",
-            response.status_code, attempt + 1, len(RETRY_BACKOFF_SECONDS) + 1, response.text[:300],
-        )
-
-    if response.status_code != 200:
-        logger.error("Gemini API returned %s: %s", response.status_code, response.text[:1000])
-        if response.status_code == 429:
-            raise ScheduleExtractionError(
-                "Gemini API 사용량 한도를 초과했습니다. Google AI Studio에서 이 API 키가 연결된 "
-                "프로젝트의 결제(요금제) 설정을 확인해주세요 - 무료 등급은 할당량이 매우 낮거나 "
-                "0으로 설정되어 있을 수 있습니다."
-            )
-        if response.status_code == 503:
-            raise ScheduleExtractionError(
-                "Gemini 서버가 일시적으로 혼잡합니다 (모델 과부하). 잠시 후 다시 시도해주세요. "
-                "계속 반복되면 API 키의 결제 설정을 확인해주세요."
-            )
-        raise ScheduleExtractionError(f"Gemini API 오류가 발생했습니다 (status {response.status_code}).")
+    response = _post_with_fallback(api_key, payload)
 
     try:
         data = response.json()
