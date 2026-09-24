@@ -276,6 +276,8 @@
     { name: 'Ephedrine',   group: 'drug',   unit: 'mg' },
     { name: 'Phenylephrine', group: 'drug', unit: 'mcg' },
   ];
+  // 새 케이스에 기본으로 추가되는 항목 (HR/SBP/DBP/MBP/SpO2 외)
+  const NEW_CASE_ROWS = ['O2', 'Crystalloid', 'UO', 'EBL'];
   const QUICK_EVENTS = [
     { label: 'Anesth start', info: 'anesth_start' },
     { label: 'Induction done' },
@@ -1442,6 +1444,8 @@
   const migratedLegacy = state.rows.length !== (initial.case.rows || []).length;
   // 작성 중인 기록이 없으면 새 케이스 상태로 시작 (수술일 = 오늘)
   if (initial.is_new && !state.info.op_date) state.info.op_date = initial.today;
+  // 새 케이스 기본 항목 (그룹/단위는 PRESETS 기준)
+  if (initial.is_new) NEW_CASE_ROWS.forEach(name => addRowDef(name));
   // 이전에 기록한 이벤트도 반올림된 시간 컬럼에 표시되도록
   const addedEventCols = ensureEventColumns();
   bindInfoInputs();
