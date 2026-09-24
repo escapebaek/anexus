@@ -281,13 +281,21 @@
     { label: 'Induction' },
     { label: 'Intubation' },
     { label: 'Draping' },
-    { label: 'Incision', info: 'surg_start' },
+    { label: 'Surgery start', info: 'surg_start' },
+    { label: 'Incision' },
     { label: 'Tourniquet on' },
     { label: 'Tourniquet off' },
-    { label: 'Op end', info: 'surg_end' },
+    { label: 'Surgery end', info: 'surg_end' },
     { label: 'Extubation' },
     { label: 'Anesth end', info: 'anesth_end' },
   ];
+  // 마취정보 시각과 연동되는 이벤트 (이름 대소문자 무시, 별칭 허용)
+  const INFO_EVENTS = {
+    anesth_start: { label: 'Anesth start', aliases: ['anesthesia start'] },
+    surg_start:   { label: 'Surgery start', aliases: ['surg start', 'op start', 'operation start'] },
+    surg_end:     { label: 'Surgery end', aliases: ['surg end', 'op end', 'operation end'] },
+    anesth_end:   { label: 'Anesth end', aliases: ['anesthesia end'] },
+  };
 
   // ===================== State =====================
   const initial = JSON.parse(document.getElementById('record-state').textContent);
@@ -525,19 +533,12 @@
         const hhmm = normHHMM(el.value);
         if (hhmm === null) { alert('시간은 HH:MM (24시간) 형식으로 입력하세요. 예) 1505 또는 15:05'); el.value = timeOf(state.info[key]); return; }
         el.value = hhmm;
-        state.info[key] = tsFromTime(hhmm, dateOf(state.info[key]) || caseDate());
-        markDirty();
-        renderDurations();
+        const ts = !hhmm ? '' : state.info[key] ? tsFromTime(hhmm, dateOf(state.info[key])) : tsNearNow(hhmm);
+        setInfoTime(key, ts);
       });
     });
     document.querySelectorAll('[data-now]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const key = btn.dataset.now;
-        state.info[key] = fmtLocal(nowSeoul());
-        document.querySelector(`[data-info-time="${key}"]`).value = timeOf(state.info[key]);
-        markDirty();
-        renderDurations();
-      });
+      btn.addEventListener('click', () => setInfoTime(btn.dataset.now, fmtLocal(nowSeoul())));
     });
     const sel = $('intervalSelect');
     sel.addEventListener('change', () => { state.info.interval = sel.value; markDirty(); renderGrid(); renderChart(); });
@@ -565,24 +566,53 @@
       b.type = 'button';
       b.className = 'ev-chip';
       b.textContent = q.label;
-      b.addEventListener('click', () => addEvent(q.label, fmtLocal(nowSeoul()), q.info));
+      b.addEventListener('click', () => addEvent(q.label, fmtLocal(nowSeoul())));
       wrap.appendChild(b);
     });
   }
-  function addEvent(label, ts, infoKey) {
+
+  // ----- 이벤트 <-> 마취정보 시각 연동 -----
+  function infoKeyOf(label) {
+    const l = String(label || '').trim().toLowerCase();
+    return Object.keys(INFO_EVENTS).find(k => INFO_EVENTS[k].label.toLowerCase() === l || INFO_EVENTS[k].aliases.includes(l));
+  }
+  // 이벤트 목록 -> 마취정보 (start 는 가장 이른, end 는 가장 늦은 이벤트; 이벤트가 없어지면 비움)
+  function applyEventsToInfo(key) {
+    if (!key) return;
+    const evs = state.events.filter(e => infoKeyOf(e.label) === key);
+    state.info[key] = evs.length ? evs[key.endsWith('_end') ? evs.length - 1 : 0].time : '';
+    const el = document.querySelector(`[data-info-time="${key}"]`);
+    if (el) el.value = timeOf(state.info[key]);
+    renderDurations();
+  }
+  // 마취정보 시각 -> 이벤트 (연동 이벤트를 수정/추가/삭제)
+  function setInfoTime(key, ts) {
+    state.info[key] = ts;
+    const el = document.querySelector(`[data-info-time="${key}"]`);
+    if (el) el.value = timeOf(ts);
+    const linked = state.events.filter(e => infoKeyOf(e.label) === key);
+    if (!ts) {
+      state.events = state.events.filter(e => !linked.includes(e));
+    } else if (linked.length) {
+      linked[key.endsWith('_end') ? linked.length - 1 : 0].time = ts;
+    } else {
+      state.events.push({ time: ts, label: INFO_EVENTS[key].label });
+    }
+    state.events.sort((a, b) => a.time.localeCompare(b.time));
+    ensureEventColumns();
+    renderDurations();
+    markDirty();
+    renderEvents();
+    renderAll();
+  }
+
+  function addEvent(label, ts) {
     label = (label || '').trim();
     if (!label || !ts) return;
-    // 직접 입력한 이벤트도 빠른 이벤트와 같은 이름이면 마취/수술 시각에 반영
-    if (!infoKey) infoKey = (QUICK_EVENTS.find(q => q.label.toLowerCase() === label.toLowerCase()) || {}).info;
     state.events.push({ time: ts, label });
     state.events.sort((a, b) => a.time.localeCompare(b.time));
     ensureEventColumns();
-    if (infoKey && !state.info[infoKey]) {
-      state.info[infoKey] = ts;
-      const el = document.querySelector(`[data-info-time="${infoKey}"]`);
-      if (el) el.value = timeOf(ts);
-      renderDurations();
-    }
+    applyEventsToInfo(infoKeyOf(label));
     markDirty();
     renderEvents();
     renderAll();
@@ -605,10 +635,12 @@
         ev.time = tsFromTime(hhmm, dateOf(ev.time));
         state.events.sort((a, b) => a.time.localeCompare(b.time));
         ensureEventColumns();
+        applyEventsToInfo(infoKeyOf(ev.label));
         markDirty(); renderEvents(); renderAll();
       });
       li.querySelector('.ev-del').addEventListener('click', () => {
         state.events.splice(i, 1);
+        applyEventsToInfo(infoKeyOf(ev.label));
         markDirty(); renderEvents(); renderAll();
       });
       ul.appendChild(li);
