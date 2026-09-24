@@ -25,7 +25,10 @@ HEADER_SYNONYMS = {
     "surgery_name": ["수술명", "수술", "술식", "수술명칭", "procedure", "operation", "surgery", "opname"],
     "department": ["진료과", "과", "진료과목", "dept", "department"],
     "surgeon": ["집도의", "집도", "주치의", "수술의", "surgeon"],
-    "anesthesiologist": ["마취의", "마취과", "마취", "마취담당", "마취담당의", "마취과의사", "담당마취의", "anesthesiologist", "anesthesia"],
+    "anesthesiologist": ["마취의", "마취과", "마취담당", "마취담당의", "마취과의사", "담당마취의", "anesthesiologist"],
+    "anesthesia_type": ["마취방법", "마취종류", "마취법", "마취형태", "마취유형", "마취방식", "anesthesia", "anesthesiatype", "anesthetic", "anes"],
+    # '마취' 한 단어 열: 값이 마취 방법(전신/척추/MAC...)이면 방법, 아니면 마취의 이름으로 봄
+    "anesthesia_either": ["마취"],
     "patient_name": ["환자명", "이름", "성명", "환자", "환자이름", "patient", "patientname", "name"],
     "regnum": ["등록번호", "병록번호", "차트번호", "환자번호", "mrn", "chartno", "id"],
     "age_sex": ["성별나이", "나이성별", "성나이", "나이", "성별", "age", "sex", "agesex", "sexage"],
@@ -41,6 +44,39 @@ STATUS_MAP = {
 }
 
 HEADER_SEARCH_ROWS = 15
+
+# 마취 방법 코드와 이를 가리키는 표기들 (소문자, 공백/구두점 제거 후 비교)
+ANESTHESIA_TYPES = {
+    "CSE": ["cse", "척추경막외", "척추경막외병용", "combinedspinalepidural", "combined"],
+    "GA": ["ga", "g/a", "전신", "전신마취", "general", "generalanesthesia", "ett", "lma", "tiva", "기관삽관"],
+    "SA": ["sa", "s/a", "척추", "척추마취", "척수", "척수마취", "spinal", "spinalanesthesia"],
+    "EA": ["ea", "e/a", "경막외", "경막외마취", "epidural", "epiduralanesthesia"],
+    "BL": ["bl", "block", "nerveblock", "신경차단", "신경블록", "블록", "상완신경총", "bpb", "pnb", "regional", "부위마취"],
+    "MAC": ["mac", "감시하마취관리", "감시", "진정", "sedation", "macsedation", "monitoredanesthesiacare", "iv sedation", "ivsedation"],
+    "LA": ["la", "l/a", "국소", "국소마취", "local", "localanesthesia"],
+}
+_ANESTHESIA_LOOKUP = {re.sub(r"[\s/()\[\]._\-·:+]+", "", alias): code
+                      for code, aliases in ANESTHESIA_TYPES.items() for alias in aliases}
+
+
+def normalize_anesthesia(value, keep_unknown=True):
+    """'전신' / 'General (ETT)' / 'S/A' / 'MAC/sedation' -> GA / SA / MAC ...
+    Unknown text is kept as-is (trimmed to 20 chars) unless keep_unknown=False (-> '')."""
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    if not text:
+        return ""
+    key = re.sub(r"[\s/()\[\]._\-·:+]+", "", text).lower()
+    if key in _ANESTHESIA_LOOKUP:
+        return _ANESTHESIA_LOOKUP[key]
+    if text.upper() in ANESTHESIA_TYPES:
+        return text.upper()
+    # 'General (ETT)', '전신(LMA)', 'Spinal + sedation' 처럼 앞부분이 방법인 경우
+    # (짧은 영문 약어 GA/SA 등은 다른 단어의 앞부분일 수 있어 제외: 영문 3자 이상, 한글 2자 이상만)
+    for alias, code in sorted(_ANESTHESIA_LOOKUP.items(), key=lambda kv: -len(kv[0])):
+        long_enough = len(alias) >= (3 if alias.isascii() else 2)
+        if long_enough and key.startswith(alias):
+            return code
+    return text[:20] if keep_unknown else ""
 
 
 def _norm_header(value):
@@ -193,6 +229,16 @@ def parse_table_rows(rows, filename="", default_date=None):
         if age_sex:
             patient_info = f"{patient_info} ({age_sex})" if patient_info else age_sex
 
+        anesthesiologist = _cell_text(get(row, "anesthesiologist"))
+        anesthesia_type = normalize_anesthesia(get(row, "anesthesia_type"))
+        either = _cell_text(get(row, "anesthesia_either"))
+        if either:
+            code = normalize_anesthesia(either, keep_unknown=False)
+            if code and not anesthesia_type:
+                anesthesia_type = code
+            elif not code and not anesthesiologist:
+                anesthesiologist = either
+
         records.append({
             "date": (row_date or date.today()).isoformat(),
             "room": room,
@@ -200,7 +246,8 @@ def parse_table_rows(rows, filename="", default_date=None):
             "surgery_name": surgery,
             "department": _cell_text(get(row, "department")),
             "surgeon": surgeon,
-            "anesthesiologist": _cell_text(get(row, "anesthesiologist")),
+            "anesthesiologist": anesthesiologist,
+            "anesthesia_type": anesthesia_type,
             "duration": _parse_duration(get(row, "duration")),
             "patient_name": patient,
             "patient_info": patient_info,

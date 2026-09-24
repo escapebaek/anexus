@@ -9,7 +9,7 @@ import os
 import re
 import subprocess
 from io import BytesIO
-from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob
+from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice
 from . import table_parser
 from .ai_client import extract_schedules
 from django.contrib import messages
@@ -63,6 +63,7 @@ FIELD_MAX_LENGTHS = {
     "department": 50,
     "surgeon": 50,
     "anesthesiologist": 50,
+    "anesthesia_type": 20,
     "patient_name": 50,
     "patient_info": 20,
     "status": 50,
@@ -106,6 +107,7 @@ def build_board(schedules, memos=None):
 
     board_rooms = []
     counts = {"ongoing": 0, "pending": 0, "finished": 0, "on_call": 0, "hold": 0}
+    anesthesia_counts = {}
     for room in sorted(rooms, key=_room_sort_key):
         cases = []
         for s in rooms[room]:
@@ -119,6 +121,7 @@ def build_board(schedules, memos=None):
                 "department": s.department,
                 "surgeon": s.surgeon,
                 "anesthesiologist": s.anesthesiologist,
+                "anesthesia_type": s.anesthesia_type,
                 "duration": s.duration,
                 "patient_name": s.patient_name,
                 "patient_info": s.patient_info,
@@ -132,6 +135,8 @@ def build_board(schedules, memos=None):
             if group != "finished":
                 counts["on_call"] += s.on_call
                 counts["hold"] += s.hold
+            if s.anesthesia_type:
+                anesthesia_counts[s.anesthesia_type] = anesthesia_counts.get(s.anesthesia_type, 0) + 1
         groups = [c["group"] for c in cases]
         # 방 행에 보여줄 케이스: 진행 중 > 다음 예정 > 마지막 완료
         if "ongoing" in groups:
@@ -153,6 +158,7 @@ def build_board(schedules, memos=None):
         "counts": counts,
         "total": total,
         "remaining": total - counts["finished"],
+        "anesthesia_counts": anesthesia_counts,
         "dates": sorted({c["date"] for r in board_rooms for c in r["cases"]}),
     }
 
@@ -251,6 +257,7 @@ def schedule_dashboard(request):
         "error_message": error_message,
         "build_version": BUILD_VERSION,
         "job": job,
+        "notice": BoardNotice.objects.filter(user=request.user).first(),
     })
 
 
@@ -374,6 +381,7 @@ def _normalize_record(record):
         "department": str(record.get("department") or "").strip(),
         "surgeon": str(record.get("surgeon") or "").strip(),
         "anesthesiologist": str(record.get("anesthesiologist") or "").strip(),
+        "anesthesia_type": table_parser.normalize_anesthesia(record.get("anesthesia_type")),
         "duration": duration,
         "patient_name": str(record.get("patient_name") or "").strip(),
         "patient_info": str(record.get("patient_info") or "").strip(),
@@ -537,8 +545,10 @@ def update_schedules_from_records(records, user, existing_schedules):
             created_count += 1
             SurgerySchedule.objects.create(user=user, **data)
             continue
-        if not data["anesthesiologist"]:
-            data["anesthesiologist"] = schedule.anesthesiologist
+        # 파일에 없으면 현황판에서 직접 입력한 값 유지
+        for manual_field in ("anesthesiologist", "anesthesia_type"):
+            if not data[manual_field]:
+                data[manual_field] = getattr(schedule, manual_field)
         if schedule.status_locked:
             # 현황판에서 수동으로 바꾼 상태(완료/진행중 등)는 파일 상태로 되돌리지 않음
             data["status"] = schedule.status
@@ -587,6 +597,9 @@ def update_schedule(request, schedule_id):
         if "anesthesiologist" in data:
             schedule.anesthesiologist = str(data.get("anesthesiologist") or "").strip()[:FIELD_MAX_LENGTHS["anesthesiologist"]]
             fields.append("anesthesiologist")
+        if "anesthesia_type" in data:
+            schedule.anesthesia_type = table_parser.normalize_anesthesia(data.get("anesthesia_type"))[:FIELD_MAX_LENGTHS["anesthesia_type"]]
+            fields.append("anesthesia_type")
         for flag in ("on_call", "hold"):
             if flag in data:
                 setattr(schedule, flag, bool(data[flag]))
@@ -599,6 +612,20 @@ def update_schedule(request, schedule_id):
     room_cases = _room_schedules(request.user, schedule.room)
     board = build_board(room_cases, _memo_map(request.user, [c.id for c in room_cases]))
     return JsonResponse({"status": "success", "room": board["rooms"][0]})
+
+
+@login_required
+@user_is_specially_approved
+@require_POST
+def save_notice(request):
+    """현황판 공지·메모 칸 저장 (자동 저장)."""
+    try:
+        data = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    content = str((data or {}).get("content") or "")[:20000]
+    notice, _ = BoardNotice.objects.update_or_create(user=request.user, defaults={"content": content})
+    return JsonResponse({"status": "success", "updated_at": timezone.localtime(notice.updated_at).strftime("%H:%M")})
 
 
 @login_required

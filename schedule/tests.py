@@ -371,7 +371,7 @@ class TableParserTests(TestCase):
         self.assertEqual(len(records), 20)
         self.assertEqual(records[0], {
             'date': '2025-01-30', 'room': 'Rm1', 'time_slot': '8A', 'surgery_name': 'Appendectomy',
-            'department': 'GS', 'surgeon': '김철수', 'anesthesiologist': '', 'duration': 60,
+            'department': 'GS', 'surgeon': '김철수', 'anesthesiologist': '', 'anesthesia_type': '', 'duration': 60,
             'patient_name': '박나나', 'patient_info': 'F/61', 'status': '완료',
         })
         self.assertEqual(records[2]['status'], '예정')  # 대기 -> 예정
@@ -523,3 +523,65 @@ class UploadJobTests(TestCase):
         other = get_user_model().objects.create_user('other', password='x')
         job = ScheduleUploadJob.objects.create(user=other, filename='x')
         self.assertEqual(self.client.get(reverse('schedule_upload_job', args=[job.id])).status_code, 404)
+
+
+class AnesthesiaTypeTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def test_normalize(self):
+        from .table_parser import normalize_anesthesia as n
+        self.assertEqual([n(v) for v in ['전신', 'General (ETT)', 'TIVA', 'S/A', '척추마취', 'Epidural', 'CSE',
+                                          'nerve block', 'MAC/sedation', '국소', 'Spinal + sedation', '']],
+                         ['GA', 'GA', 'GA', 'SA', 'SA', 'EA', 'CSE', 'BL', 'MAC', 'LA', 'SA', ''])
+        self.assertEqual(n('gamma knife'), 'gamma knife')  # 모르는 값은 원문 유지
+        self.assertEqual(n('김마취', keep_unknown=False), '')
+
+    def test_table_columns(self):
+        from .table_parser import parse_delimited_text
+        # '마취방법' 열 + '마취' 열(이름) / '마취' 열(방법)
+        a = parse_delimited_text('방,수술명,환자명,마취방법,마취\n101,Op,A,척추,이마취\n')[0]
+        self.assertEqual((a['anesthesia_type'], a['anesthesiologist']), ('SA', '이마취'))
+        b = parse_delimited_text('방,수술명,환자명,마취의,마취\n101,Op,B,이마취,MAC\n')[0]
+        self.assertEqual((b['anesthesia_type'], b['anesthesiologist']), ('MAC', '이마취'))
+
+    def test_board_counts_manual_set_and_kept_on_update(self):
+        case = make(self.user, '101', '08:00', name='홍길동', info='')
+        make(self.user, '102', '08:00', name='김영희', info='', anesthesia_type='GA')
+        res = self.client.post(reverse('schedule_update', args=[case.id]), json.dumps({'anesthesia_type': '척추'}),
+                               content_type='application/json')
+        self.assertEqual(res.json()['room']['cases'][0]['anesthesia_type'], 'SA')
+        board = self.client.get(reverse('schedule_dashboard')).context['board']
+        self.assertEqual(board['anesthesia_counts'], {'SA': 1, 'GA': 1})
+        # 파일에 마취 방법이 없으면 수동 값 유지, 있으면 파일 값
+        update_schedules_from_records([rec('105', '09:00', '홍길동', 'Op'), rec('102', '08:00', '김영희', 'Op', anesthesia_type='MAC/sedation')],
+                                      self.user, list(SurgerySchedule.objects.filter(user=self.user)))
+        self.assertEqual(dict(SurgerySchedule.objects.filter(user=self.user).values_list('patient_name', 'anesthesia_type')),
+                         {'홍길동': 'SA', '김영희': 'MAC'})
+
+
+class NoticeTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def test_save_and_render(self):
+        from .models import BoardNotice
+        res = self.client.post(reverse('schedule_notice'), json.dumps({'content': '11시 회의 <b>'}), content_type='application/json')
+        self.assertEqual(res.json()['status'], 'success')
+        self.client.post(reverse('schedule_notice'), json.dumps({'content': '11시 회의 <b>!'}), content_type='application/json')
+        self.assertEqual(BoardNotice.objects.get(user=self.user).content, '11시 회의 <b>!')
+        page = self.client.get(reverse('schedule_dashboard'))
+        self.assertContains(page, '11시 회의 &lt;b&gt;!')
+
+    def test_notice_is_per_user(self):
+        from .models import BoardNotice
+        other = get_user_model().objects.create_user('other', password='x')
+        BoardNotice.objects.create(user=other, content='비밀 공지')
+        self.assertNotContains(self.client.get(reverse('schedule_dashboard')), '비밀 공지')
