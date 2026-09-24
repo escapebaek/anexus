@@ -26,7 +26,7 @@ HEADER_SYNONYMS = {
     "department": ["진료과", "과", "진료과목", "dept", "department"],
     "surgeon": ["집도의", "집도", "주치의", "수술의", "surgeon"],
     "anesthesiologist": ["마취의", "마취과", "마취담당", "마취담당의", "마취과의사", "담당마취의", "anesthesiologist"],
-    "anesthesia_type": ["마취방법", "마취종류", "마취법", "마취형태", "마취유형", "마취방식", "anesthesia", "anesthesiatype", "anesthetic", "anes"],
+    "anesthesia_type": ["마취방법", "마취종류", "마취법", "마취형태", "마취유형", "마취방식", "anesthesiatype"],
     # '마취' 한 단어 열: 값이 마취 방법(전신/척추/MAC...)이면 방법, 아니면 마취의 이름으로 봄
     "anesthesia_either": ["마취"],
     "patient_name": ["환자명", "이름", "성명", "환자", "환자이름", "patient", "patientname", "name"],
@@ -80,7 +80,54 @@ def normalize_anesthesia(value, keep_unknown=True):
 
 
 def _norm_header(value):
-    return re.sub(r"[\s/()\[\]._\-·:]+", "", str(value or "")).lower()
+    """'수술실(호)' -> '수술실', 'Anes. Dr' -> 'anesdr', 'Room #' -> 'room' (괄호 속 단위·부연 설명 제거)."""
+    text = re.sub(r"\([^)]*\)|\[[^\]]*\]", "", str(value or ""))
+    return re.sub(r"[\s/()\[\]._\-·:#*]+", "", text).lower()
+
+
+# 열 이름 규칙 (위에서부터 먼저 맞는 것). 정확히 일치하는 HEADER_SYNONYMS 로 못 찾을 때 사용.
+# 병실·진단명 같은 열이 방·수술명으로 잘못 읽히지 않도록 'ignore' 를 가장 먼저 둠.
+HEADER_RULES = [
+    ("ignore", r"병실|병동|ward|^bed|진단|diagnos|^dx|비고|remark|^note|메모|주소|전화|phone|연락처|보험|insurance|체중|weight|^키$|height|혈액형|bloodtype|^no$|^번호$|^순$"),
+    ("anesthesia_type", r"마취(방법|종류|법|형태|유형|방식|구분)|anes\w*type|anaes\w*type|anesthetictype|마취type"),
+    ("anesthesiologist", r"마취(의|의사|과|과의사|과의|담당|담당의|전문의|과담당의?|과선생님)$|담당마취|anesthesiologist|anaesthetist|anesthetist|anes\w*(dr|doctor|md|provider|staff|attending|physician)"),
+    ("anesthesia_either", r"^마취$|^anes$|^anesth$|^anesthesia$|^anaesthesia$|^anesthetic$"),
+    ("duration", r"소요|예상시간|예상소요|수술시간|duration|^dur$|length|optime|^mins?$|^분$|esttime|estimated"),
+    ("date", r"날짜|일자|^수술일|^일$|^date|opdate|surgerydate|casedate|^day$"),
+    ("regnum", r"등록번호|병록|차트|환자번호|환자id|mrn|chart|regno|registration|unitno|hospno|patientid|^ptid$|^id$"),
+    ("age_sex", r"성별|나이|연령|^age|^sex|gender|^sa$|^mf$"),
+    ("patient_info", r"환자정보|^정보$|patientinfo|ptinfo"),
+    ("patient_name", r"환자명|환자성명|환자이름|수진자|^성명$|^이름$|^환자$|^pt$|ptname|patientname|^patient$|^name$"),
+    ("surgeon", r"집도|주치의|수술의|operator|surgeon|^opdr|^opdoctor|주수술"),
+    ("department", r"진료과|^과$|과명$|^과목|dept|department|^service|specialty"),
+    ("room", r"수술실|수술방|^방|방번호|^룸|^실$|room|^rm|theat|^(or|ot)(no|number|rm)?\d*$"),
+    ("time_slot", r"시간|시각|시작|time|start|slot"),
+    ("sequence", r"순서|순번|^seq|order|^차례"),
+    ("surgery_name", r"수술명|^수술$|수술내용|술식|시술|procedure|operation|surgery|^op(name|title)?$|^case(name)?$"),
+    ("status", r"상태|현황|진행|status|progress|state"),
+]
+_HEADER_RULES = [(field, re.compile(pattern)) for field, pattern in HEADER_RULES]
+
+FIELD_LABELS = {
+    "date": "날짜", "room": "방", "time_slot": "시간", "sequence": "순서", "duration": "소요시간",
+    "surgery_name": "수술명", "department": "과", "surgeon": "집도의", "anesthesiologist": "마취의",
+    "anesthesia_type": "마취방법", "anesthesia_either": "마취", "patient_name": "환자명", "regnum": "등록번호",
+    "age_sex": "성별/나이", "patient_info": "환자정보", "status": "상태",
+}
+
+
+def classify_header(cell):
+    """One header cell -> field name, 'ignore', or None (unknown)."""
+    key = _norm_header(cell)
+    if not key:
+        return None
+    field = _SYNONYM_TO_FIELD.get(key)
+    if field:
+        return field
+    for field, pattern in _HEADER_RULES:
+        if pattern.search(key):
+            return field
+    return None
 
 
 def _cell_text(value):
@@ -92,21 +139,49 @@ def _cell_text(value):
 
 
 def _map_header(row):
-    """{field: column index} for a candidate header row (first column wins per field)."""
+    """{field: column index} for a candidate header row (first column wins per field),
+    plus 'age_sex' may collect several columns (성별 + 나이) under '_age_sex_cols'."""
     mapping = {}
     for index, cell in enumerate(row):
-        field = _SYNONYM_TO_FIELD.get(_norm_header(cell))
+        field = classify_header(cell)
+        if field in (None, "ignore"):
+            continue
         # '시간' 열이 두 번 나오면 두 번째는 보통 소요시간 (예: 시간=MD, 시간=4:00)
-        if field == "time_slot" and "time_slot" in mapping and "duration" not in mapping:
+        if field == "time_slot" and "time_slot" in mapping and "duration" not in mapping \
+                and _norm_header(cell) in ("시간", "time"):
             field = "duration"
-        if field and field not in mapping:
+        if field == "age_sex":
+            mapping.setdefault("_age_sex_cols", []).append(index)
+        if field not in mapping:
             mapping[field] = index
+    # 시각 열이 없으면 순번/순서 열을 시간 칸에 표시
+    if "time_slot" not in mapping and "sequence" in mapping:
+        mapping["time_slot"] = mapping["sequence"]
     return mapping
 
 
 def _is_header(mapping):
+    fields = {k for k in mapping if not k.startswith("_")}
     has_case = "surgery_name" in mapping or "patient_name" in mapping
-    return "room" in mapping and has_case and len(mapping) >= 3
+    return "room" in mapping and has_case and len(fields) >= 3
+
+
+def _header_report(row, mapping):
+    """(읽은 열 설명 목록, 사용하지 않은 열 이름 목록) - 업로드 결과 안내용."""
+    used_cols = {index: field for field, index in mapping.items() if not field.startswith("_")}
+    for index in mapping.get("_age_sex_cols", []):
+        used_cols.setdefault(index, "age_sex")
+    used, unused = [], []
+    for index, cell in enumerate(row):
+        name = _cell_text(cell)
+        if not name:
+            continue
+        if index in used_cols:
+            label = FIELD_LABELS.get(used_cols[index], used_cols[index])
+            used.append(name if _norm_header(name) == _norm_header(label) else f"{name}→{label}")
+        else:
+            unused.append(name)
+    return used, unused
 
 
 def _parse_date(value):
@@ -180,17 +255,61 @@ def _find_sheet_date(rows, header_index, filename):
     return None
 
 
-def parse_table_rows(rows, filename="", default_date=None):
-    """rows: list of row lists (cell values). Returns a list of record dicts in the same
-    shape Gemini extraction returns, or None if no recognizable header row was found."""
-    rows = [list(r) for r in rows]
-    header_index, mapping = None, None
+SECTION_ROOM_RE = re.compile(r"^(?:\d+\s*번?\s*(?:방|실|호실?)|(?:or|room|rm|수술실)\s*[-#]?\s*[a-z]?\d+[a-z]?|[a-z]\d{1,3})$", re.I)
+
+
+def _merge_header_rows(upper, lower):
+    """두 줄로 된 머리글 (예: 윗줄 '환자' / 아랫줄 '이름','번호') 을 한 줄로 합침."""
+    merged = []
+    last_up = ""
+    for i in range(max(len(upper), len(lower))):
+        up = _cell_text(upper[i]) if i < len(upper) else ""
+        # 병합된 윗칸('환자' 가 '이름'·'번호' 두 칸에 걸침)은 첫 칸에만 값이 있으므로 옆으로 이어받음
+        up = up or last_up
+        last_up = up
+        low = _cell_text(lower[i]) if i < len(lower) else ""
+        choice = up
+        for candidate in (low, up + low, up):
+            if candidate and classify_header(candidate) not in (None, "ignore"):
+                choice = candidate
+                break
+        merged.append(choice or low)
+    return merged
+
+
+def _find_header(rows):
+    """-> (data start index, header cells, mapping) or (None, None, None)."""
     for index, row in enumerate(rows[:HEADER_SEARCH_ROWS]):
-        candidate = _map_header(row)
-        if _is_header(candidate):
-            header_index, mapping = index, candidate
-            break
+        candidates = [(row, _map_header(row))]
+        if index > 0:
+            merged = _merge_header_rows(rows[index - 1], row)
+            candidates.append((merged, _map_header(merged)))
+        best = max(candidates, key=lambda c: len([k for k in c[1] if not k.startswith("_")]))
+        if _is_header(best[1]):
+            return index, best[0], best[1]
+    return None, None, None
+
+
+def parse_table_rows(rows, filename="", default_date=None, report=None):
+    """rows: list of row lists (cell values). Returns a list of record dicts in the same
+    shape AI extraction returns, or None if this isn't a table we can read reliably
+    (then the caller falls back to AI). `report`, if given, is filled with the columns
+    used / not used and, on None, the reason."""
+    rows = [list(r) for r in rows]
+    report = report if report is not None else {}
+    header_index, header, mapping = _find_header(rows)
     if mapping is None:
+        report["reason"] = "열 이름(방·수술명 등)이 있는 머리글 줄을 찾지 못했습니다."
+        return None
+    used, unused = _header_report(header, mapping)
+    report.update(used=used, unused=unused)
+    # 수술명 열이 없거나, 환자 열을 못 찾았는데 모르는 열이 남아 있으면 표로 읽지 않고 AI 에 맡김
+    # (그 모르는 열이 환자 이름일 수 있어서 - 빠뜨린 채 반영하면 메모 연결이 깨짐)
+    if "surgery_name" not in mapping:
+        report["reason"] = "수술명 열을 찾지 못했습니다."
+        return None
+    if "patient_name" not in mapping and "regnum" not in mapping and unused:
+        report["reason"] = "환자 이름/번호 열을 확실히 찾지 못했습니다."
         return None
 
     sheet_date = _find_sheet_date(rows, header_index, filename) or default_date
@@ -199,9 +318,19 @@ def parse_table_rows(rows, filename="", default_date=None):
     records = []
     last_room, last_date = "", sheet_date
     for row in rows[header_index + 1:]:
-        if not any(_cell_text(c) for c in row):
+        cells = [_cell_text(c) for c in row]
+        filled = [c for c in cells if c]
+        if not filled:
             continue
         if _is_header(_map_header(row)):  # repeated header (e.g. per page)
+            continue
+        # 표 중간의 구분 줄: 칸 하나에 날짜('2026-09-24') 나 방('3번방', 'OR 5') 만 있는 경우
+        if len(filled) == 1 and not _cell_text(get(row, "surgery_name")) and not _cell_text(get(row, "patient_name")):
+            section_date = _parse_date(filled[0]) if re.search(r"\d{4}|\d{1,2}[/.월]\d{1,2}", filled[0]) else None
+            if section_date:
+                last_date = section_date
+            elif SECTION_ROOM_RE.match(filled[0]):
+                last_room = filled[0]
             continue
         room = _cell_text(get(row, "room"))
         surgery = _cell_text(get(row, "surgery_name"))
@@ -224,7 +353,7 @@ def parse_table_rows(rows, filename="", default_date=None):
         last_room, last_date = room, row_date
 
         info_parts = [p for p in (regnum, _cell_text(get(row, "patient_info"))) if p]
-        age_sex = _cell_text(get(row, "age_sex"))
+        age_sex = "/".join(filter(None, (_cell_text(row[i]) for i in mapping.get("_age_sex_cols", []) if i < len(row))))
         patient_info = " ".join(info_parts)
         if age_sex:
             patient_info = f"{patient_info} ({age_sex})" if patient_info else age_sex
@@ -253,21 +382,27 @@ def parse_table_rows(rows, filename="", default_date=None):
             "patient_info": patient_info,
             "status": _status(get(row, "status")),
         })
+    if not records:
+        report["reason"] = "머리글 아래에서 수술 행을 찾지 못했습니다."
     return records or None
 
 
-def parse_workbook(workbook, filename="", default_date=None):
+def parse_workbook(workbook, filename="", default_date=None, report=None):
     """First sheet with a recognizable table wins; returns None if none has one."""
+    report = report if report is not None else {}
     for sheet in workbook.worksheets:
-        records = parse_table_rows(sheet.iter_rows(values_only=True), filename, default_date)
+        sheet_report = {}
+        records = parse_table_rows(sheet.iter_rows(values_only=True), filename, default_date, sheet_report)
+        report.clear()
+        report.update(sheet_report)
         if records:
             return records
     return None
 
 
-def parse_delimited_text(text, filename="", default_date=None):
+def parse_delimited_text(text, filename="", default_date=None, report=None):
     """CSV / TSV text with a header row."""
     sample = text[:5000]
     delimiter = "\t" if sample.count("\t") > sample.count(",") else ","
     rows = list(csv.reader(io.StringIO(text), delimiter=delimiter))
-    return parse_table_rows(rows, filename, default_date)
+    return parse_table_rows(rows, filename, default_date, report)

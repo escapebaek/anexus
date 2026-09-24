@@ -585,3 +585,143 @@ class NoticeTests(TestCase):
         other = get_user_model().objects.create_user('other', password='x')
         BoardNotice.objects.create(user=other, content='비밀 공지')
         self.assertNotContains(self.client.get(reverse('schedule_dashboard')), '비밀 공지')
+
+
+class HeaderVariantTests(TestCase):
+    """다른 병원·EMR 양식의 열 이름도 표로 읽히는지 (열 이름이 조금씩 달라도)."""
+
+    HEADERS = {
+        'kr_basic': ["날짜", "방", "시간", "수술명", "진료과", "집도의", "수술 시간", "환자명", "환자정보", "진행 상황"],
+        'kr_formal': ["수술일자", "수술실", "순번", "예정시각", "진료과", "집도의사", "마취의사", "마취방법", "환자성명", "등록번호", "성별", "나이", "수술명", "진행상태"],
+        'en_emr': ["Date", "OR", "Start Time", "Est. Duration", "Dept", "Surgeon", "Anesthesiologist", "Anesthesia", "Patient Name", "MRN", "Sex/Age", "Procedure", "Status"],
+        'en_abbr': ["OP Date", "Room No.", "Seq", "Time", "Department", "Operator", "Anes. Dr", "Anes. Type", "Name", "Chart No", "Age/Sex", "Operation Name", "Progress"],
+        'kr_units': ["수술방번호", "수술시작예정", "소요시간(분)", "과명", "주집도의", "담당마취의", "마취종류", "환자명", "병록번호", "성별/나이", "수술명(국문)", "수술상태"],
+        'kr_short': ["방번호", "시작", "예상시간", "과", "집도", "마취", "성명", "ID", "S/A", "수술", "상태"],
+        'us': ["OR Room", "Scheduled Start", "Procedure Description", "Primary Surgeon", "Anesthesia Provider", "Anesthesia Type", "Patient", "MRN", "Case Status"],
+        'ward_col': ["수술일", "수술실", "병실", "시간", "환자명", "등록번호", "진단명", "수술명", "집도의", "상태"],
+        'en_short': ["Room#", "Time", "Case", "Surgeon", "Anesth", "Pt", "Age", "Sex", "Status"],
+        'kr_spaced': ["수술실(호)", "예정 시간", "수술 명", "집도 의", "환자 이름", "환자 번호", "마취 방법", "진행"],
+    }
+
+    def parse(self, header, row):
+        from .table_parser import parse_table_rows
+        report = {}
+        return parse_table_rows([header, row], report=report), report
+
+    def test_all_variants_read_as_tables(self):
+        for name, header in self.HEADERS.items():
+            with self.subTest(name):
+                row = [f"v{i}" for i in range(len(header))]
+                records, report = self.parse(header, row)
+                self.assertIsNotNone(records, report.get('reason'))
+                rec = records[0]
+                # 방·수술명·환자 정보가 빠짐없이 들어와야 함
+                self.assertTrue(rec['room'] and rec['surgery_name'])
+                self.assertTrue(rec['patient_name'] or rec['patient_info'])
+
+    def test_field_mapping_details(self):
+        h = self.HEADERS['kr_formal']
+        row = ['2026-09-25', '3', '1', '08:30', 'OS', '김집도', '이마취', '척추', '홍길동', '12345678', 'M', '70', 'TKRA', '대기']
+        rec = self.parse(h, row)[0][0]
+        self.assertEqual(
+            {k: rec[k] for k in ('date', 'room', 'time_slot', 'surgeon', 'anesthesiologist', 'anesthesia_type', 'patient_name', 'patient_info', 'surgery_name', 'status')},
+            {'date': '2026-09-25', 'room': '3', 'time_slot': '08:30', 'surgeon': '김집도', 'anesthesiologist': '이마취', 'anesthesia_type': 'SA',
+             'patient_name': '홍길동', 'patient_info': '12345678 (M/70)', 'surgery_name': 'TKRA', 'status': '예정'})
+
+    def test_ward_room_and_diagnosis_are_not_misread(self):
+        h = self.HEADERS['ward_col']
+        rec, report = self.parse(h, ['2026-09-25', '5', '702호', '08:00', '홍길동', '123', '무릎 관절염', 'TKRA', '김', '대기'])
+        self.assertEqual((rec[0]['room'], rec[0]['surgery_name']), ('5', 'TKRA'))
+        self.assertEqual(report['unused'], ['병실', '진단명'])
+
+    def test_unsure_tables_go_to_ai(self):
+        # 수술명 열 없음 / 환자 열을 못 찾았는데 모르는 열이 있음 -> 표로 읽지 않음(AI 로)
+        for header in (["방", "시간", "환자명", "집도의"], ["방", "시간", "수술명", "Pt. Nm"]):
+            with self.subTest(header):
+                records, report = self.parse(header, ["101", "08:00", "x", "y"])
+                self.assertIsNone(records)
+                self.assertTrue(report['reason'])
+
+    def test_two_row_header_and_section_rows(self):
+        from .table_parser import parse_table_rows
+        rec = parse_table_rows([["수술", "", "환자", "", ""], ["방", "수술명", "이름", "번호", "집도의"],
+                                ["101", "TKRA", "홍길동", "123456", "김"]])[0]
+        self.assertEqual((rec['patient_name'], rec['patient_info']), ('홍길동', '123456'))
+        recs = parse_table_rows([["방", "시간", "수술명", "환자명"], ["2026-09-25"], ["3번방"], ["", "08:00", "Op1", "A"],
+                                 ["OR 5"], ["", "09:00", "Op2", "B"]])
+        self.assertEqual([(r['date'], r['room']) for r in recs], [('2026-09-25', '3번방'), ('2026-09-25', 'OR 5')])
+
+    def test_upload_message_lists_columns_and_force_ai(self):
+        from unittest import mock
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        user = get_user_model().objects.create_user('doc', password='x')
+        user.is_specially_approved = True
+        user.save()
+        self.client.force_login(user)
+        csv_bytes = '수술실,예정시각,수술명,집도의사,환자성명,병실\n3,08:00,TKRA,김,홍길동,702\n'.encode()
+        res = self.client.post(reverse('schedule_dashboard'), {'file': SimpleUploadedFile('s.csv', csv_bytes)}, follow=True)
+        msg = [str(m) for m in res.context['messages']][0]
+        self.assertIn('1건을 표 형식으로', msg)
+        self.assertIn('환자성명→환자명', msg)
+        self.assertIn('사용하지 않은 열: 병실', msg)
+        # 'AI로 분석' 을 고르면 표로 읽지 않음
+        with mock.patch('schedule.views.extract_schedules', return_value=[rec('9', '1', 'X', 'Op')]) as ai, \
+                mock.patch('schedule.views.start_background', side_effect=lambda f, *a: f(*a)):
+            self.client.post(reverse('schedule_dashboard'), {'file': SimpleUploadedFile('s.csv', csv_bytes), 'force_ai': '1'})
+        ai.assert_called_once()
+
+
+class ManualRoomOrderTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+        self.a = make(self.user, '101', '08:00', status='진행중', name='A', info='')
+        self.b = make(self.user, '101', '10:00', status='예정', name='B', info='')
+        self.c = make(self.user, '101', '12:00', status='예정', name='C', info='')
+
+    def post(self, case, payload):
+        res = self.client.post(reverse('schedule_update', args=[case.id]), json.dumps(payload), content_type='application/json')
+        self.assertEqual(res.status_code, 200, res.content)
+        return res.json()
+
+    def order(self, room='101'):
+        board = self.client.get(reverse('schedule_dashboard')).context['board']
+        found = next((r for r in board['rooms'] if r['room'] == room), None)
+        return [c['patient_name'] for c in found['cases']] if found else []
+
+    def test_move_up_and_down(self):
+        room = self.post(self.c, {'move': 'up'})['room']
+        self.assertEqual([c['patient_name'] for c in room['cases']], ['A', 'C', 'B'])
+        self.post(self.a, {'move': 'down'})
+        self.assertEqual(self.order(), ['C', 'A', 'B'])
+        self.post(self.c, {'move': 'up'})  # 이미 맨 앞 - 그대로
+        self.assertEqual(self.order(), ['C', 'A', 'B'])
+
+    def test_reorder_changes_which_case_starts_next(self):
+        self.post(self.c, {'move': 'up'})           # A, C, B
+        self.post(self.a, {'status': 'finished'})   # 다음 = C
+        statuses = dict(SurgerySchedule.objects.filter(user=self.user).values_list('patient_name', 'status'))
+        self.assertEqual(statuses, {'A': '완료', 'C': '진행중', 'B': '예정'})
+
+    def test_move_to_other_room_returns_board(self):
+        data = self.post(self.b, {'room': ' 205 '})
+        self.assertEqual(data['room']['room'], '205')
+        self.assertEqual([r['room'] for r in data['board']['rooms']], ['101', '205'])
+        self.assertEqual(self.order('101'), ['A', 'C'])
+        self.assertEqual(self.order('205'), ['B'])
+
+    def test_manual_room_and_order_survive_schedule_update(self):
+        self.post(self.b, {'room': '205'})
+        self.post(self.c, {'move': 'up'})           # 101: C, A
+        records = [rec('101', '08:00', 'A', 'Op'), rec('101', '10:00', 'B', 'Op'), rec('101', '12:00', 'C', 'Op'),
+                   rec('101', '13:00', 'D', 'Op')]
+        update_schedules_from_records(records, self.user, list(SurgerySchedule.objects.filter(user=self.user)))
+        self.assertEqual(self.order('205'), ['B'])            # 파일은 101 이지만 직접 옮긴 방 유지
+        self.assertEqual(self.order('101'), ['C', 'A', 'D'])  # 직접 정한 순서 유지, 새 수술은 뒤에
+
+    def test_invalid_room_or_move_rejected(self):
+        for payload in ({'room': '  '}, {'move': 'sideways'}):
+            res = self.client.post(reverse('schedule_update', args=[self.a.id]), json.dumps(payload), content_type='application/json')
+            self.assertEqual(res.status_code, 400)

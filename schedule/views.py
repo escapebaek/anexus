@@ -110,7 +110,7 @@ def build_board(schedules, memos=None):
     anesthesia_counts = {}
     for room in sorted(rooms, key=_room_sort_key):
         cases = []
-        for s in rooms[room]:
+        for s in sorted(rooms[room], key=case_order_key):
             group = status_group(s.status)
             counts[group] += 1
             cases.append({
@@ -174,8 +174,33 @@ def _memo_map(user, schedule_ids=None):
     return {k: v for k, v in memos.items() if v}
 
 
+def case_order_key(schedule):
+    """방 안 순서: 날짜 → 현황판에서 직접 정한 순서(position) → 시간 → 등록 순.
+    순서를 정하지 않은 수술(position=0)은 직접 정한 수술들 뒤에 시간 순으로 옴."""
+    return (schedule.date, schedule.position or 10 ** 9, schedule.time_slot, schedule.id)
+
+
 def _room_schedules(user, room):
-    return list(SurgerySchedule.objects.filter(user=user, room=room).order_by("date", "room", "time_slot", "id"))
+    return sorted(SurgerySchedule.objects.filter(user=user, room=room), key=case_order_key)
+
+
+def move_case_in_room(schedule, direction):
+    """방 안에서 한 칸 앞/뒤로. 그 방 수술 전체에 1..n 순서를 매겨 저장."""
+    cases = _room_schedules(schedule.user, schedule.room)
+    index = next(i for i, c in enumerate(cases) if c.id == schedule.id)
+    target = index - 1 if direction == "up" else index + 1
+    if 0 <= target < len(cases):
+        cases[index], cases[target] = cases[target], cases[index]
+    for position, case in enumerate(cases, start=1):
+        if case.position != position:
+            case.position = position
+            case.save(update_fields=["position"])
+
+
+def move_case_to_room(schedule, room):
+    """다른 방으로 옮김 (그 방의 순서 지정 수술들 뒤, 나머지와는 시간 순). 이후 업데이트 파일이 되돌리지 않음."""
+    schedule.room, schedule.room_locked, schedule.position = room, True, 0
+    schedule.save(update_fields=["room", "room_locked", "position"])
 
 
 def apply_manual_status(schedule, target):
@@ -220,7 +245,7 @@ def apply_manual_status(schedule, target):
 def schedule_dashboard(request):
     form = ScheduleUploadForm()
     error_message = None
-    schedules = SurgerySchedule.objects.filter(user=request.user).order_by("date", "room", "time_slot", "id")
+    schedules = SurgerySchedule.objects.filter(user=request.user)
     board = build_board(schedules, _memo_map(request.user))
 
     if request.method == "POST":
@@ -229,15 +254,18 @@ def schedule_dashboard(request):
         form = ScheduleUploadForm(request.POST, request.FILES)
         if form.is_valid():
             uploaded_file = form.cleaned_data["file"]
+            force_ai = request.POST.get("force_ai") == "1"
             try:
-                records, source_text = read_upload(uploaded_file)
+                records, source_text, report = read_upload(uploaded_file, use_table=not force_ai)
                 if records is not None:
                     # 표 형식 파일: AI 없이 바로 반영
                     count = apply_records(records, request.user, action)
-                    messages.success(request, f"'{uploaded_file.name}' 에서 {count}건을 표 형식으로 읽어 반영했습니다.")
+                    messages.success(request, _table_message(uploaded_file.name, count, report))
                     return redirect("schedule_dashboard")
-                # 자유 형식 파일: AI 분석은 오래 걸릴 수 있어 백그라운드 작업으로 처리
-                job = ScheduleUploadJob.objects.create(user=request.user, filename=uploaded_file.name[:255], action=action)
+                # 자유 형식 파일(또는 AI 선택): AI 분석은 오래 걸릴 수 있어 백그라운드 작업으로 처리
+                job = ScheduleUploadJob.objects.create(
+                    user=request.user, filename=uploaded_file.name[:255], action=action,
+                    message="AI 분석을 선택했습니다." if force_ai else (report.get("reason") or ""))
                 start_background(run_upload_job, job.id, source_text)
                 return redirect(f"{reverse('schedule_dashboard')}?job={job.id}")
             except (ScheduleExtractionError, ValueError) as exc:
@@ -270,22 +298,33 @@ def _decode_text(raw):
     raise ValueError("파일의 텍스트 인코딩을 해석할 수 없습니다.")
 
 
-def read_upload(uploaded_file):
-    """-> (records, source_text). records is set when the file is a table table_parser could
-    read by column name (no AI needed); otherwise None and source_text is the plain-text
-    dump for AI extraction."""
+def _table_message(filename, count, report):
+    used = ", ".join(report.get("used") or [])
+    unused = ", ".join(report.get("unused") or [])
+    message = f"'{filename}' 에서 {count}건을 표 형식으로 읽어 반영했습니다. 읽은 열: {used}."
+    if unused:
+        message += f" 사용하지 않은 열: {unused}."
+    return message
+
+
+def read_upload(uploaded_file, use_table=True):
+    """-> (records, source_text, report). records is set when the file is a table
+    table_parser could read by column name (no AI needed); otherwise None and
+    source_text is the plain-text dump for AI extraction. report says which columns
+    were used / ignored, or why the file wasn't read as a table."""
     name = uploaded_file.name.lower()
     raw = uploaded_file.read()
     today = timezone.localdate()
+    report = {}
 
     if name.endswith((".xlsx", ".xls")):
         try:
             workbook = openpyxl.load_workbook(BytesIO(raw), data_only=True)
         except Exception as exc:
             raise ValueError("엑셀 파일을 읽을 수 없습니다. .xls(구형 엑셀)라면 .xlsx 로 다시 저장해서 올려주세요.") from exc
-        records = table_parser.parse_workbook(workbook, uploaded_file.name, today)
+        records = table_parser.parse_workbook(workbook, uploaded_file.name, today, report) if use_table else None
         if records:
-            return records, ""
+            return records, "", report
         lines = []
         for sheet in workbook.worksheets:
             lines.append(f"[Sheet: {sheet.title}]")
@@ -293,16 +332,16 @@ def read_upload(uploaded_file):
                 cells = ["" if cell is None else str(cell) for cell in row]
                 if any(cell.strip() for cell in cells):
                     lines.append("\t".join(cells))
-        return None, "\n".join(lines)
+        return None, "\n".join(lines), report
 
     text = _decode_text(raw)
-    records = table_parser.parse_delimited_text(text, uploaded_file.name, today)
-    return (records, "") if records else (None, text)
+    records = table_parser.parse_delimited_text(text, uploaded_file.name, today, report) if use_table else None
+    return (records, "", report) if records else (None, text, report)
 
 
 def extract_text_from_upload(uploaded_file):
     """Plain-text dump of an upload (kept for callers that always want AI extraction)."""
-    return read_upload(uploaded_file)[1]
+    return read_upload(uploaded_file, use_table=False)[1]
 
 
 def apply_records(records, user, action):
@@ -549,6 +588,11 @@ def update_schedules_from_records(records, user, existing_schedules):
         for manual_field in ("anesthesiologist", "anesthesia_type"):
             if not data[manual_field]:
                 data[manual_field] = getattr(schedule, manual_field)
+        if schedule.room_locked:
+            # 현황판에서 직접 옮긴 방은 파일의 방으로 되돌리지 않음
+            data["room"] = schedule.room
+        elif data["room"] != schedule.room:
+            schedule.position = 0  # 파일에서 방이 바뀌면 예전 방의 순서 지정은 의미 없음
         if schedule.status_locked:
             # 현황판에서 수동으로 바꾼 상태(완료/진행중 등)는 파일 상태로 되돌리지 않음
             data["status"] = schedule.status
@@ -591,6 +635,14 @@ def update_schedule(request, schedule_id):
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
     if "status" in data and data["status"] not in MANUAL_STATUS:
         return JsonResponse({"status": "error", "message": "Invalid status"}, status=400)
+    if "move" in data and data["move"] not in ("up", "down"):
+        return JsonResponse({"status": "error", "message": "Invalid move"}, status=400)
+    new_room = None
+    if "room" in data:
+        new_room = re.sub(r"\s+", " ", str(data.get("room") or "")).strip()[:FIELD_MAX_LENGTHS["room"]]
+        if not new_room:
+            return JsonResponse({"status": "error", "message": "방 이름을 입력하세요."}, status=400)
+    old_room = schedule.room
 
     with transaction.atomic():
         fields = []
@@ -608,7 +660,16 @@ def update_schedule(request, schedule_id):
             schedule.save(update_fields=fields)
         if "status" in data:
             apply_manual_status(schedule, data["status"])
+        if "move" in data:
+            move_case_in_room(schedule, data["move"])
+        if new_room is not None and new_room != old_room:
+            move_case_to_room(schedule, new_room)
 
+    if new_room is not None and new_room != old_room:
+        # 방이 바뀌면 방 목록 자체가 달라질 수 있어 현황판 전체를 돌려줌
+        board = build_board(SurgerySchedule.objects.filter(user=request.user), _memo_map(request.user))
+        return JsonResponse({"status": "success", "board": board,
+                             "room": next(r for r in board["rooms"] if r["room"] == schedule.room)})
     room_cases = _room_schedules(request.user, schedule.room)
     board = build_board(room_cases, _memo_map(request.user, [c.id for c in room_cases]))
     return JsonResponse({"status": "success", "room": board["rooms"][0]})
