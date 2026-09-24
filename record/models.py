@@ -39,3 +39,19 @@ class AnesthesiaCase(models.Model):
 
     def __str__(self):
         return f"Case of {self.user} ({self.info.get('patient_name', '')})"
+
+
+class RecordTemplate(models.Model):
+    """사용자가 저장해 두는 마취기록 서식 (마취정보, 항목 구성, 기록 문구 등)."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='record_templates')
+    name = models.CharField(max_length=60)
+    # {"info": {...}, "rows": [...], "note": "..."}
+    data = models.JSONField(blank=True, default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        constraints = [models.UniqueConstraint(fields=['user', 'name'], name='unique_record_template_name')]
+
+    def __str__(self):
+        return f"{self.name} ({self.user})"

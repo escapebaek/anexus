@@ -16,6 +16,7 @@
       <button type="button" class="anr-btn anr-btn-primary" id="saveBtn" title="저장 (Ctrl+S)">
         <i class="fas fa-save"></i> 저장
       </button>
+      <button type="button" class="anr-btn" id="tplBtn" title="서식 저장/불러오기"><i class="fas fa-clone"></i> 서식</button>
       <button type="button" class="anr-btn" id="exportPdfBtn"><i class="fas fa-file-pdf"></i> PDF</button>
       <button type="button" class="anr-btn" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
       <form method="POST" action="{% url 'reset_all' %}" id="resetForm"
@@ -24,6 +25,26 @@
         <button type="submit" class="anr-btn anr-btn-danger"><i class="fas fa-trash-alt"></i> 새 케이스</button>
       </form>
     </div>
+  </div>
+
+  <!-- ===== 서식 (templates) ===== -->
+  <div class="anr-tpl" id="tplPanel" hidden>
+    <div class="tpl-save">
+      <input type="text" id="tplName" maxlength="60" placeholder="서식 이름 (예: TKRA spinal, Lap chole GA)" />
+      <button type="button" class="anr-btn anr-btn-primary anr-btn-sm" id="tplSaveBtn"><i class="fas fa-save"></i> 현재 내용을 서식으로 저장</button>
+    </div>
+    <p class="tpl-hint">
+      수술명 · Surgeon · 작성자 · 마취정보(type, ASA, detail) · 기록 간격 · 항목 구성 · 기록 문구가 저장됩니다.
+      환자정보, 시각, 이벤트, 바이탈 값은 저장되지 않습니다. 불러온 뒤 필요한 부분만 고쳐 쓰세요.
+    </p>
+    <div class="tpl-list" id="tplList"></div>
+  </div>
+
+  <!-- ===== 새 케이스 안내 ===== -->
+  <div class="anr-newcase" id="newCaseBar" hidden>
+    <span class="nc-text"><i class="fas fa-file-medical"></i> <b>새 케이스</b>입니다.</span>
+    <span class="nc-templates" id="newCaseTemplates"></span>
+    <button type="button" class="nc-close" id="newCaseClose" title="닫기"><i class="fas fa-times"></i></button>
   </div>
 
   <!-- ===== Patient bar ===== -->
@@ -81,14 +102,12 @@
             <label><span>Anesth type</span>
               <select data-info="anesth_type">
                 <option value=""></option>
-                <option>General (ETT)</option>
-                <option>General (LMA)</option>
-                <option>TIVA</option>
-                <option>Spinal</option>
-                <option>Epidural</option>
-                <option>CSE</option>
-                <option>Nerve block</option>
-                <option>MAC / Sedation</option>
+                <option value="General">General</option>
+                <option value="Spinal">Spinal</option>
+                <option value="Epidural">Epidural</option>
+                <option value="CSE">CSE</option>
+                <option value="Nerve block">Nerve block</option>
+                <option value="MAC">MAC (Monitored Anesthesia Care)</option>
               </select>
             </label>
             <label><span>ASA</span>
@@ -102,7 +121,7 @@
             </label>
           </div>
           <textarea data-info="anesth_detail" rows="2" class="info-detail"
-                    placeholder="Level, approach, airway, needle 등 (예: L3-4, US-guided paramedian)"></textarea>
+                    placeholder="Airway(ETT/LMA), TIVA 여부, level, approach, needle 등 (예: ETT 7.0 / L3-4 US-guided)"></textarea>
         </div>
       </section>
 
@@ -209,6 +228,11 @@
 
   // ===================== Configuration =====================
   const SAVE_URL = "{% url 'record_save_all' %}";
+  const TPL_SAVE_URL = "{% url 'record_template_save' %}";
+  const TPL_DELETE_URL = (id) => "{% url 'record_template_delete' 0 %}".replace('/0/', `/${id}/`);
+  // 서식에 저장되는 케이스 정보 키 (서버 TEMPLATE_INFO_KEYS 와 동일)
+  const TEMPLATE_INFO_KEYS = ['operation', 'surgeon', 'anesthesiologist', 'anesth_type', 'asa', 'asa_e', 'anesth_detail', 'interval'];
+  const ANESTH_TYPE_LABELS = { MAC: 'MAC (Monitored Anesthesia Care)' };
   const GROUPS = [
     { key: 'vital',  label: 'Vital' },
     { key: 'gas',    label: 'Gas/Vent' },
@@ -274,6 +298,7 @@
     note: '',
     columns: [],   // { key, id|null, ts:'YYYY-MM-DDTHH:MM', v:{rowName: string}, notes }
     deleted: [],
+    templates: [],
     dirty: false,
     saving: false,
   };
@@ -307,10 +332,36 @@
     d.setMinutes(d.getMinutes() + mins);
     return fmtLocal(d);
   }
-  function roundToInterval(d, mins) {
-    const ms = mins * 60000;
-    return new Date(Math.round(d.getTime() / ms) * ms);
+  // 'YYYY-MM-DDTHH:MM' 을 기록 간격 단위로 반올림 (예: 5분 간격이면 23:21 -> 23:20, 23:23 -> 23:25)
+  function roundTs(ts, mins) {
+    const d = parseLocal(ts);
+    if (!d) return ts;
+    mins = mins || interval();
+    const total = d.getHours() * 60 + d.getMinutes();
+    d.setHours(0, Math.round(total / mins) * mins, 0, 0);
+    return fmtLocal(d);
   }
+  const nowRounded = () => roundTs(fmtLocal(nowSeoul()));
+  // 날짜 없이 입력한 'HH:MM' 을 현재 시각에 가장 가까운 날짜(어제/오늘/내일)로
+  // (예: 00:10 에 23:20 을 입력하면 어제 23:20)
+  function tsNearNow(hhmm) {
+    const now = nowSeoul();
+    let best = '', bestDiff = Infinity;
+    [-1, 0, 1].forEach(offset => {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      const ts = `${dateOf(fmtLocal(d))}T${hhmm}`;
+      const diff = Math.abs(parseLocal(ts) - now);
+      if (diff < bestDiff) { bestDiff = diff; best = ts; }
+    });
+    return best;
+  }
+  function normAnesthType(v) {
+    v = String(v || '').trim();
+    if (/^(general|tiva)/i.test(v)) return 'General';
+    if (/^mac/i.test(v)) return 'MAC';
+    return v;
+  }
+  const anesthTypeLabel = (v) => ANESTH_TYPE_LABELS[v] || v;
   function durationText(startTs, endTs) {
     const a = parseLocal(startTs), b = parseLocal(endTs);
     if (!a || !b) return '-';
@@ -382,6 +433,9 @@
   // ===================== Load =====================
   function loadState(data) {
     state.info = Object.assign({}, data.case.info || {});
+    // 이전 버전 값 변환: General (ETT)/(LMA)/TIVA -> General, MAC / Sedation -> MAC
+    if (state.info.anesth_type) state.info.anesth_type = normAnesthType(state.info.anesth_type);
+    state.templates = data.templates || [];
     state.events = (data.case.events || []).slice();
     state.rows = (data.case.rows || []).map(r => ({ name: r.name, group: r.group || guessGroup(r.name), unit: r.unit || '' }));
     state.note = data.note || '';
@@ -440,11 +494,24 @@
   });
 
   // ===================== Patient / case info binding =====================
-  function bindInfoInputs() {
+  // state.info -> 입력칸 (서식 불러오기 후에도 사용)
+  function syncInfoInputs() {
     document.querySelectorAll('[data-info]').forEach(el => {
       const key = el.dataset.info;
       if (el.type === 'checkbox') el.checked = state.info[key] === 'Y';
       else el.value = state.info[key] || '';
+    });
+    document.querySelectorAll('[data-info-time]').forEach(el => { el.value = timeOf(state.info[el.dataset.infoTime]); });
+    $('intervalSelect').value = String(interval());
+    renderBmi();
+    renderDurations();
+    renderToolbarDate();
+  }
+
+  function bindInfoInputs() {
+    syncInfoInputs();
+    document.querySelectorAll('[data-info]').forEach(el => {
+      const key = el.dataset.info;
       el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'date' ? 'change' : 'input', () => {
         state.info[key] = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value;
         markDirty();
@@ -454,7 +521,6 @@
     });
     document.querySelectorAll('[data-info-time]').forEach(el => {
       const key = el.dataset.infoTime;
-      el.value = timeOf(state.info[key]);
       el.addEventListener('change', () => {
         const hhmm = normHHMM(el.value);
         if (hhmm === null) { alert('시간은 HH:MM (24시간) 형식으로 입력하세요. 예) 1505 또는 15:05'); el.value = timeOf(state.info[key]); return; }
@@ -474,8 +540,7 @@
       });
     });
     const sel = $('intervalSelect');
-    sel.value = String(interval());
-    sel.addEventListener('change', () => { state.info.interval = sel.value; markDirty(); });
+    sel.addEventListener('change', () => { state.info.interval = sel.value; markDirty(); renderGrid(); renderChart(); });
   }
 
   function renderBmi() {
@@ -507,8 +572,11 @@
   function addEvent(label, ts, infoKey) {
     label = (label || '').trim();
     if (!label || !ts) return;
+    // 직접 입력한 이벤트도 빠른 이벤트와 같은 이름이면 마취/수술 시각에 반영
+    if (!infoKey) infoKey = (QUICK_EVENTS.find(q => q.label.toLowerCase() === label.toLowerCase()) || {}).info;
     state.events.push({ time: ts, label });
     state.events.sort((a, b) => a.time.localeCompare(b.time));
+    ensureEventColumns();
     if (infoKey && !state.info[infoKey]) {
       state.info[infoKey] = ts;
       const el = document.querySelector(`[data-info-time="${infoKey}"]`);
@@ -517,7 +585,7 @@
     }
     markDirty();
     renderEvents();
-    renderGrid();
+    renderAll();
   }
   function renderEvents() {
     const ul = $('eventList');
@@ -536,19 +604,20 @@
         if (!hhmm) { e.target.value = timeOf(ev.time); return; }
         ev.time = tsFromTime(hhmm, dateOf(ev.time));
         state.events.sort((a, b) => a.time.localeCompare(b.time));
-        markDirty(); renderEvents(); renderGrid();
+        ensureEventColumns();
+        markDirty(); renderEvents(); renderAll();
       });
       li.querySelector('.ev-del').addEventListener('click', () => {
         state.events.splice(i, 1);
-        markDirty(); renderEvents(); renderGrid();
+        markDirty(); renderEvents(); renderAll();
       });
       ul.appendChild(li);
     });
   }
   function bindEventAdd() {
     const add = () => {
-      const t = normHHMM($('eventTime').value) || timeOf(fmtLocal(nowSeoul()));
-      addEvent($('eventLabel').value, tsFromTime(t, dateOf(fmtLocal(nowSeoul()))));
+      const t = normHHMM($('eventTime').value);
+      addEvent($('eventLabel').value, t ? tsNearNow(t) : fmtLocal(nowSeoul()));
       $('eventLabel').value = '';
       $('eventTime').value = '';
     };
@@ -556,21 +625,43 @@
     $('eventLabel').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
   }
 
-  // 이벤트가 어느 시간 컬럼에 표시될지 (그 컬럼 시각 이상 ~ 다음 컬럼 미만)
+  // 이벤트가 어느 시간 컬럼에 표시될지: 간격 단위로 반올림한 시각의 컬럼
+  // (예: 5분 간격에서 23:21 이벤트 -> 23:20 컬럼). 해당 컬럼이 없으면 가장 가까운 컬럼.
+  function eventColumnIndex(ev) {
+    const cols = state.columns;
+    if (!cols.length) return -1;
+    const target = roundTs(ev.time);
+    const exact = cols.findIndex(c => c.ts === target);
+    if (exact !== -1) return exact;
+    const t = parseLocal(ev.time);
+    let best = 0;
+    cols.forEach((c, i) => {
+      if (Math.abs(parseLocal(c.ts) - t) < Math.abs(parseLocal(cols[best].ts) - t)) best = i;
+    });
+    return best;
+  }
   function eventsByColumn() {
     const map = new Map();
-    const cols = state.columns;
     state.events.forEach(ev => {
-      let idx = -1;
-      for (let i = 0; i < cols.length; i++) {
-        if (cols[i].ts <= ev.time) idx = i; else break;
-      }
-      if (idx === -1 && cols.length) idx = 0;
+      const idx = eventColumnIndex(ev);
       if (idx === -1) return;
       if (!map.has(idx)) map.set(idx, []);
       map.get(idx).push(ev);
     });
     return map;
+  }
+  // 이벤트 시각(반올림)에 해당하는 컬럼이 없으면 빈 컬럼을 만들어 차트에 표시되게 함
+  function ensureEventColumns() {
+    let added = false;
+    state.events.forEach(ev => {
+      const ts = roundTs(ev.time);
+      if (parseLocal(ts) && !state.columns.some(c => c.ts === ts)) {
+        state.columns.push({ key: keySeq++, id: null, ts, v: {}, notes: '' });
+        added = true;
+      }
+    });
+    if (added) sortColumns();
+    return added;
   }
 
   // ===================== Note (기록) =====================
@@ -885,11 +976,34 @@
   // ===================== Chart =====================
   let chart = null;
   const CHART_COLORS = {
-    HR: '#34d399', SBP: '#f87171', DBP: '#fb923c', MBP: '#fbbf24', SpO2: '#60a5fa',
+    HR: '#2e8b6a', SBP: '#c0392b', DBP: '#e07b39', MBP: '#b7860b', SpO2: '#2b5876',
   };
-  const FALLBACK_COLORS = ['#a78bfa', '#f472b6', '#2dd4bf', '#facc15', '#818cf8', '#22d3ee'];
+  const FALLBACK_COLORS = ['#4e4376', '#8e5ea2', '#3c8dbc', '#16a085', '#7f8c8d', '#d35400'];
 
-  function chartConfig(light) {
+  // 이벤트가 있는 시간 컬럼에 세로 점선 + 라벨 표시
+  const eventLinePlugin = {
+    id: 'anrEvents',
+    afterDatasetsDraw(c) {
+      const evMap = eventsByColumn();
+      if (!evMap.size) return;
+      const { ctx, chartArea: { top, bottom }, scales: { x } } = c;
+      ctx.save();
+      ctx.font = '10px "Pretendard", "Malgun Gothic", sans-serif';
+      let n = 0;
+      [...evMap.entries()].sort((a, b) => a[0] - b[0]).forEach(([idx, evs]) => {
+        const px = x.getPixelForValue(idx);
+        ctx.strokeStyle = 'rgba(78, 67, 118, 0.55)';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(px, top); ctx.lineTo(px, bottom); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#4e4376';
+        ctx.fillText('▼ ' + evs.map(e => e.label).join(', '), px + 3, top + 10 + (n++ % 3) * 12);
+      });
+      ctx.restore();
+    },
+  };
+
+  function chartConfig(forPrint) {
     const labels = state.columns.map(c => timeOf(c.ts));
     const names = ['HR', 'SBP', 'DBP', 'MBP', 'SpO2',
       ...state.rows.filter(r => r.group === 'vital' || r.group === 'gas').map(r => r.name)];
@@ -904,13 +1018,14 @@
         borderDash: name === 'MBP' ? [4, 3] : undefined,
       };
     }).filter(Boolean);
-    const text = light ? '#334155' : '#cbd5e1';
-    const grid = light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+    const text = '#475569';
+    const grid = 'rgba(43, 88, 118, 0.09)';
     return {
       type: 'line',
       data: { labels, datasets },
+      plugins: [eventLinePlugin],
       options: {
-        responsive: !light, maintainAspectRatio: false, animation: false,
+        responsive: !forPrint, maintainAspectRatio: false, animation: false,
         interaction: { mode: 'index', intersect: false },
         plugins: { legend: { labels: { color: text, boxWidth: 10, font: { size: 11 } } } },
         scales: {
@@ -993,6 +1108,8 @@
       if (!res.ok || !data.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
       loadState(data.state);
       state.dirty = false;
+      $('newCaseBar').hidden = true;
+      renderTemplates();
       renderAll();
       renderEvents();
       updateSaveStatus('저장됨 ' + timeOf(fmtLocal(nowSeoul())), 'is-clean');
@@ -1050,7 +1167,7 @@
             <tr><th></th><th>Start</th><th>End</th><th>Time</th></tr>
             <tr><th>Anesth</th><td>${t('anesth_start')}</td><td>${t('anesth_end')}</td><td>${esc(durationText(I.anesth_start, I.anesth_end))}</td></tr>
             <tr><th>Surg</th><td>${t('surg_start')}</td><td>${t('surg_end')}</td><td>${esc(durationText(I.surg_start, I.surg_end))}</td></tr>
-            <tr><th>Type</th><td colspan="3">${esc(I.anesth_type || '-')}${I.asa ? ' · ASA ' + esc(I.asa) + (I.asa_e === 'Y' ? 'E' : '') : ''}</td></tr>
+            <tr><th>Type</th><td colspan="3">${esc(anesthTypeLabel(I.anesth_type) || '-')}${I.asa ? ' · ASA ' + esc(I.asa) + (I.asa_e === 'Y' ? 'E' : '') : ''}</td></tr>
             <tr><th>Detail</th><td colspan="3">${esc(I.anesth_detail || '-')}</td></tr>
           </table>
           <table class="ps-info"><tr><th>시각</th><th>이벤트</th></tr>
@@ -1116,14 +1233,140 @@
     }
   }
 
+  // ===================== 서식 (templates) =====================
+  async function postJSON(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await res.json().catch(() => ({ ok: false, error: `서버 오류 (${res.status})` }));
+    if (!res.ok || !data.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
+    return data;
+  }
+
+  function templateSummary(tpl) {
+    const d = tpl.data || {}, info = d.info || {};
+    return [
+      info.operation,
+      info.anesth_type && anesthTypeLabel(info.anesth_type),
+      (d.rows || []).length ? `항목 ${d.rows.length}개` : '',
+      (d.note || '').trim() ? '기록 문구' : '',
+    ].filter(Boolean).join(' · ') || '(빈 서식)';
+  }
+
+  function renderTemplates() {
+    const list = $('tplList');
+    if (!state.templates.length) {
+      list.innerHTML = '<span class="tpl-empty">저장된 서식이 없습니다. 자주 쓰는 케이스를 작성한 뒤 이름을 붙여 저장해 두세요.</span>';
+    } else {
+      list.innerHTML = state.templates.map(t => `
+        <div class="tpl-item">
+          <div class="tpl-meta">
+            <span class="tpl-name">${esc(t.name)}</span>
+            <span class="tpl-sum">${esc(templateSummary(t))}</span>
+          </div>
+          <button type="button" class="anr-btn anr-btn-sm anr-btn-primary" data-tpl-apply="${t.id}"><i class="fas fa-file-import"></i> 불러오기</button>
+          <button type="button" class="anr-btn anr-btn-sm" data-tpl-name="${t.id}" title="이 이름으로 현재 내용 덮어쓰기"><i class="fas fa-pen"></i></button>
+          <button type="button" class="t-btn t-del" data-tpl-del="${t.id}" title="서식 삭제"><i class="fas fa-trash-alt"></i></button>
+        </div>`).join('');
+    }
+    const nc = $('newCaseTemplates');
+    nc.innerHTML = state.templates.length
+      ? '<span class="nc-label">서식에서 시작:</span>' + state.templates.map(t => `<button type="button" class="ev-chip" data-tpl-apply="${t.id}">${esc(t.name)}</button>`).join('')
+      : '<span class="nc-label">상단 <b>서식</b> 버튼으로 자주 쓰는 기록을 저장해 두면 다음 케이스부터 불러올 수 있습니다.</span>';
+  }
+
+  function applyTemplate(id) {
+    const tpl = state.templates.find(t => t.id === id);
+    if (!tpl) return;
+    const d = tpl.data || {}, info = d.info || {};
+    const willOverwrite = TEMPLATE_INFO_KEYS.some(k => k !== 'interval' && state.info[k] && state.info[k] !== info[k])
+      || (state.note.trim() && state.note !== (d.note || ''));
+    if (willOverwrite && !confirm(`'${tpl.name}' 서식을 불러오면 현재 수술/마취정보와 기록 문구가 서식 내용으로 바뀝니다. 계속할까요?\n(환자정보, 이벤트, 바이탈 값은 그대로 유지됩니다)`)) return;
+    TEMPLATE_INFO_KEYS.forEach(k => {
+      if (k === 'interval') { if (info.interval) state.info.interval = info.interval; return; }
+      state.info[k] = k === 'anesth_type' ? normAnesthType(info[k]) : (info[k] || '');
+    });
+    // 항목은 기존 값 보존을 위해 추가만 함
+    (d.rows || []).forEach(r => {
+      const existing = state.rows.find(x => x.name.toLowerCase() === String(r.name).toLowerCase());
+      if (existing) { existing.group = r.group || existing.group; existing.unit = r.unit ?? existing.unit; }
+      else addRowDef(String(r.name), r.group, r.unit || '');
+    });
+    state.note = d.note || '';
+    $('noteInput').value = state.note;
+    syncInfoInputs();
+    markDirty();
+    renderAll();
+    $('newCaseBar').hidden = true;
+    $('tplPanel').hidden = true;
+    $('tplBtn').classList.remove('is-active');
+    updateSaveStatus(`● '${tpl.name}' 서식 적용됨 — 저장 안 됨`, 'is-dirty');
+  }
+
+  async function saveTemplate(name) {
+    name = (name || '').trim();
+    if (!name) { alert('서식 이름을 입력하세요.'); $('tplName').focus(); return; }
+    if (state.templates.some(t => t.name === name) && !confirm(`'${name}' 서식을 현재 내용으로 덮어쓸까요?`)) return;
+    const info = {};
+    TEMPLATE_INFO_KEYS.forEach(k => { if (state.info[k]) info[k] = state.info[k]; });
+    try {
+      const data = await postJSON(TPL_SAVE_URL, { name, data: { info, rows: state.rows, note: state.note } });
+      state.templates = data.templates;
+      $('tplName').value = '';
+      renderTemplates();
+    } catch (err) {
+      alert('서식 저장에 실패했습니다.\n\n' + err.message);
+    }
+  }
+
+  async function deleteTemplate(id) {
+    const tpl = state.templates.find(t => t.id === id);
+    if (!tpl || !confirm(`'${tpl.name}' 서식을 삭제할까요?`)) return;
+    try {
+      const data = await postJSON(TPL_DELETE_URL(id));
+      state.templates = data.templates;
+      renderTemplates();
+    } catch (err) {
+      alert('서식 삭제에 실패했습니다.\n\n' + err.message);
+    }
+  }
+
+  function bindTemplates() {
+    $('tplBtn').addEventListener('click', () => {
+      $('tplPanel').hidden = !$('tplPanel').hidden;
+      $('tplBtn').classList.toggle('is-active', !$('tplPanel').hidden);
+      if (!$('tplPanel').hidden) $('tplName').focus();
+    });
+    $('tplSaveBtn').addEventListener('click', () => saveTemplate($('tplName').value));
+    $('tplName').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveTemplate($('tplName').value); } });
+    $('anr').addEventListener('click', (e) => {
+      const apply = e.target.closest('[data-tpl-apply]');
+      if (apply) return applyTemplate(+apply.dataset.tplApply);
+      const del = e.target.closest('[data-tpl-del]');
+      if (del) return deleteTemplate(+del.dataset.tplDel);
+      const nm = e.target.closest('[data-tpl-name]');
+      if (nm) {
+        const tpl = state.templates.find(t => t.id === +nm.dataset.tplName);
+        if (tpl) saveTemplate(tpl.name);
+      }
+    });
+    $('newCaseClose').addEventListener('click', () => { $('newCaseBar').hidden = true; });
+  }
+
   // ===================== Toolbar =====================
   function bindToolbar() {
     $('addNowBtn').addEventListener('click', () => {
-      addColumnAt(fmtLocal(roundToInterval(nowSeoul(), interval())));
+      addColumnAt(nowRounded());
     });
     $('addNextBtn').addEventListener('click', () => {
       const last = state.columns[state.columns.length - 1];
-      addColumnAt(last ? addMinutes(last.ts, interval()) : fmtLocal(roundToInterval(nowSeoul(), interval())));
+      addColumnAt(last ? addMinutes(last.ts, interval()) : nowRounded());
     });
     $('chartBtn').addEventListener('click', () => {
       $('chartWrap').hidden = !$('chartWrap').hidden;
@@ -1153,19 +1396,27 @@
   // ===================== Init =====================
   loadState(initial);
   const migratedLegacy = state.rows.length !== (initial.case.rows || []).length;
+  // 작성 중인 기록이 없으면 새 케이스 상태로 시작 (수술일 = 오늘)
+  if (initial.is_new && !state.info.op_date) state.info.op_date = initial.today;
+  // 이전에 기록한 이벤트도 반올림된 시간 컬럼에 표시되도록
+  const addedEventCols = ensureEventColumns();
   bindInfoInputs();
   bindNote();
   bindEventAdd();
   bindGrid();
   bindRowsManager();
   bindToolbar();
+  bindTemplates();
+  renderTemplates();
+  $('newCaseBar').hidden = !initial.is_new;
   renderQuickEvents();
   renderRowsManager();
   renderEvents();
   renderBmi();
   renderDurations();
   renderAll();
-  if (migratedLegacy) markDirty(); // 이전 버전 항목을 서버로 옮기기 위해 저장 유도
+  if (migratedLegacy || addedEventCols) markDirty(); // 이전 버전 항목/이벤트 컬럼을 서버에 반영하도록 저장 유도
+  else if (initial.is_new) updateSaveStatus('새 케이스', 'is-clean');
   requestAnimationFrame(() => { $('gridWrap').scrollLeft = $('gridWrap').scrollWidth; });
 })();
 </script>

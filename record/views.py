@@ -9,11 +9,14 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import user_is_approved
-from .models import AnesthesiaRecord, FreeTextNote, AnesthesiaCase
+from .models import AnesthesiaRecord, FreeTextNote, AnesthesiaCase, RecordTemplate
 
 # 기본 행(HR/SBP/DBP/SpO2)은 모델 컬럼, 나머지는 extra_vitals(JSON)에 저장
 BASE_FIELDS = ('hr', 'sbp', 'dbp', 'spo2')
 ROW_GROUPS = ('vital', 'gas', 'fluid', 'output', 'drug', 'etc')
+# 서식에 저장되는 케이스 정보 (환자 식별정보·시각은 제외)
+TEMPLATE_INFO_KEYS = ('operation', 'surgeon', 'anesthesiologist', 'anesth_type', 'asa', 'asa_e', 'anesth_detail', 'interval')
+MAX_TEMPLATES = 50
 
 
 def _record_to_dict(record):
@@ -34,14 +37,30 @@ def _case_to_dict(case):
     return {'info': case.info or {}, 'events': case.events or [], 'rows': case.rows or []}
 
 
+def _template_to_dict(tpl):
+    return {'id': tpl.id, 'name': tpl.name, 'data': tpl.data or {}}
+
+
+def _templates(user):
+    return [_template_to_dict(t) for t in RecordTemplate.objects.filter(user=user)]
+
+
 def _page_state(user):
-    case, _ = AnesthesiaCase.objects.get_or_create(user=user)
+    case = AnesthesiaCase.objects.filter(user=user).first()
     note = FreeTextNote.objects.filter(user=user).first()
-    records = AnesthesiaRecord.objects.filter(user=user).order_by('timestamp', 'id')
+    records = list(AnesthesiaRecord.objects.filter(user=user).order_by('timestamp', 'id'))
+    case_dict = _case_to_dict(case) if case else {'info': {}, 'events': [], 'rows': []}
+    note_text = note.content if note else ''
+    # 작성 중인 기록이 하나도 없으면 새 케이스로 시작
+    is_new = not (records or note_text.strip() or case_dict['events']
+                  or any(str(v).strip() for v in case_dict['info'].values()))
     return {
-        'case': _case_to_dict(case),
-        'note': note.content if note else '',
+        'case': case_dict,
+        'note': note_text,
         'records': [_record_to_dict(r) for r in records],
+        'is_new': is_new,
+        'today': timezone.localdate().isoformat(),
+        'templates': _templates(user),
     }
 
 
@@ -191,6 +210,47 @@ def save_all(request):
             record.save()
 
     return JsonResponse({'ok': True, 'state': _page_state(user)})
+
+
+def _clean_template_data(data):
+    data = data if isinstance(data, dict) else {}
+    info = _clean_info(data.get('info', {}))
+    return {
+        'info': {k: info[k] for k in TEMPLATE_INFO_KEYS if info.get(k)},
+        'rows': _clean_rows(data.get('rows', [])),
+        'note': str(data.get('note') or '')[:10000],
+    }
+
+
+@login_required
+@user_is_approved
+@require_POST
+def save_template(request):
+    """현재 내용을 서식으로 저장. 같은 이름이 있으면 덮어씀."""
+    try:
+        payload = json.loads(request.body or b'{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'error': '잘못된 요청 형식입니다.'}, status=400)
+    name = str(payload.get('name') or '').strip()[:60]
+    if not name:
+        return JsonResponse({'ok': False, 'error': '서식 이름을 입력하세요.'}, status=400)
+    user = request.user
+    tpl = RecordTemplate.objects.filter(user=user, name=name).first()
+    if tpl is None and RecordTemplate.objects.filter(user=user).count() >= MAX_TEMPLATES:
+        return JsonResponse({'ok': False, 'error': f'서식은 최대 {MAX_TEMPLATES}개까지 저장할 수 있습니다.'}, status=400)
+    tpl = tpl or RecordTemplate(user=user, name=name)
+    tpl.data = _clean_template_data(payload.get('data'))
+    tpl.save()
+    return JsonResponse({'ok': True, 'id': tpl.id, 'templates': _templates(user)})
+
+
+@login_required
+@user_is_approved
+@require_POST
+def delete_template(request, template_id):
+    tpl = get_object_or_404(RecordTemplate, pk=template_id, user=request.user)
+    tpl.delete()
+    return JsonResponse({'ok': True, 'templates': _templates(request.user)})
 
 
 @login_required
