@@ -42,6 +42,9 @@
   z-index: 2000;
   margin: 0;
   border-radius: 0;
+  /* 전체화면에서도 이벤트/기록 등 아래쪽까지 스크롤 가능하게 */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 body.anr-lock { overflow: hidden; }
 
@@ -193,7 +196,6 @@ body.anr-lock { overflow: hidden; }
   flex: 1;
   min-height: 0;
 }
-.anr.is-fullscreen .anr-body { overflow: hidden; }
 
 .anr-left {
   display: flex;
@@ -201,7 +203,6 @@ body.anr-lock { overflow: hidden; }
   gap: 8px;
   min-width: 0;
 }
-.anr.is-fullscreen .anr-left { overflow-y: auto; }
 
 .anr-caseinfo {
   display: grid;
@@ -394,7 +395,8 @@ body.anr-lock { overflow: hidden; }
   border: 1px solid var(--anr-border-soft);
   border-radius: var(--anr-radius);
 }
-.anr.is-fullscreen .grid-wrap { max-height: none; }
+.anr.is-fullscreen .anr-body { flex: 1 0 auto; }
+.anr.is-fullscreen .grid-wrap { max-height: calc(100vh - 150px); }
 
 .rec-grid {
   border-collapse: separate;
