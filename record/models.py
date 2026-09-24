@@ -24,3 +24,18 @@ class FreeTextNote(models.Model):
     
     def __str__(self):
         return self.content[:50]
+
+
+class AnesthesiaCase(models.Model):
+    """사용자별 현재 마취 케이스 정보 (환자정보, 마취정보, 이벤트, 행 구성)."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='anesthesia_case')
+    # 환자/수술 정보: patient_name, sex, age, height, weight, blood_type, operation, surgeon, anesthesiologist, ...
+    info = models.JSONField(blank=True, default=dict)
+    # 이벤트 목록: [{"time": "YYYY-MM-DDTHH:MM", "label": "Induction"}, ...]
+    events = models.JSONField(blank=True, default=list)
+    # 추가 행 구성: [{"name": "EtCO2", "group": "gas", "unit": "mmHg"}, ...]
+    rows = models.JSONField(blank=True, default=list)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Case of {self.user} ({self.info.get('patient_name', '')})"

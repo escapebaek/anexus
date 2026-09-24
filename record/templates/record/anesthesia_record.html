@@ -1,901 +1,1172 @@
 {% extends 'base.html' %}
-{% load static %} 
+{% load static %}
+{% block title %}마취기록 · ANExuS{% endblock %}
 {% block custom_css %}
   <link href="{% static 'css/pages/anesthesia_record.css' %}" rel="stylesheet" />
 {% endblock %}
 {% block page_content %}
-<div class="anesthesia-record">
-  <div class="page-header">
-    <h2><i class="fas fa-heartbeat"></i> Anesthesia Record</h2>
-    <div class="header-actions">
-      <button id="exportPdfBtn" class="btn btn-secondary">
-        <i class="fas fa-file-pdf"></i> Export PDF
+<div class="anr" id="anr">
+  {% csrf_token %}
+
+  <!-- ===== Title bar ===== -->
+  <div class="anr-titlebar">
+    <span class="anr-title"><i class="fas fa-heartbeat"></i> 마취기록</span>
+    <div class="anr-title-actions">
+      <span class="anr-save-status" id="saveStatus">저장됨</span>
+      <button type="button" class="anr-btn anr-btn-primary" id="saveBtn" title="저장 (Ctrl+S)">
+        <i class="fas fa-save"></i> 저장
       </button>
-      <form
-        method="POST"
-        action="{% url 'reset_all' %}"
-        onsubmit="return confirm('Are you sure you want to reset ALL records?');"
-        style="display: inline-block"
-      >
+      <button type="button" class="anr-btn" id="exportPdfBtn"><i class="fas fa-file-pdf"></i> PDF</button>
+      <button type="button" class="anr-btn" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
+      <form method="POST" action="{% url 'reset_all' %}" id="resetForm"
+            onsubmit="return confirm('모든 기록(환자정보, 이벤트, 바이탈, 기록)을 삭제하고 새 케이스를 시작할까요?');">
         {% csrf_token %}
-        <button type="submit" class="btn btn-danger">
-          <i class="fas fa-trash-alt"></i> Reset All
-        </button>
+        <button type="submit" class="anr-btn anr-btn-danger"><i class="fas fa-trash-alt"></i> 새 케이스</button>
       </form>
     </div>
   </div>
 
-  <!-- Collapsible Chart Section -->
-  <div class="chart-section card collapsible collapsed">
-    <div class="section-header" onclick="toggleChart()">
-      <h3><i class="fas fa-chart-line"></i> Vitals Chart</h3>
-      <button type="button" class="btn-collapse">
-        <i class="fas fa-chevron-down" id="chartToggleIcon"></i>
-      </button>
-    </div>
-    <div class="chart-content">
-      <div class="chart-container">
+  <!-- ===== Patient bar ===== -->
+  <div class="anr-patientbar">
+    <label class="pb-field pb-w-id"><span>환자번호</span><input type="text" data-info="patient_id" placeholder="ID" /></label>
+    <label class="pb-field pb-w-name"><span>이름</span><input type="text" data-info="patient_name" /></label>
+    <label class="pb-field pb-w-xs"><span>성별</span>
+      <select data-info="sex"><option value=""></option><option value="M">M</option><option value="F">F</option></select>
+    </label>
+    <label class="pb-field pb-w-xs"><span>나이</span><input type="text" inputmode="numeric" data-info="age" /></label>
+    <label class="pb-field pb-w-xs"><span>키(cm)</span><input type="text" inputmode="decimal" data-info="height" /></label>
+    <label class="pb-field pb-w-xs"><span>체중(kg)</span><input type="text" inputmode="decimal" data-info="weight" /></label>
+    <label class="pb-field pb-w-xs pb-blood"><span>혈액형</span>
+      <select data-info="blood_type">
+        <option value=""></option>
+        <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+        <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+      </select>
+    </label>
+    <span class="pb-bmi" id="bmiDisplay"></span>
+  </div>
+
+  <div class="anr-body">
+    <!-- ================= LEFT PANEL ================= -->
+    <aside class="anr-left">
+      <div class="anr-caseinfo">
+        <label class="ci-field ci-op"><span>수술명</span><input type="text" data-info="operation" placeholder="예) TKRA (Lt)" /></label>
+        <label class="ci-field"><span>수술일</span><input type="date" data-info="op_date" /></label>
+        <label class="ci-field"><span>Surgeon</span><input type="text" data-info="surgeon" /></label>
+        <label class="ci-field"><span>작성자</span><input type="text" data-info="anesthesiologist" /></label>
+      </div>
+
+      <!-- 마취정보 -->
+      <section class="anr-panel">
+        <h4 class="anr-panel-head head-orange">마취정보</h4>
+        <div class="anr-panel-body">
+          <table class="info-times">
+            <thead><tr><th></th><th>Start</th><th>End</th><th>Time</th></tr></thead>
+            <tbody>
+              <tr>
+                <th>Anesth</th>
+                <td><div class="dt-cell"><input type="text" class="hhmm" inputmode="numeric" maxlength="5" placeholder="--:--" autocomplete="off" data-info-time="anesth_start" /><button type="button" class="now-btn" data-now="anesth_start" title="현재 시각">now</button></div></td>
+                <td><div class="dt-cell"><input type="text" class="hhmm" inputmode="numeric" maxlength="5" placeholder="--:--" autocomplete="off" data-info-time="anesth_end" /><button type="button" class="now-btn" data-now="anesth_end" title="현재 시각">now</button></div></td>
+                <td class="dur" id="anesthDuration">-</td>
+              </tr>
+              <tr>
+                <th>Surg</th>
+                <td><div class="dt-cell"><input type="text" class="hhmm" inputmode="numeric" maxlength="5" placeholder="--:--" autocomplete="off" data-info-time="surg_start" /><button type="button" class="now-btn" data-now="surg_start" title="현재 시각">now</button></div></td>
+                <td><div class="dt-cell"><input type="text" class="hhmm" inputmode="numeric" maxlength="5" placeholder="--:--" autocomplete="off" data-info-time="surg_end" /><button type="button" class="now-btn" data-now="surg_end" title="현재 시각">now</button></div></td>
+                <td class="dur" id="surgDuration">-</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="info-grid">
+            <label><span>Anesth type</span>
+              <select data-info="anesth_type">
+                <option value=""></option>
+                <option>General (ETT)</option>
+                <option>General (LMA)</option>
+                <option>TIVA</option>
+                <option>Spinal</option>
+                <option>Epidural</option>
+                <option>CSE</option>
+                <option>Nerve block</option>
+                <option>MAC / Sedation</option>
+              </select>
+            </label>
+            <label><span>ASA</span>
+              <span class="asa-wrap">
+                <select data-info="asa">
+                  <option value=""></option><option>1</option><option>2</option><option>3</option>
+                  <option>4</option><option>5</option><option>6</option>
+                </select>
+                <label class="asa-e"><input type="checkbox" data-info="asa_e" /> E</label>
+              </span>
+            </label>
+          </div>
+          <textarea data-info="anesth_detail" rows="2" class="info-detail"
+                    placeholder="Level, approach, airway, needle 등 (예: L3-4, US-guided paramedian)"></textarea>
+        </div>
+      </section>
+
+      <!-- 이벤트 -->
+      <section class="anr-panel">
+        <h4 class="anr-panel-head head-green">이벤트</h4>
+        <div class="anr-panel-body">
+          <div class="event-quick" id="eventQuick"></div>
+          <div class="event-add">
+            <input type="text" class="hhmm" inputmode="numeric" maxlength="5" placeholder="--:--" autocomplete="off" id="eventTime" title="비우면 현재 시각" />
+            <input type="text" id="eventLabel" placeholder="이벤트 입력 후 Enter" />
+            <button type="button" class="anr-btn anr-btn-sm" id="eventAddBtn"><i class="fas fa-plus"></i></button>
+          </div>
+          <ul class="event-list" id="eventList"></ul>
+        </div>
+      </section>
+
+      <!-- 기록 -->
+      <section class="anr-panel anr-panel-grow">
+        <h4 class="anr-panel-head head-dark">
+          기록
+          <button type="button" class="anr-btn anr-btn-sm head-btn" id="insertTimeBtn" title="커서 위치에 현재 시각 삽입">
+            <i class="far fa-clock"></i> 시각 삽입
+          </button>
+        </h4>
+        <div class="anr-panel-body">
+          <textarea id="noteInput" class="note-input" rows="10"
+                    placeholder="15:00&#10;Time out done&#10;Monitoring start: ECG, SpO2, NIBP ..."></textarea>
+        </div>
+      </section>
+
+      <!-- TOTALS -->
+      <section class="anr-panel">
+        <h4 class="anr-panel-head head-plain">TOTALS</h4>
+        <div class="anr-panel-body p-0">
+          <table class="totals-table" id="totalsTable"></table>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ================= RIGHT PANEL ================= -->
+    <main class="anr-right">
+      <div class="anr-toolbar">
+        <span class="tb-clock" id="liveClock">--:--:--</span>
+        <label class="tb-field"><span>간격</span>
+          <select id="intervalSelect">
+            <option value="1">1분</option><option value="2">2분</option><option value="3">3분</option>
+            <option value="5">5분</option><option value="10">10분</option><option value="15">15분</option>
+            <option value="30">30분</option>
+          </select>
+        </label>
+        <button type="button" class="anr-btn anr-btn-accent" id="addNowBtn" title="현재 시각(간격 단위 반올림)으로 컬럼 추가">
+          <i class="fas fa-clock"></i> 현재시각
+        </button>
+        <button type="button" class="anr-btn" id="addNextBtn" title="마지막 컬럼 + 간격으로 컬럼 추가">
+          <i class="fas fa-plus"></i> 다음 간격
+        </button>
+        <span class="tb-sep"></span>
+        <button type="button" class="anr-btn" id="rowsBtn"><i class="fas fa-list"></i> 항목 관리</button>
+        <button type="button" class="anr-btn" id="chartBtn"><i class="fas fa-chart-line"></i> 차트</button>
+        <span class="tb-date" id="tbDate"></span>
+      </div>
+
+      <!-- 항목(행) 관리 -->
+      <div class="rows-manager" id="rowsManager" hidden>
+        <div class="rm-add">
+          <input type="text" id="newRowName" list="rowPresets" placeholder="항목명 (예: EtCO2, BT, UO, EBL, Crystalloid)" />
+          <datalist id="rowPresets"></datalist>
+          <select id="newRowGroup"></select>
+          <input type="text" id="newRowUnit" placeholder="단위" />
+          <button type="button" class="anr-btn anr-btn-primary anr-btn-sm" id="addRowBtn"><i class="fas fa-plus"></i> 추가</button>
+        </div>
+        <div class="rm-presets" id="rowPresetChips"></div>
+        <div class="rm-list" id="rowList"></div>
+      </div>
+
+      <div class="chart-wrap" id="chartWrap" hidden>
         <canvas id="vitalsChart"></canvas>
       </div>
-    </div>
-  </div>
 
-  <!-- Transposed Spreadsheet Section (Rows = Vitals, Columns = Time) -->
-  <div class="spreadsheet-section card">
-    <div class="section-header">
-      <h3><i class="fas fa-table"></i> Vital Signs Record</h3>
-    </div>
-    
-    <!-- Toolbar with Patient ID and Actions -->
-    <div class="spreadsheet-toolbar">
-      <div class="toolbar-left">
-        <div class="patient-id-group">
-          <label for="patientIdInput"><i class="fas fa-user"></i> Patient ID</label>
-          <input type="text" id="patientIdInput" placeholder="Enter Patient ID" />
+      <div class="grid-wrap" id="gridWrap">
+        <table class="rec-grid" id="recGrid"></table>
+        <div class="grid-empty" id="gridEmpty">
+          <p>아직 기록된 시간 컬럼이 없습니다.</p>
+          <p><b>현재시각</b> 버튼으로 첫 컬럼을 추가하세요. 셀에서 <kbd>Enter</kbd>/<kbd>↑</kbd><kbd>↓</kbd>로 행 이동, <kbd>Tab</kbd>으로 다음 시간, <kbd>Ctrl</kbd>+<kbd>S</kbd>로 저장합니다.</p>
         </div>
       </div>
-      <div class="toolbar-right">
-        <button type="button" class="btn btn-primary" onclick="addNewTimeColumn()">
-          <i class="fas fa-plus"></i> Add Time Entry
-        </button>
-        <button type="button" class="btn btn-secondary" onclick="toggleExtraVitalsManager()">
-          <i class="fas fa-columns"></i> Manage Rows
-        </button>
-      </div>
-    </div>
-    
-    <!-- Extra Vitals Row Manager -->
-    <div id="extraVitalsManager" class="extra-vitals-manager-panel" style="display: none;">
-      <div class="manager-content">
-        <label>Add Extra Vital Row:</label>
-        <div class="add-column-row">
-          <input type="text" id="newRowName" placeholder="Vital Name (e.g., EtCO2, BIS, MAC)" />
-          <button type="button" class="btn btn-primary btn-sm" onclick="addExtraRow()">
-            <i class="fas fa-plus"></i> Add Row
-          </button>
-        </div>
-        <div id="existingRows" class="existing-columns"></div>
-      </div>
-    </div>
-
-    <div class="spreadsheet-wrapper">
-      <div class="spreadsheet-container" id="spreadsheetContainer">
-        <table class="spreadsheet-table" id="spreadsheetTable">
-          <thead>
-            <tr id="headerRow">
-              <th class="vital-label-header">Vital Signs</th>
-              <!-- Time columns will be added dynamically -->
-            </tr>
-          </thead>
-          <tbody id="spreadsheetBody">
-            <!-- Rows will be generated by JavaScript -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-    
-    <div class="spreadsheet-footer">
-      <button type="button" class="btn btn-primary btn-lg" onclick="saveAllRecords()">
-        <i class="fas fa-save"></i> Save All Records
-      </button>
-    </div>
-  </div>
-
-  <!-- Free Text Section -->
-  <div class="free-text-section card">
-    <div class="section-header">
-      <h3><i class="fas fa-sticky-note"></i> Free Text Note</h3>
-    </div>
-    <form method="POST" id="freeTextForm">
-      {% csrf_token %}
-      <div class="free-text-container">
-        {{ form_free.content }}
-      </div>
-      <div class="button-container">
-        <button type="submit" name="save_free_text" class="btn btn-primary">
-          <i class="fas fa-save"></i> Save Note
-        </button>
-      </div>
-    </form>
-  </div>
-
-  <!-- Hidden form for saving records -->
-  <form method="POST" id="recordForm" style="display: none;">
-    {% csrf_token %}
-    <input type="hidden" id="record_id" name="record_id" value="" />
-    <input type="hidden" id="form_patient_id" name="patient_id" value="" />
-    <input type="hidden" id="form_timestamp" name="timestamp" value="" />
-    <input type="hidden" id="form_hr" name="hr" value="" />
-    <input type="hidden" id="form_sbp" name="sbp" value="" />
-    <input type="hidden" id="form_dbp" name="dbp" value="" />
-    <input type="hidden" id="form_spo2" name="spo2" value="" />
-    <input type="hidden" id="form_extra_vitals_json" name="extra_vitals_json" value="{}" />
-    <input type="hidden" id="form_additional_notes" name="additional_notes" value="" />
-  </form>
-
-  <!-- Hidden div for PDF export -->
-  <div id="pdfContent" style="display: none">
-    <div class="pdf-container">
-      <h2>Anesthesia Records</h2>
-      <div class="pdf-chart-section">
-        <h3>Vitals Chart</h3>
-        <div id="pdfChartContainer"></div>
-      </div>
-      <div class="pdf-records-section">
-        <h3>Records Table</h3>
-        <div id="recordsTableClone"></div>
-      </div>
-      <div class="pdf-free-text">
-        <h3>Free Text Note</h3>
-        <div id="freeTextContent"></div>
-      </div>
-    </div>
+    </main>
   </div>
 </div>
 
+<!-- Off-screen print sheet for PDF export -->
+<div id="printSheet" class="print-sheet" aria-hidden="true"></div>
+
+{{ state|json_script:"record-state" }}
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <script>
-  // ===== Configuration =====
-  const baseVitals = ['HR', 'SBP', 'DBP', 'SpO2'];
-  let extraVitals = [];
-  let timeColumns = []; // Array of { id: number, timestamp: string, isNew: boolean }
-  let nextNewId = -1; // Negative IDs for new columns
-  
-  // ===== Load existing records =====
-  const existingRecords = [
-    {% for record in records %}
-    {
-      id: {{ record.id }},
-      patient_id: "{{ record.patient_id|escapejs }}",
-      timestamp: "{{ record.timestamp|date:'Y-m-d\\TH:i' }}",
-      time_display: "{{ record.timestamp|date:'H:i' }}",
-      hr: {{ record.hr|default:"null" }},
-      sbp: {{ record.sbp|default:"null" }},
-      dbp: {{ record.dbp|default:"null" }},
-      spo2: {{ record.spo2|default:"null" }},
-      extra_vitals: {{ record.extra_vitals|default:"{}"|safe }},
-      additional_notes: "{{ record.additional_notes|escapejs }}"
-    },
-    {% endfor %}
+(function () {
+  'use strict';
+
+  // ===================== Configuration =====================
+  const SAVE_URL = "{% url 'record_save_all' %}";
+  const GROUPS = [
+    { key: 'vital',  label: 'Vital' },
+    { key: 'gas',    label: 'Gas/Vent' },
+    { key: 'fluid',  label: '수액/수혈' },
+    { key: 'output', label: 'Output' },
+    { key: 'drug',   label: '약물' },
+    { key: 'etc',    label: '기타' },
+  ];
+  // 모델 컬럼에 저장되는 기본 행 + 계산 행(MBP)
+  const BASE_ROWS = [
+    { name: 'HR',   field: 'hr',   group: 'vital', unit: 'bpm',  range: [50, 120] },
+    { name: 'SBP',  field: 'sbp',  group: 'vital', unit: 'mmHg', range: [90, 180] },
+    { name: 'DBP',  field: 'dbp',  group: 'vital', unit: 'mmHg', range: [40, 110] },
+    { name: 'MBP',  calc: true,    group: 'vital', unit: 'mmHg', range: [65, 110] },
+    { name: 'SpO2', field: 'spo2', group: 'vital', unit: '%',    range: [94, 100] },
+  ];
+  const PRESETS = [
+    { name: 'BT',          group: 'vital',  unit: '℃',     range: [35.5, 38] },
+    { name: 'BIS',         group: 'vital',  unit: '',      range: [40, 60] },
+    { name: 'CVP',         group: 'vital',  unit: 'mmHg' },
+    { name: 'EtCO2',       group: 'gas',    unit: 'mmHg',  range: [30, 45] },
+    { name: 'FiO2',        group: 'gas',    unit: '%' },
+    { name: 'O2',          group: 'gas',    unit: 'L/min' },
+    { name: 'Air',         group: 'gas',    unit: 'L/min' },
+    { name: 'Sevo',        group: 'gas',    unit: '%' },
+    { name: 'Des',         group: 'gas',    unit: '%' },
+    { name: 'MAC',         group: 'gas',    unit: '' },
+    { name: 'TV',          group: 'gas',    unit: 'mL' },
+    { name: 'RR',          group: 'gas',    unit: '/min' },
+    { name: 'PIP',         group: 'gas',    unit: 'cmH2O' },
+    { name: 'PEEP',        group: 'gas',    unit: 'cmH2O' },
+    { name: 'Crystalloid', group: 'fluid',  unit: 'mL' },
+    { name: 'Colloid',     group: 'fluid',  unit: 'mL' },
+    { name: 'pRBC',        group: 'fluid',  unit: 'mL' },
+    { name: 'FFP',         group: 'fluid',  unit: 'mL' },
+    { name: 'UO',          group: 'output', unit: 'mL' },
+    { name: 'EBL',         group: 'output', unit: 'mL' },
+    { name: 'Propofol',    group: 'drug',   unit: 'mg' },
+    { name: 'Remifentanil',group: 'drug',   unit: 'mcg/kg/min' },
+    { name: 'Rocuronium',  group: 'drug',   unit: 'mg' },
+    { name: 'Ephedrine',   group: 'drug',   unit: 'mg' },
+    { name: 'Phenylephrine', group: 'drug', unit: 'mcg' },
+  ];
+  const QUICK_EVENTS = [
+    { label: 'Anesth start', info: 'anesth_start' },
+    { label: 'Induction' },
+    { label: 'Intubation' },
+    { label: 'Draping' },
+    { label: 'Incision', info: 'surg_start' },
+    { label: 'Tourniquet on' },
+    { label: 'Tourniquet off' },
+    { label: 'Op end', info: 'surg_end' },
+    { label: 'Extubation' },
+    { label: 'Anesth end', info: 'anesth_end' },
   ];
 
-  // ===== Helper: Get Seoul Time =====
-  function getSeoulTime() {
-    // 한국 표준시 (UTC+9)
+  // ===================== State =====================
+  const initial = JSON.parse(document.getElementById('record-state').textContent);
+  const state = {
+    info: {},
+    events: [],
+    rows: [],
+    note: '',
+    columns: [],   // { key, id|null, ts:'YYYY-MM-DDTHH:MM', v:{rowName: string}, notes }
+    deleted: [],
+    dirty: false,
+    saving: false,
+  };
+  let keySeq = 1;
+
+  // ===================== Helpers =====================
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2, '0');
+
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // 브라우저 시간대와 무관하게 Asia/Seoul 기준 "벽시계" Date 반환
+  function nowSeoul() {
     const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const seoulTime = new Date(utc + (9 * 60 * 60 * 1000));
-    return seoulTime;
+    return new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 9 * 3600000);
+  }
+  function fmtLocal(d) {
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function parseLocal(s) {
+    // 'YYYY-MM-DDTHH:MM' -> Date (로컬 필드 기준, 시간대 변환 없음)
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s || '');
+    return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : null;
+  }
+  const timeOf = (ts) => (ts || '').slice(11, 16);
+  const dateOf = (ts) => (ts || '').slice(0, 10);
+  function addMinutes(ts, mins) {
+    const d = parseLocal(ts);
+    d.setMinutes(d.getMinutes() + mins);
+    return fmtLocal(d);
+  }
+  function roundToInterval(d, mins) {
+    const ms = mins * 60000;
+    return new Date(Math.round(d.getTime() / ms) * ms);
+  }
+  function durationText(startTs, endTs) {
+    const a = parseLocal(startTs), b = parseLocal(endTs);
+    if (!a || !b) return '-';
+    let diff = Math.round((b - a) / 60000);
+    if (diff < 0) diff += 24 * 60; // 자정을 넘긴 경우
+    const h = Math.floor(diff / 60), m = diff % 60;
+    return h ? `${h}시간 ${m}분` : `${m}분`;
+  }
+  const isNum = (v) => v !== '' && v != null && !isNaN(Number(v));
+  const numOrNull = (v) => (isNum(v) ? Number(v) : null);
+  function caseDate() {
+    return state.info.op_date || dateOf(fmtLocal(nowSeoul()));
+  }
+  // 'HH:MM' 입력을 케이스 기준 날짜와 합쳐 로컬 타임스탬프로
+  function tsFromTime(hhmm, refDate) {
+    return hhmm ? `${refDate || caseDate()}T${hhmm}` : '';
+  }
+  // '1905' / '19:05' / '9:5' -> '19:05' (24시간). 잘못된 값이면 null
+  function normHHMM(v) {
+    v = String(v || '').trim();
+    if (!v) return '';
+    let h, m;
+    const c = /^(\d{1,2})[:.](\d{1,2})$/.exec(v);
+    if (c) { h = +c[1]; m = +c[2]; }
+    else if (/^\d{3,4}$/.test(v)) { h = +v.slice(0, -2); m = +v.slice(-2); }
+    else if (/^\d{1,2}$/.test(v)) { h = +v; m = 0; }
+    else return null;
+    return h < 24 && m < 60 ? `${pad(h)}:${pad(m)}` : null;
+  }
+  function interval() {
+    return parseInt(state.info.interval || '5', 10) || 5;
   }
 
-  function formatDateTimeLocal(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  // ===================== Row definitions =====================
+  function rowMeta(name) {
+    return BASE_ROWS.find(r => r.name === name)
+        || state.rows.find(r => r.name === name)
+        || PRESETS.find(p => p.name.toLowerCase() === String(name).toLowerCase());
   }
-
-  function formatTimeDisplay(date) {
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+  function rangeOf(name) {
+    const base = BASE_ROWS.find(r => r.name === name);
+    if (base) return base.range;
+    const p = PRESETS.find(p => p.name.toLowerCase() === name.toLowerCase());
+    return p && p.range;
   }
-
-  // ===== Initialize =====
-  function init() {
-    loadExtraVitals();
-    loadPatientId();
-    initializeTimeColumns();
-    renderSpreadsheet();
-    initChart();
-    
-    // 페이지 로드 후 스크롤을 가장 오른쪽으로 이동
-    setTimeout(() => {
-      scrollToRight();
-    }, 100);
+  function guessGroup(name) {
+    const p = PRESETS.find(p => p.name.toLowerCase() === name.toLowerCase());
+    return p ? p.group : 'etc';
   }
-
-  function scrollToRight() {
-    const wrapper = document.querySelector('.spreadsheet-wrapper');
-    if (wrapper) {
-      wrapper.scrollLeft = wrapper.scrollWidth;
-    }
-  }
-
-  function loadPatientId() {
-    const saved = localStorage.getItem('patient_id');
-    if (saved) {
-      document.getElementById('patientIdInput').value = saved;
-    }
-  }
-
-  function loadExtraVitals() {
-    const saved = localStorage.getItem('extraVitalRows');
-    if (saved) {
-      try {
-        extraVitals = JSON.parse(saved);
-      } catch(e) {
-        extraVitals = [];
-      }
-    }
-    
-    // Also collect from existing records
-    existingRecords.forEach(rec => {
-      if (rec.extra_vitals) {
-        Object.keys(rec.extra_vitals).forEach(key => {
-          if (!extraVitals.includes(key)) {
-            extraVitals.push(key);
-          }
-        });
-      }
+  function allRowsGrouped() {
+    const out = [];
+    GROUPS.forEach(g => {
+      const rows = [
+        ...BASE_ROWS.filter(r => r.group === g.key),
+        ...state.rows.filter(r => r.group === g.key),
+      ];
+      if (rows.length) out.push({ group: g, rows });
     });
-    
-    updateExtraRowsDisplay();
+    return out;
   }
-
-  function saveExtraVitals() {
-    localStorage.setItem('extraVitalRows', JSON.stringify(extraVitals));
-  }
-
-  function initializeTimeColumns() {
-    // Sort records by timestamp (oldest first for left-to-right display)
-    const sortedRecords = [...existingRecords].sort((a, b) => 
-      new Date(a.timestamp) - new Date(b.timestamp)
-    );
-    
-    timeColumns = sortedRecords.map(rec => ({
-      id: rec.id,
-      timestamp: rec.timestamp,
-      time_display: rec.time_display,
-      isNew: false,
-      data: rec
-    }));
-  }
-
-  // ===== Spreadsheet Rendering =====
-  function renderSpreadsheet() {
-    renderHeader();
-    renderBody();
-  }
-
-  function renderHeader() {
-    const headerRow = document.getElementById('headerRow');
-    // Clear existing time headers
-    headerRow.innerHTML = '<th class="vital-label-header">Vital Signs</th>';
-    
-    timeColumns.forEach((col, index) => {
-      const th = document.createElement('th');
-      th.className = 'time-header';
-      th.innerHTML = `
-        <div class="time-header-content">
-          ${col.isNew ? `<input type="datetime-local" class="time-input" data-col="${index}" value="${col.timestamp}" onchange="updateTimeColumn(${index}, this.value)" />` 
-                      : `<span class="time-display">${col.time_display}</span>`}
-          <button type="button" class="btn-delete-col" onclick="deleteTimeColumn(${index})" title="Delete column">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-      `;
-      headerRow.appendChild(th);
-    });
-    
-    // Add "+" column for adding new time
-    const addTh = document.createElement('th');
-    addTh.className = 'add-column-header';
-    addTh.innerHTML = `
-      <button type="button" class="btn-add-col" onclick="addNewTimeColumn()" title="Add new time entry">
-        <i class="fas fa-plus"></i>
-      </button>
-    `;
-    headerRow.appendChild(addTh);
-  }
-
-  function renderBody() {
-    const tbody = document.getElementById('spreadsheetBody');
-    tbody.innerHTML = '';
-    
-    // Get all vitals (base + extra)
-    const allVitals = [...baseVitals, ...extraVitals];
-    
-    allVitals.forEach(vital => {
-      const tr = document.createElement('tr');
-      tr.className = 'vital-row';
-      
-      // Vital label cell
-      const labelTd = document.createElement('td');
-      labelTd.className = 'vital-label';
-      labelTd.innerHTML = `
-        <span class="vital-name">${vital}</span>
-        ${extraVitals.includes(vital) ? `<button type="button" class="btn-remove-vital" onclick="removeExtraVital('${vital}')" title="Remove row"><i class="fas fa-times"></i></button>` : ''}
-      `;
-      tr.appendChild(labelTd);
-      
-      // Data cells for each time column
-      timeColumns.forEach((col, colIndex) => {
-        const td = document.createElement('td');
-        td.className = 'data-cell';
-        
-        let value = '';
-        if (col.data) {
-          if (baseVitals.includes(vital)) {
-            value = col.data[vital.toLowerCase()] ?? '';
-          } else if (col.data.extra_vitals && col.data.extra_vitals[vital] !== undefined) {
-            value = col.data.extra_vitals[vital];
-          }
-        }
-        
-        td.innerHTML = `<input type="text" class="cell-input" data-vital="${vital}" data-col="${colIndex}" value="${value}" />`;
-        tr.appendChild(td);
-      });
-      
-      // Empty cell for add column
-      const emptyTd = document.createElement('td');
-      emptyTd.className = 'empty-cell';
-      tr.appendChild(emptyTd);
-      
-      tbody.appendChild(tr);
-    });
-    
-    // Notes row
-    const notesTr = document.createElement('tr');
-    notesTr.className = 'notes-row';
-    
-    const notesLabelTd = document.createElement('td');
-    notesLabelTd.className = 'vital-label';
-    notesLabelTd.innerHTML = '<span class="vital-name">Notes</span>';
-    notesTr.appendChild(notesLabelTd);
-    
-    timeColumns.forEach((col, colIndex) => {
-      const td = document.createElement('td');
-      td.className = 'data-cell notes-cell';
-      const noteValue = col.data?.additional_notes ?? '';
-      td.innerHTML = `<input type="text" class="cell-input" data-vital="notes" data-col="${colIndex}" value="${noteValue}" />`;
-      notesTr.appendChild(td);
-    });
-    
-    const emptyNotesTd = document.createElement('td');
-    emptyNotesTd.className = 'empty-cell';
-    notesTr.appendChild(emptyNotesTd);
-    
-    tbody.appendChild(notesTr);
-  }
-
-  // ===== Time Column Management =====
-  function addNewTimeColumn() {
-    let newDate;
-    if (timeColumns.length > 0) {
-      // Default to last entry's time + 5 minutes (user can adjust via the datetime-local input)
-      const lastTimestamp = timeColumns[timeColumns.length - 1].timestamp;
-      newDate = new Date(lastTimestamp);
-      newDate.setMinutes(newDate.getMinutes() + 5);
-    } else {
-      newDate = getSeoulTime();
+  function cellValue(col, name) {
+    if (name === 'MBP') {
+      const s = numOrNull(col.v.SBP), d = numOrNull(col.v.DBP);
+      return s != null && d != null ? String(Math.round((s + 2 * d) / 3)) : '';
     }
-    const timestamp = formatDateTimeLocal(newDate);
-
-    timeColumns.push({
-      id: nextNewId--,
-      timestamp: timestamp,
-      time_display: formatTimeDisplay(newDate),
-      isNew: true,
-      data: null
-    });
-    
-    renderSpreadsheet();
-    
-    // Scroll to the right
-    setTimeout(() => {
-      scrollToRight();
-    }, 50);
+    return col.v[name] ?? '';
   }
 
-  function updateTimeColumn(index, value) {
-    timeColumns[index].timestamp = value;
-    const date = new Date(value);
-    timeColumns[index].time_display = date.toTimeString().slice(0, 5);
-  }
-
-  function deleteTimeColumn(index) {
-    const col = timeColumns[index];
-    
-    if (!col.isNew) {
-      // Delete from server
-      if (confirm('정말로 이 기록을 삭제하시겠습니까?')) {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        fetch(`/record/delete/${col.id}/`, {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': csrfToken
-          }
-        }).then(() => {
-          timeColumns.splice(index, 1);
-          renderSpreadsheet();
-        });
-      }
-    } else {
-      timeColumns.splice(index, 1);
-      renderSpreadsheet();
-    }
-  }
-
-  // ===== Extra Vitals Management =====
-  function toggleExtraVitalsManager() {
-    const manager = document.getElementById('extraVitalsManager');
-    manager.style.display = manager.style.display === 'none' ? 'block' : 'none';
-  }
-
-  function addExtraRow() {
-    const input = document.getElementById('newRowName');
-    const name = input.value.trim();
-    if (!name) return;
-    if (extraVitals.includes(name) || baseVitals.includes(name)) {
-      alert('This vital already exists!');
-      return;
-    }
-    
-    extraVitals.push(name);
-    saveExtraVitals();
-    updateExtraRowsDisplay();
-    renderSpreadsheet();
-    input.value = '';
-  }
-
-  function removeExtraVital(name) {
-    extraVitals = extraVitals.filter(v => v !== name);
-    saveExtraVitals();
-    updateExtraRowsDisplay();
-    renderSpreadsheet();
-  }
-
-  function updateExtraRowsDisplay() {
-    const container = document.getElementById('existingRows');
-    if (extraVitals.length > 0) {
-      container.innerHTML = '<label>Current Extra Rows:</label><div class="column-tags">' +
-        extraVitals.map(v => 
-          `<span class="column-tag">${v} <button type="button" onclick="removeExtraVital('${v}')" class="remove-tag">&times;</button></span>`
-        ).join('') + '</div>';
-    } else {
-      container.innerHTML = '';
-    }
-  }
-
-  // ===== Save Records =====
-  async function saveAllRecords() {
-    const patientId = document.getElementById('patientIdInput').value || 'unknown';
-    localStorage.setItem('patient_id', patientId);
-    
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    const allVitals = [...baseVitals, ...extraVitals];
-    
-    for (let colIndex = 0; colIndex < timeColumns.length; colIndex++) {
-      const col = timeColumns[colIndex];
-      
-      // Collect data for this column
-      const data = {
-        patient_id: patientId,
-        timestamp: col.timestamp,
-        hr: '',
-        sbp: '',
-        dbp: '',
-        spo2: '',
-        extra_vitals: {},
-        additional_notes: ''
+  // ===================== Load =====================
+  function loadState(data) {
+    state.info = Object.assign({}, data.case.info || {});
+    state.events = (data.case.events || []).slice();
+    state.rows = (data.case.rows || []).map(r => ({ name: r.name, group: r.group || guessGroup(r.name), unit: r.unit || '' }));
+    state.note = data.note || '';
+    state.columns = (data.records || []).map(rec => {
+      const v = {
+        HR: rec.hr ?? '', SBP: rec.sbp ?? '', DBP: rec.dbp ?? '', SpO2: rec.spo2 ?? '',
       };
-      
-      // Get values from inputs
-      document.querySelectorAll(`[data-col="${colIndex}"]`).forEach(input => {
-        if (input.classList.contains('time-input')) return;
-        
-        const vital = input.dataset.vital;
-        const value = input.value.trim();
-        
-        if (vital === 'notes') {
-          data.additional_notes = value;
-        } else if (baseVitals.map(v => v.toLowerCase()).includes(vital.toLowerCase())) {
-          data[vital.toLowerCase()] = value;
-        } else {
-          if (value) {
-            data.extra_vitals[vital] = isNaN(value) ? value : parseFloat(value);
-          }
-        }
-      });
-      
-      // Set form values
-      document.getElementById('form_patient_id').value = data.patient_id;
-      document.getElementById('form_timestamp').value = data.timestamp;
-      document.getElementById('form_hr').value = data.hr;
-      document.getElementById('form_sbp').value = data.sbp;
-      document.getElementById('form_dbp').value = data.dbp;
-      document.getElementById('form_spo2').value = data.spo2;
-      document.getElementById('form_extra_vitals_json').value = JSON.stringify(data.extra_vitals);
-      document.getElementById('form_additional_notes').value = data.additional_notes;
-      
-      // Set record ID for updating existing records
-      if (!col.isNew && col.id > 0) {
-        document.getElementById('record_id').value = col.id;
-      } else {
-        document.getElementById('record_id').value = '';
-      }
-      
-      // Submit form via fetch
-      const formData = new FormData(document.getElementById('recordForm'));
-      
-      try {
-        const response = await fetch(window.location.href, {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (!response.ok) {
-          console.error('Failed to save record for column', colIndex);
-        }
-      } catch (error) {
-        console.error('Error saving record:', error);
-      }
-    }
-    
-    // Reload page to show updated records
-    window.location.reload();
-  }
-
-  // ===== Chart =====
-  let chart = null;
-  
-  function toggleChart() {
-    const chartSection = document.querySelector('.chart-section');
-    const icon = document.getElementById('chartToggleIcon');
-    chartSection.classList.toggle('collapsed');
-    
-    if (chartSection.classList.contains('collapsed')) {
-      icon.classList.remove('fa-chevron-up');
-      icon.classList.add('fa-chevron-down');
-    } else {
-      icon.classList.remove('fa-chevron-down');
-      icon.classList.add('fa-chevron-up');
-      setTimeout(() => {
-        if (chart) chart.resize();
-      }, 300);
-    }
-  }
-
-  function initChart() {
-    const sortedRecords = [...existingRecords].sort((a, b) => 
-      new Date(a.timestamp) - new Date(b.timestamp)
-    );
-    
-    // Named palette: red family for pressure vitals, green for HR, blue for SpO2
-    const vitalColors = {
-      'SBP':  { border: '#e53e3e', bg: 'rgba(229,62,62,0.12)' },
-      'DBP':  { border: '#c05621', bg: 'rgba(192,86,33,0.12)' },
-      'MBP':  { border: '#dd6b20', bg: 'rgba(221,107,32,0.12)' },
-      'HR':   { border: '#276749', bg: 'rgba(39,103,73,0.12)' },
-      'SpO2': { border: '#2b6cb0', bg: 'rgba(43,108,176,0.12)' },
-    };
-    const fallbackColors = ['#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b', '#6366f1', '#06b6d4'];
-
-    function getVitalColor(name, fallbackIdx) {
-      if (vitalColors[name]) return vitalColors[name];
-      const c = fallbackColors[fallbackIdx % fallbackColors.length];
-      return { border: c, bg: c + '20' };
-    }
-
-    const datasets = baseVitals.map((vital) => {
-      const color = getVitalColor(vital, 0);
-      return {
-        label: vital,
-        data: sortedRecords.map(rec => rec[vital.toLowerCase()]),
-        borderColor: color.border,
-        backgroundColor: color.bg,
-        fill: false,
-        tension: 0.3
-      };
+      Object.entries(rec.extra_vitals || {}).forEach(([k, val]) => { v[k] = val; });
+      Object.keys(v).forEach(k => { v[k] = v[k] === null ? '' : String(v[k]); });
+      return { key: keySeq++, id: rec.id, ts: rec.timestamp, v, notes: rec.notes || '' };
     });
+    state.deleted = [];
 
-    // Add extra vitals to chart
-    extraVitals.forEach((vital, index) => {
-      const color = getVitalColor(vital, index);
-      datasets.push({
-        label: vital,
-        data: sortedRecords.map(rec => rec.extra_vitals?.[vital] ?? null),
-        borderColor: color.border,
-        backgroundColor: color.bg,
-        fill: false,
-        tension: 0.3
-      });
-    });
-    
-    const ctx = document.getElementById('vitalsChart').getContext('2d');
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: sortedRecords.map(rec => rec.time_display),
-        datasets: datasets
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: { boxWidth: 12, padding: 15, font: { size: 11 } }
-          }
-        },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-          y: { grid: { borderDash: [2, 2] }, beginAtZero: true, ticks: { font: { size: 10 } } }
-        },
-        elements: {
-          point: { radius: 3, hoverRadius: 5 },
-          line: { borderWidth: 2 }
-        }
-      }
-    });
-  }
-
-  // ===== PDF Export =====
-  document.getElementById("exportPdfBtn").addEventListener("click", async function () {
-    const btn = this;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
-    
+    // 이전 버전 호환: localStorage 의 추가행/환자번호, 레코드에만 존재하는 extra 키 복원
     try {
-      const freeTextArea = document.querySelector('#id_content');
-      const freeTextContent = freeTextArea ? freeTextArea.value : '';
-      const patientId = document.getElementById('patientIdInput').value || 'Unknown';
-      
-      const { jsPDF } = window.jspdf;
-      // Use A4 landscape for wider tables
-      const pdf = new jsPDF('l', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 10;
-      const contentWidth = pageWidth - (margin * 2);
-      
-      // ===== Page 1: Header and Chart =====
-      // Header bar
-      pdf.setFillColor(43, 88, 118);
-      pdf.rect(margin, 10, contentWidth, 14, 'F');
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(255, 255, 255);
-      pdf.text('Anesthesia Record', margin + 4, 20);
+      const legacyRows = JSON.parse(localStorage.getItem('extraVitalRows') || '[]');
+      legacyRows.forEach(name => addRowDef(String(name)));
+      if (!state.info.patient_id && localStorage.getItem('patient_id')) {
+        state.info.patient_id = localStorage.getItem('patient_id');
+      }
+      localStorage.removeItem('extraVitalRows');
+      localStorage.removeItem('patient_id');
+    } catch (e) { /* storage unavailable */ }
+    (data.records || []).forEach(rec => {
+      if (!state.info.patient_id && rec.patient_id && rec.patient_id !== 'unknown') state.info.patient_id = rec.patient_id;
+      Object.keys(rec.extra_vitals || {}).forEach(k => addRowDef(k));
+    });
+    if (!state.info.interval) state.info.interval = '5';
+  }
 
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(43, 88, 118);
-      pdf.text(`Patient ID: ${patientId}`, margin, 32);
-      pdf.setTextColor(100, 100, 100);
-      const now = new Date();
-      const generatedStr = `Generated: ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-      pdf.text(generatedStr, margin, 38);
-      pdf.setTextColor(0, 0, 0);
+  function addRowDef(name, group, unit) {
+    name = name.trim();
+    const lower = name.toLowerCase();
+    if (!name || BASE_ROWS.some(r => r.name.toLowerCase() === lower) || state.rows.some(r => r.name.toLowerCase() === lower)) return false;
+    const preset = PRESETS.find(p => p.name.toLowerCase() === name.toLowerCase());
+    state.rows.push({
+      name,
+      group: group || (preset ? preset.group : 'etc'),
+      unit: unit ?? (preset ? preset.unit : ''),
+    });
+    return true;
+  }
 
-      // Draw chart to PDF
-      if (chart && existingRecords.length > 0) {
-        const chartCanvas = document.getElementById('vitalsChart');
-        const chartImage = chartCanvas.toDataURL('image/png', 1.0);
-
-        // Chart dimensions
-        const chartWidth = contentWidth;
-        const chartHeight = 80;
-        pdf.addImage(chartImage, 'PNG', margin, 46, chartWidth, chartHeight);
-      }
-      
-      // ===== Page 2+: Vital Signs Table =====
-      // Create a temporary container for the table
-      const tempContainer = document.createElement('div');
-      tempContainer.style.cssText = 'position: absolute; left: -9999px; top: 0; background: white; padding: 20px;';
-      document.body.appendChild(tempContainer);
-      
-      // Clone and style the table for PDF
-      const originalTable = document.querySelector('.spreadsheet-table');
-      const tableClone = originalTable.cloneNode(true);
-      
-      // Remove the "+" add column from clone
-      const addHeaders = tableClone.querySelectorAll('.add-column-header');
-      addHeaders.forEach(h => h.remove());
-      const emptyCells = tableClone.querySelectorAll('.empty-cell');
-      emptyCells.forEach(c => c.remove());
-      
-      // Style the cloned table for PDF.
-      // Classes are cleared so that sticky/!important class rules don't fight inline styles
-      // during off-screen html2canvas capture.
-      tableClone.style.cssText = 'border-collapse: collapse; font-size: 10px; background: white;';
-      tableClone.querySelectorAll('th').forEach(th => {
-        const isLabelHeader = th.classList.contains('vital-label-header');
-        th.className = '';
-        if (isLabelHeader) {
-          th.style.cssText = 'background: #1e4060; color: white; padding: 6px 10px; border: 1px solid #1e4060; border-right: 2px solid rgba(255,255,255,0.3); font-size: 9px; white-space: nowrap; font-weight: 600; text-align: left;';
-        } else {
-          th.style.cssText = 'background: #2b5876; color: white; padding: 6px 8px; border: 1px solid #2b5876; font-size: 9px; white-space: nowrap; text-align: center;';
-        }
-      });
-      tableClone.querySelectorAll('tr').forEach((tr, rowIdx) => {
-        tr.querySelectorAll('td').forEach(td => {
-          const isVitalLabel = td.classList.contains('vital-label');
-          td.className = '';
-          if (isVitalLabel) {
-            td.style.cssText = 'background: #edf2f7; color: #2b5876; padding: 5px 10px; border: 1px solid #c8d8e4; border-right: 2px solid #2b5876; font-size: 9px; font-weight: 600; white-space: nowrap; text-align: left;';
-          } else {
-            const stripe = rowIdx % 2 === 0 ? '#ffffff' : '#f0f4f8';
-            td.style.cssText = `padding: 5px 8px; border: 1px solid #d1dce6; text-align: center; font-size: 9px; white-space: nowrap; background: ${stripe};`;
-          }
-        });
-      });
-      tableClone.querySelectorAll('input').forEach(input => {
-        const span = document.createElement('span');
-        span.textContent = input.value || '-';
-        span.style.cssText = 'display: inline-block; min-width: 30px;';
-        input.parentNode.replaceChild(span, input);
-      });
-      tableClone.querySelectorAll('button').forEach(btn => btn.remove());
-      
-      tempContainer.appendChild(tableClone);
-      
-      // Capture table as image
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const tableCanvas = await html2canvas(tempContainer, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        windowWidth: tempContainer.scrollWidth + 40
-      });
-      
-      document.body.removeChild(tempContainer);
-      
-      // Add table page(s)
-      pdf.addPage();
-      pdf.setFillColor(43, 88, 118);
-      pdf.rect(margin, 8, contentWidth, 10, 'F');
-      pdf.setFontSize(13);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(255, 255, 255);
-      pdf.text('Vital Signs Record', margin + 4, 15);
-      pdf.setTextColor(0, 0, 0);
-      
-      const tableImgData = tableCanvas.toDataURL('image/png');
-      const tableImgWidth = tableCanvas.width;
-      const tableImgHeight = tableCanvas.height;
-      
-      // Calculate how to fit the table
-      // Available space on page after header
-      const tableStartY = 22;
-      const availableHeight = pageHeight - tableStartY - margin;
-      
-      // Scale to fit width first
-      let scaledWidth = contentWidth;
-      let scaledHeight = (tableImgHeight * contentWidth) / tableImgWidth;
-      
-      // If the table is too wide, we may need multiple columns or just scale it down
-      // For very wide tables, split horizontally across pages
-      if (tableImgWidth > tableImgHeight * 3) {
-        // Very wide table - try to fit by scaling down more
-        const maxScale = Math.min(contentWidth / tableImgWidth * 2, availableHeight / (tableImgHeight / 2 * 2));
-        scaledWidth = tableImgWidth * maxScale / 2;
-        scaledHeight = tableImgHeight * maxScale / 2;
-      }
-      
-      // If scaled height is manageable, add in single page
-      if (scaledHeight <= availableHeight) {
-        pdf.addImage(tableImgData, 'PNG', margin, tableStartY, scaledWidth, scaledHeight);
-      } else {
-        // Split across multiple pages
-        const scaleRatio = contentWidth / tableImgWidth * 2; // Scale for source coords
-        const srcChunkHeight = (availableHeight / scaleRatio) * 2;
-        
-        let srcY = 0;
-        let isFirstChunk = true;
-        
-        while (srcY < tableImgHeight) {
-          if (!isFirstChunk) {
-            pdf.addPage();
-            pdf.setFillColor(43, 88, 118);
-            pdf.rect(margin, 8, contentWidth, 10, 'F');
-            pdf.setFontSize(13);
-            pdf.setFont('helvetica', 'bold');
-            pdf.setTextColor(255, 255, 255);
-            pdf.text('Vital Signs Record (continued)', margin + 4, 15);
-            pdf.setTextColor(0, 0, 0);
-          }
-          
-          // Create a cropped canvas for this chunk
-          const chunkCanvas = document.createElement('canvas');
-          const chunkHeight = Math.min(srcChunkHeight, tableImgHeight - srcY);
-          chunkCanvas.width = tableImgWidth;
-          chunkCanvas.height = chunkHeight;
-          
-          const ctx = chunkCanvas.getContext('2d');
-          ctx.drawImage(tableCanvas, 0, srcY, tableImgWidth, chunkHeight, 0, 0, tableImgWidth, chunkHeight);
-          
-          const chunkImgData = chunkCanvas.toDataURL('image/png');
-          const destHeight = (chunkHeight * scaledWidth) / tableImgWidth;
-          
-          pdf.addImage(chunkImgData, 'PNG', margin, tableStartY, scaledWidth, destHeight);
-          
-          srcY += chunkHeight;
-          isFirstChunk = false;
-        }
-      }
-      
-      // ===== Last Page: Free Text Notes =====
-      if (freeTextContent.trim()) {
-        pdf.addPage();
-        pdf.setFillColor(43, 88, 118);
-        pdf.rect(margin, 8, contentWidth, 10, 'F');
-        pdf.setFontSize(13);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(255, 255, 255);
-        pdf.text('Free Text Notes', margin + 4, 15);
-        pdf.setTextColor(0, 0, 0);
-        
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        
-        // Split long text into lines
-        const lines = pdf.splitTextToSize(freeTextContent, contentWidth);
-        let yPos = 25;
-        const lineHeight = 5;
-        
-        lines.forEach(line => {
-          if (yPos > pageHeight - margin) {
-            pdf.addPage();
-            yPos = 15;
-          }
-          pdf.text(line, margin, yPos);
-          yPos += lineHeight;
-        });
-      }
-      
-      // Save PDF
-      const filename = `anesthesia_record_${patientId}_${new Date().toISOString().slice(0, 10)}.pdf`;
-      pdf.save(filename);
-      
-    } catch (error) {
-      console.error('PDF export error:', error);
-      alert('PDF 생성 중 오류가 발생했습니다: ' + error.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-file-pdf"></i> Export PDF';
-    }
+  // ===================== Dirty tracking =====================
+  function markDirty() {
+    state.dirty = true;
+    updateSaveStatus();
+  }
+  function updateSaveStatus(text, cls) {
+    const el = $('saveStatus');
+    el.className = 'anr-save-status ' + (cls || (state.dirty ? 'is-dirty' : 'is-clean'));
+    el.textContent = text || (state.dirty ? '● 저장 안 됨' : '저장됨');
+  }
+  window.addEventListener('beforeunload', (e) => {
+    if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
   });
 
-  // ===== localStorage cleanup on reset =====
-  const resetAllForm = document.querySelector('form[action$="reset/"]');
-  if (resetAllForm) {
-    resetAllForm.addEventListener('submit', function() {
-      localStorage.removeItem('patient_id');
-      localStorage.removeItem('extraVitalRows');
+  // ===================== Patient / case info binding =====================
+  function bindInfoInputs() {
+    document.querySelectorAll('[data-info]').forEach(el => {
+      const key = el.dataset.info;
+      if (el.type === 'checkbox') el.checked = state.info[key] === 'Y';
+      else el.value = state.info[key] || '';
+      el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'date' ? 'change' : 'input', () => {
+        state.info[key] = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value;
+        markDirty();
+        if (key === 'height' || key === 'weight') renderBmi();
+        if (key === 'op_date') { renderToolbarDate(); }
+      });
+    });
+    document.querySelectorAll('[data-info-time]').forEach(el => {
+      const key = el.dataset.infoTime;
+      el.value = timeOf(state.info[key]);
+      el.addEventListener('change', () => {
+        const hhmm = normHHMM(el.value);
+        if (hhmm === null) { alert('시간은 HH:MM (24시간) 형식으로 입력하세요. 예) 1505 또는 15:05'); el.value = timeOf(state.info[key]); return; }
+        el.value = hhmm;
+        state.info[key] = tsFromTime(hhmm, dateOf(state.info[key]) || caseDate());
+        markDirty();
+        renderDurations();
+      });
+    });
+    document.querySelectorAll('[data-now]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.now;
+        state.info[key] = fmtLocal(nowSeoul());
+        document.querySelector(`[data-info-time="${key}"]`).value = timeOf(state.info[key]);
+        markDirty();
+        renderDurations();
+      });
+    });
+    const sel = $('intervalSelect');
+    sel.value = String(interval());
+    sel.addEventListener('change', () => { state.info.interval = sel.value; markDirty(); });
+  }
+
+  function renderBmi() {
+    const h = numOrNull(state.info.height), w = numOrNull(state.info.weight);
+    $('bmiDisplay').textContent = h && w ? `BMI ${(w / Math.pow(h / 100, 2)).toFixed(1)}` : '';
+  }
+  function renderDurations() {
+    $('anesthDuration').textContent = durationText(state.info.anesth_start, state.info.anesth_end);
+    $('surgDuration').textContent = durationText(state.info.surg_start, state.info.surg_end);
+  }
+  function renderToolbarDate() {
+    const dates = [...new Set(state.columns.map(c => dateOf(c.ts)))];
+    $('tbDate').textContent = dates.length ? dates.join(' ~ ') : caseDate();
+  }
+
+  // ===================== Events =====================
+  function renderQuickEvents() {
+    const wrap = $('eventQuick');
+    wrap.innerHTML = '';
+    QUICK_EVENTS.forEach(q => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ev-chip';
+      b.textContent = q.label;
+      b.addEventListener('click', () => addEvent(q.label, fmtLocal(nowSeoul()), q.info));
+      wrap.appendChild(b);
+    });
+  }
+  function addEvent(label, ts, infoKey) {
+    label = (label || '').trim();
+    if (!label || !ts) return;
+    state.events.push({ time: ts, label });
+    state.events.sort((a, b) => a.time.localeCompare(b.time));
+    if (infoKey && !state.info[infoKey]) {
+      state.info[infoKey] = ts;
+      const el = document.querySelector(`[data-info-time="${infoKey}"]`);
+      if (el) el.value = timeOf(ts);
+      renderDurations();
+    }
+    markDirty();
+    renderEvents();
+    renderGrid();
+  }
+  function renderEvents() {
+    const ul = $('eventList');
+    ul.innerHTML = '';
+    if (!state.events.length) {
+      ul.innerHTML = '<li class="ev-empty">등록된 이벤트가 없습니다.</li>';
+      return;
+    }
+    state.events.forEach((ev, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<input type="text" class="hhmm" inputmode="numeric" maxlength="5" placeholder="--:--" autocomplete="off" value="${esc(timeOf(ev.time))}" />
+        <span class="ev-label">${esc(ev.label)}</span>
+        <button type="button" class="ev-del" title="삭제"><i class="fas fa-times"></i></button>`;
+      li.querySelector('input').addEventListener('change', (e) => {
+        const hhmm = normHHMM(e.target.value);
+        if (!hhmm) { e.target.value = timeOf(ev.time); return; }
+        ev.time = tsFromTime(hhmm, dateOf(ev.time));
+        state.events.sort((a, b) => a.time.localeCompare(b.time));
+        markDirty(); renderEvents(); renderGrid();
+      });
+      li.querySelector('.ev-del').addEventListener('click', () => {
+        state.events.splice(i, 1);
+        markDirty(); renderEvents(); renderGrid();
+      });
+      ul.appendChild(li);
+    });
+  }
+  function bindEventAdd() {
+    const add = () => {
+      const t = normHHMM($('eventTime').value) || timeOf(fmtLocal(nowSeoul()));
+      addEvent($('eventLabel').value, tsFromTime(t, dateOf(fmtLocal(nowSeoul()))));
+      $('eventLabel').value = '';
+      $('eventTime').value = '';
+    };
+    $('eventAddBtn').addEventListener('click', add);
+    $('eventLabel').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+  }
+
+  // 이벤트가 어느 시간 컬럼에 표시될지 (그 컬럼 시각 이상 ~ 다음 컬럼 미만)
+  function eventsByColumn() {
+    const map = new Map();
+    const cols = state.columns;
+    state.events.forEach(ev => {
+      let idx = -1;
+      for (let i = 0; i < cols.length; i++) {
+        if (cols[i].ts <= ev.time) idx = i; else break;
+      }
+      if (idx === -1 && cols.length) idx = 0;
+      if (idx === -1) return;
+      if (!map.has(idx)) map.set(idx, []);
+      map.get(idx).push(ev);
+    });
+    return map;
+  }
+
+  // ===================== Note (기록) =====================
+  function bindNote() {
+    const ta = $('noteInput');
+    ta.value = state.note;
+    ta.addEventListener('input', () => { state.note = ta.value; markDirty(); });
+    $('insertTimeBtn').addEventListener('click', () => {
+      const t = timeOf(fmtLocal(nowSeoul()));
+      const s = ta.selectionStart ?? ta.value.length, e = ta.selectionEnd ?? s;
+      const before = ta.value.slice(0, s);
+      const insert = (before && !before.endsWith('\n') ? '\n' : '') + t + '\n';
+      ta.value = before + insert + ta.value.slice(e);
+      ta.selectionStart = ta.selectionEnd = s + insert.length;
+      ta.focus();
+      state.note = ta.value; markDirty();
     });
   }
 
-  // ===== Initialize on load =====
-  window.addEventListener('load', init);
+  // ===================== Columns =====================
+  function sortColumns() {
+    state.columns.sort((a, b) => a.ts.localeCompare(b.ts) || a.key - b.key);
+  }
+  function addColumnAt(ts) {
+    const existing = state.columns.find(c => c.ts === ts);
+    if (existing) { focusColumn(existing.key); return; }
+    const col = { key: keySeq++, id: null, ts, v: {}, notes: '' };
+    state.columns.push(col);
+    sortColumns();
+    markDirty();
+    renderAll();
+    focusColumn(col.key, true);
+  }
+  function focusColumn(key, scroll) {
+    const input = document.querySelector(`#recGrid input.cell-input[data-key="${key}"]`);
+    if (input) {
+      input.focus();
+      if (scroll) input.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+  }
+  function deleteColumn(key) {
+    const col = state.columns.find(c => c.key === key);
+    if (!col) return;
+    const hasData = Object.values(col.v).some(v => v !== '') || col.notes;
+    if (hasData && !confirm(`${timeOf(col.ts)} 컬럼을 삭제할까요? (저장 시 반영)`)) return;
+    if (col.id) state.deleted.push(col.id);
+    state.columns = state.columns.filter(c => c.key !== key);
+    markDirty();
+    renderAll();
+  }
+  function copyPrevious(key) {
+    const i = state.columns.findIndex(c => c.key === key);
+    if (i <= 0) return;
+    const prev = state.columns[i - 1], col = state.columns[i];
+    let copied = 0;
+    Object.entries(prev.v).forEach(([k, v]) => {
+      if (v !== '' && (col.v[k] ?? '') === '') {
+        const meta = rowMeta(k);
+        // 수액/출력/약물은 누적량이라 복사하지 않음
+        if (meta && ['fluid', 'output', 'drug'].includes(meta.group)) return;
+        col.v[k] = v; copied++;
+      }
+    });
+    if (copied) { markDirty(); renderAll(); focusColumn(key); }
+  }
+
+  // ===================== Grid render =====================
+  function renderGrid() {
+    const table = $('recGrid');
+    const cols = state.columns;
+    $('gridEmpty').hidden = cols.length > 0;
+    table.hidden = cols.length === 0;
+    if (!cols.length) { table.innerHTML = ''; return; }
+
+    const evMap = eventsByColumn();
+    let html = '<thead><tr><th class="g-col sticky-1">그룹</th><th class="i-col sticky-2">항목</th>';
+    cols.forEach((c, i) => {
+      const showDate = i === 0 || dateOf(cols[i - 1].ts) !== dateOf(c.ts);
+      html += `<th class="t-col${c.id ? '' : ' is-new'}">
+        ${showDate ? `<div class="t-date">${esc(dateOf(c.ts).slice(5))}</div>` : ''}
+        <input type="text" class="t-input" inputmode="numeric" maxlength="5" autocomplete="off" value="${esc(timeOf(c.ts))}" data-key="${c.key}" />
+        <div class="t-actions">
+          ${i > 0 ? `<button type="button" class="t-btn" data-copy="${c.key}" title="이전 컬럼 값 복사 (빈 칸만)"><i class="fas fa-angle-double-right"></i></button>` : ''}
+          <button type="button" class="t-btn t-del" data-del="${c.key}" title="컬럼 삭제"><i class="fas fa-times"></i></button>
+        </div>
+      </th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    // 이벤트 행
+    html += '<tr class="r-event"><td class="g-cell sticky-1"></td><td class="i-cell sticky-2">Event</td>';
+    cols.forEach((c, i) => {
+      const evs = evMap.get(i) || [];
+      const text = evs.map(e => e.label).join(', ');
+      html += `<td class="d-cell ev-cell" title="${esc(evs.map(e => timeOf(e.time) + ' ' + e.label).join('\n'))}">${evs.length ? '▲ ' + esc(text) : ''}</td>`;
+    });
+    html += '</tr>';
+
+    // MEMO 행
+    html += '<tr class="r-memo"><td class="g-cell sticky-1"></td><td class="i-cell sticky-2">MEMO</td>';
+    cols.forEach(c => {
+      html += `<td class="d-cell"><input type="text" class="cell-input memo-input" data-key="${c.key}" data-row="__notes" value="${esc(c.notes)}" title="${esc(c.notes)}" /></td>`;
+    });
+    html += '</tr>';
+
+    allRowsGrouped().forEach(({ group, rows }) => {
+      rows.forEach((row, ri) => {
+        html += `<tr class="grp-${group.key}${ri === 0 ? ' grp-first' : ''}" data-row-name="${esc(row.name)}">`;
+        if (ri === 0) html += `<td class="g-cell sticky-1" rowspan="${rows.length}">${esc(group.label)}</td>`;
+        html += `<td class="i-cell sticky-2">${esc(row.name)}${row.unit ? `<small>(${esc(row.unit)})</small>` : ''}</td>`;
+        cols.forEach(c => {
+          const val = cellValue(c, row.name);
+          const cls = cellClass(row, val);
+          if (row.calc) {
+            html += `<td class="d-cell calc ${cls}">${esc(val)}</td>`;
+          } else {
+            html += `<td class="d-cell ${cls}"><input type="text" class="cell-input" inputmode="decimal" data-key="${c.key}" data-row="${esc(row.name)}" value="${esc(val)}" /></td>`;
+          }
+        });
+        html += '</tr>';
+      });
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+  }
+
+  function cellClass(row, val) {
+    if (val === '' || val == null) return '';
+    if (row.field && !isNum(val)) return 'is-invalid';
+    const r = row.range || rangeOf(row.name);
+    if (r && isNum(val)) {
+      const n = Number(val);
+      if (n < r[0]) return 'is-low';
+      if (n > r[1]) return 'is-high';
+    }
+    return '';
+  }
+
+  function bindGrid() {
+    const table = $('recGrid');
+    table.addEventListener('input', (e) => {
+      const t = e.target;
+      if (!t.classList.contains('cell-input')) return;
+      const col = state.columns.find(c => c.key === +t.dataset.key);
+      if (!col) return;
+      const rowName = t.dataset.row;
+      if (rowName === '__notes') { col.notes = t.value; t.title = t.value; }
+      else {
+        col.v[rowName] = t.value.trim();
+        const meta = rowMeta(rowName);
+        t.parentElement.className = 'd-cell ' + cellClass(meta || { name: rowName }, col.v[rowName]);
+        if (rowName === 'SBP' || rowName === 'DBP') refreshMbp(col);
+        scheduleDerived();
+      }
+      markDirty();
+    });
+    table.addEventListener('change', (e) => {
+      const t = e.target;
+      if (!t.classList.contains('t-input')) return;
+      const col = state.columns.find(c => c.key === +t.dataset.key);
+      if (!col) return;
+      const hhmm = normHHMM(t.value);
+      if (!hhmm) { t.value = timeOf(col.ts); return; }
+      const newTs = tsFromTime(hhmm, dateOf(col.ts));
+      if (state.columns.some(c => c !== col && c.ts === newTs)) {
+        alert('같은 시각의 컬럼이 이미 있습니다.');
+        t.value = timeOf(col.ts);
+        return;
+      }
+      col.ts = newTs;
+      sortColumns();
+      markDirty();
+      renderAll();
+    });
+    table.addEventListener('click', (e) => {
+      const del = e.target.closest('[data-del]');
+      if (del) return deleteColumn(+del.dataset.del);
+      const cp = e.target.closest('[data-copy]');
+      if (cp) return copyPrevious(+cp.dataset.copy);
+    });
+    table.addEventListener('keydown', onGridKey);
+  }
+
+  function refreshMbp(col) {
+    const idx = state.columns.indexOf(col);
+    const row = document.querySelector('#recGrid tr[data-row-name="MBP"]');
+    if (!row) return;
+    const td = row.querySelectorAll('.d-cell')[idx];
+    const val = cellValue(col, 'MBP');
+    td.textContent = val;
+    td.className = 'd-cell calc ' + cellClass(BASE_ROWS[3], val);
+  }
+
+  // Enter/↑/↓ 행 이동, ←/→ (커서가 끝일 때) 시간 이동
+  function onGridKey(e) {
+    const t = e.target;
+    if (!t.classList.contains('cell-input')) return;
+    const inputs = [...$('recGrid').querySelectorAll('input.cell-input')];
+    const byKey = inputs.filter(i => i.dataset.key === t.dataset.key);
+    const byRow = inputs.filter(i => i.dataset.row === t.dataset.row);
+    let target = null;
+    if (e.key === 'Enter' || e.key === 'ArrowDown') target = byKey[byKey.indexOf(t) + (e.shiftKey && e.key === 'Enter' ? -1 : 1)];
+    else if (e.key === 'ArrowUp') target = byKey[byKey.indexOf(t) - 1];
+    else if (e.key === 'ArrowRight' && t.selectionStart === t.value.length) target = byRow[byRow.indexOf(t) + 1];
+    else if (e.key === 'ArrowLeft' && t.selectionEnd === 0) target = byRow[byRow.indexOf(t) - 1];
+    else return;
+    if (target) {
+      e.preventDefault();
+      target.focus();
+      target.select();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  }
+
+  // ===================== Totals =====================
+  function renderTotals() {
+    const sums = {};
+    state.rows.forEach(r => {
+      if (!['fluid', 'output'].includes(r.group)) return;
+      sums[r.name] = state.columns.reduce((acc, c) => acc + (numOrNull(c.v[r.name]) || 0), 0);
+    });
+    const fluidRows = state.rows.filter(r => r.group === 'fluid');
+    const outRows = state.rows.filter(r => r.group === 'output');
+    const totalIn = fluidRows.reduce((a, r) => a + sums[r.name], 0);
+    const totalOut = outRows.reduce((a, r) => a + sums[r.name], 0);
+    const fmt = (n) => Number.isInteger(n) ? n : n.toFixed(1);
+    let html = '';
+    if (!fluidRows.length && !outRows.length) {
+      html = '<tr><td class="tt-empty" colspan="3">항목 관리에서 수액(예: Crystalloid)·Output(예: UO, EBL) 항목을 추가하면 합계가 표시됩니다.</td></tr>';
+    } else {
+      outRows.forEach(r => { html += `<tr><td>${esc(r.name)}</td><td class="tt-num">${fmt(sums[r.name])}</td><td>${esc(r.unit || 'mL')}</td></tr>`; });
+      fluidRows.forEach(r => { html += `<tr><td>${esc(r.name)}</td><td class="tt-num">${fmt(sums[r.name])}</td><td>${esc(r.unit || 'mL')}</td></tr>`; });
+      html += `<tr class="tt-sum"><td>INFUSED FLUIDS</td><td class="tt-num">${fmt(totalIn)}</td><td>mL</td></tr>`;
+      html += `<tr class="tt-sum"><td>TOTAL OUTPUT</td><td class="tt-num">${fmt(totalOut)}</td><td>mL</td></tr>`;
+      const bal = totalIn - totalOut;
+      html += `<tr class="tt-sum tt-bal"><td>BALANCE (I−O)</td><td class="tt-num">${bal > 0 ? '+' : ''}${fmt(bal)}</td><td>mL</td></tr>`;
+    }
+    $('totalsTable').innerHTML = `<thead><tr><th>항목</th><th>합계</th><th>단위</th></tr></thead><tbody>${html}</tbody>`;
+  }
+
+  // ===================== Rows manager =====================
+  function renderRowsManager() {
+    $('newRowGroup').innerHTML = GROUPS.map(g => `<option value="${g.key}">${esc(g.label)}</option>`).join('');
+    $('rowPresets').innerHTML = PRESETS.map(p => `<option value="${esc(p.name)}"></option>`).join('');
+    renderRowList();
+  }
+  function renderRowList() {
+    const used = new Set(state.rows.map(r => r.name.toLowerCase()));
+    $('rowPresetChips').innerHTML = '<span class="rm-label">빠른 추가</span>' + PRESETS
+      .filter(p => !used.has(p.name.toLowerCase()))
+      .map(p => `<button type="button" class="ev-chip" data-preset="${esc(p.name)}">+ ${esc(p.name)}</button>`).join('');
+    if (!state.rows.length) {
+      $('rowList').innerHTML = '<span class="rm-label">추가된 항목이 없습니다. (HR, SBP, DBP, MBP, SpO2는 기본 항목)</span>';
+      return;
+    }
+    $('rowList').innerHTML = state.rows.map((r, i) => `
+      <div class="rm-item">
+        <span class="rm-name">${esc(r.name)}</span>
+        <select data-row-group="${i}">${GROUPS.map(g => `<option value="${g.key}"${g.key === r.group ? ' selected' : ''}>${esc(g.label)}</option>`).join('')}</select>
+        <input type="text" data-row-unit="${i}" value="${esc(r.unit)}" placeholder="단위" />
+        <button type="button" class="t-btn" data-row-up="${i}" title="위로"><i class="fas fa-arrow-up"></i></button>
+        <button type="button" class="t-btn t-del" data-row-del="${i}" title="삭제"><i class="fas fa-times"></i></button>
+      </div>`).join('');
+  }
+  function bindRowsManager() {
+    $('rowsBtn').addEventListener('click', () => { $('rowsManager').hidden = !$('rowsManager').hidden; });
+    $('newRowName').addEventListener('input', () => {
+      const p = PRESETS.find(p => p.name.toLowerCase() === $('newRowName').value.trim().toLowerCase());
+      if (p) { $('newRowGroup').value = p.group; $('newRowUnit').value = p.unit; }
+    });
+    const add = () => {
+      const name = $('newRowName').value.trim();
+      if (!name) return;
+      if (!addRowDef(name, $('newRowGroup').value, $('newRowUnit').value.trim())) {
+        alert('이미 있는 항목입니다.');
+        return;
+      }
+      $('newRowName').value = ''; $('newRowUnit').value = '';
+      markDirty(); renderAll();
+    };
+    $('addRowBtn').addEventListener('click', add);
+    $('newRowName').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    $('rowsManager').addEventListener('click', (e) => {
+      const preset = e.target.closest('[data-preset]');
+      if (preset) { addRowDef(preset.dataset.preset); markDirty(); renderAll(); return; }
+      const up = e.target.closest('[data-row-up]');
+      if (up) {
+        const i = +up.dataset.rowUp;
+        if (i > 0) { [state.rows[i - 1], state.rows[i]] = [state.rows[i], state.rows[i - 1]]; markDirty(); renderAll(); }
+        return;
+      }
+      const del = e.target.closest('[data-row-del]');
+      if (del) {
+        const row = state.rows[+del.dataset.rowDel];
+        const hasData = state.columns.some(c => (c.v[row.name] ?? '') !== '');
+        if (hasData && !confirm(`'${row.name}' 항목과 입력된 값을 모두 삭제할까요? (저장 시 반영)`)) return;
+        state.rows.splice(+del.dataset.rowDel, 1);
+        state.columns.forEach(c => { delete c.v[row.name]; });
+        markDirty(); renderAll();
+      }
+    });
+    $('rowsManager').addEventListener('change', (e) => {
+      const g = e.target.dataset.rowGroup, u = e.target.dataset.rowUnit;
+      if (g !== undefined) state.rows[+g].group = e.target.value;
+      else if (u !== undefined) state.rows[+u].unit = e.target.value.trim();
+      else return;
+      markDirty(); renderAll();
+    });
+  }
+
+  // ===================== Chart =====================
+  let chart = null;
+  const CHART_COLORS = {
+    HR: '#34d399', SBP: '#f87171', DBP: '#fb923c', MBP: '#fbbf24', SpO2: '#60a5fa',
+  };
+  const FALLBACK_COLORS = ['#a78bfa', '#f472b6', '#2dd4bf', '#facc15', '#818cf8', '#22d3ee'];
+
+  function chartConfig(light) {
+    const labels = state.columns.map(c => timeOf(c.ts));
+    const names = ['HR', 'SBP', 'DBP', 'MBP', 'SpO2',
+      ...state.rows.filter(r => r.group === 'vital' || r.group === 'gas').map(r => r.name)];
+    let fi = 0;
+    const datasets = names.map(name => {
+      const color = CHART_COLORS[name] || FALLBACK_COLORS[fi++ % FALLBACK_COLORS.length];
+      const data = state.columns.map(c => numOrNull(cellValue(c, name)));
+      if (!data.some(v => v != null)) return null;
+      return {
+        label: name, data, borderColor: color, backgroundColor: color,
+        borderWidth: 2, pointRadius: 2.5, tension: 0.25, spanGaps: true,
+        borderDash: name === 'MBP' ? [4, 3] : undefined,
+      };
+    }).filter(Boolean);
+    const text = light ? '#334155' : '#cbd5e1';
+    const grid = light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+    return {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: !light, maintainAspectRatio: false, animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { color: text, boxWidth: 10, font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: text, font: { size: 10 } }, grid: { color: grid } },
+          y: { ticks: { color: text, font: { size: 10 } }, grid: { color: grid }, suggestedMin: 0 },
+        },
+      },
+    };
+  }
+  function renderChart() {
+    if ($('chartWrap').hidden) return;
+    if (chart) chart.destroy();
+    chart = new Chart($('vitalsChart').getContext('2d'), chartConfig(false));
+  }
+
+  // 입력마다 차트/합계를 다시 그리지 않도록 디바운스
+  let derivedTimer = null;
+  function scheduleDerived() {
+    clearTimeout(derivedTimer);
+    derivedTimer = setTimeout(() => { renderTotals(); renderChart(); }, 300);
+  }
+
+  // ===================== Render all =====================
+  function renderAll() {
+    renderGrid();
+    renderTotals();
+    renderRowList();
+    renderToolbarDate();
+    renderChart();
+  }
+
+  // ===================== Save =====================
+  function validate() {
+    const errors = [];
+    state.columns.forEach(c => {
+      BASE_ROWS.filter(r => r.field).forEach(r => {
+        const v = c.v[r.name] ?? '';
+        if (v !== '' && !isNum(v)) errors.push(`${timeOf(c.ts)} ${r.name}: "${v}"는 숫자가 아닙니다.`);
+      });
+    });
+    return errors;
+  }
+
+  async function saveAll() {
+    if (state.saving) return;
+    const errors = validate();
+    if (errors.length) { alert('저장할 수 없습니다.\n\n' + errors.join('\n')); return; }
+    state.saving = true;
+    $('saveBtn').disabled = true;
+    updateSaveStatus('저장 중…', 'is-saving');
+
+    const payload = {
+      case: { info: state.info, events: state.events, rows: state.rows },
+      note: state.note,
+      deleted: state.deleted,
+      columns: state.columns.map(c => {
+        const extra = {};
+        state.rows.forEach(r => { if ((c.v[r.name] ?? '') !== '') extra[r.name] = c.v[r.name]; });
+        return {
+          id: c.id, timestamp: c.ts,
+          hr: c.v.HR ?? '', sbp: c.v.SBP ?? '', dbp: c.v.DBP ?? '', spo2: c.v.SpO2 ?? '',
+          extra_vitals: extra, notes: c.notes,
+        };
+      }),
+    };
+    const focusedRow = document.activeElement?.dataset?.row;
+    const focusedTs = state.columns.find(c => c.key === +document.activeElement?.dataset?.key)?.ts;
+
+    try {
+      const res = await fetch(SAVE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({ ok: false, error: `서버 오류 (${res.status})` }));
+      if (!res.ok || !data.ok) throw new Error(data.error || `서버 오류 (${res.status})`);
+      loadState(data.state);
+      state.dirty = false;
+      renderAll();
+      renderEvents();
+      updateSaveStatus('저장됨 ' + timeOf(fmtLocal(nowSeoul())), 'is-clean');
+      // 저장 전 포커스 복원
+      if (focusedRow && focusedTs) {
+        const col = state.columns.find(c => c.ts === focusedTs);
+        const el = col && document.querySelector(`#recGrid input[data-key="${col.key}"][data-row="${CSS.escape(focusedRow)}"]`);
+        if (el) el.focus();
+      }
+    } catch (err) {
+      updateSaveStatus('저장 실패', 'is-error');
+      alert('저장에 실패했습니다. 입력한 내용은 화면에 그대로 남아 있습니다.\n\n' + err.message);
+    } finally {
+      state.saving = false;
+      $('saveBtn').disabled = false;
+    }
+  }
+
+  // ===================== PDF export =====================
+  let printChart = null;
+  function buildPrintSheet() {
+    const sheet = $('printSheet');
+    const I = state.info;
+    const infoLine = [
+      I.patient_id, I.patient_name,
+      [I.sex, I.age && I.age + '세'].filter(Boolean).join('/'),
+      I.height && I.height + 'cm', I.weight && I.weight + 'kg', I.blood_type,
+    ].filter(Boolean).map(esc).join(' / ');
+    const t = (k) => esc(timeOf(I[k]) || '-');
+    const CHUNK = 24;
+    let gridHtml = '';
+    const grouped = allRowsGrouped();
+    const evMap = eventsByColumn();
+    for (let start = 0; start < state.columns.length; start += CHUNK) {
+      const cols = state.columns.slice(start, start + CHUNK);
+      let h = '<table class="ps-grid"><thead><tr><th>그룹</th><th>항목</th>' +
+        cols.map(c => `<th>${esc(timeOf(c.ts))}</th>`).join('') + '</tr></thead><tbody>';
+      h += '<tr><td></td><td>Event</td>' + cols.map((c, i) => `<td class="ps-ev">${esc((evMap.get(start + i) || []).map(e => e.label).join(', '))}</td>`).join('') + '</tr>';
+      h += '<tr><td></td><td>MEMO</td>' + cols.map(c => `<td class="ps-ev">${esc(c.notes)}</td>`).join('') + '</tr>';
+      grouped.forEach(({ group, rows }) => rows.forEach((row, ri) => {
+        h += '<tr>' + (ri === 0 ? `<td rowspan="${rows.length}" class="ps-g">${esc(group.label)}</td>` : '') +
+          `<td class="ps-i">${esc(row.name)}${row.unit ? ' (' + esc(row.unit) + ')' : ''}</td>` +
+          cols.map(c => { const v = cellValue(c, row.name); return `<td class="${cellClass(row, v)}">${esc(v)}</td>`; }).join('') + '</tr>';
+      }));
+      gridHtml += `<div class="ps-block">${h}</tbody></table></div>`;
+    }
+    const totalsHtml = $('totalsTable').innerHTML;
+    sheet.innerHTML = `
+      <div class="ps-block ps-head">
+        <div class="ps-title">마취기록 (Anesthesia Record)</div>
+        <div class="ps-patient">${infoLine || '-'}</div>
+        <div class="ps-case">${esc(I.op_date || '')} &nbsp; ${esc(I.operation || '')} &nbsp; Surgeon: ${esc(I.surgeon || '-')} &nbsp; 작성자: ${esc(I.anesthesiologist || '-')}</div>
+        <div class="ps-cols">
+          <table class="ps-info">
+            <tr><th></th><th>Start</th><th>End</th><th>Time</th></tr>
+            <tr><th>Anesth</th><td>${t('anesth_start')}</td><td>${t('anesth_end')}</td><td>${esc(durationText(I.anesth_start, I.anesth_end))}</td></tr>
+            <tr><th>Surg</th><td>${t('surg_start')}</td><td>${t('surg_end')}</td><td>${esc(durationText(I.surg_start, I.surg_end))}</td></tr>
+            <tr><th>Type</th><td colspan="3">${esc(I.anesth_type || '-')}${I.asa ? ' · ASA ' + esc(I.asa) + (I.asa_e === 'Y' ? 'E' : '') : ''}</td></tr>
+            <tr><th>Detail</th><td colspan="3">${esc(I.anesth_detail || '-')}</td></tr>
+          </table>
+          <table class="ps-info"><tr><th>시각</th><th>이벤트</th></tr>
+            ${state.events.map(e => `<tr><td>${esc(timeOf(e.time))}</td><td>${esc(e.label)}</td></tr>`).join('') || '<tr><td colspan="2">-</td></tr>'}
+          </table>
+          <table class="ps-info">${totalsHtml}</table>
+        </div>
+      </div>
+      <div class="ps-block"><canvas id="psChart" width="1340" height="320"></canvas></div>
+      ${gridHtml}
+      ${state.note.trim() ? `<div class="ps-block"><div class="ps-sub">기록</div><div class="ps-note">${esc(state.note)}</div></div>` : ''}
+    `;
+    if (state.columns.length) printChart = new Chart($('psChart').getContext('2d'), chartConfig(true));
+    else $('psChart').parentElement.remove();
+    return sheet;
+  }
+
+  async function exportPdf() {
+    const btn = $('exportPdfBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 생성 중…';
+    const sheet = buildPrintSheet();
+    try {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
+      const margin = 8, contentW = pageW - margin * 2, bottom = pageH - margin;
+      let y = margin;
+      // 블록 단위로 캡처하여 표가 페이지 경계에서 잘리지 않도록 배치
+      for (const block of sheet.querySelectorAll('.ps-block')) {
+        const canvas = await html2canvas(block, { scale: 2, backgroundColor: '#ffffff', logging: false });
+        const imgH = canvas.height * contentW / canvas.width;
+        if (y + imgH > bottom && y > margin) { pdf.addPage(); y = margin; }
+        if (imgH <= bottom - y) {
+          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, y, contentW, imgH);
+          y += imgH + 4;
+          continue;
+        }
+        // 한 페이지보다 긴 블록은 잘라서 여러 페이지에
+        const pxPerMm = canvas.width / contentW;
+        let srcY = 0;
+        while (srcY < canvas.height) {
+          const sliceH = Math.min(canvas.height - srcY, Math.floor((bottom - y) * pxPerMm));
+          const part = document.createElement('canvas');
+          part.width = canvas.width; part.height = sliceH;
+          part.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+          pdf.addImage(part.toDataURL('image/png'), 'PNG', margin, y, contentW, sliceH / pxPerMm);
+          srcY += sliceH;
+          y += sliceH / pxPerMm + 4;
+          if (srcY < canvas.height) { pdf.addPage(); y = margin; }
+        }
+      }
+      const pid = (state.info.patient_id || 'unknown').replace(/[^\w-]/g, '_');
+      pdf.save(`anesthesia_record_${pid}_${caseDate()}.pdf`);
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('PDF 생성 중 오류가 발생했습니다: ' + err.message);
+    } finally {
+      if (printChart) { printChart.destroy(); printChart = null; }
+      sheet.innerHTML = '';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-file-pdf"></i> PDF';
+    }
+  }
+
+  // ===================== Toolbar =====================
+  function bindToolbar() {
+    $('addNowBtn').addEventListener('click', () => {
+      addColumnAt(fmtLocal(roundToInterval(nowSeoul(), interval())));
+    });
+    $('addNextBtn').addEventListener('click', () => {
+      const last = state.columns[state.columns.length - 1];
+      addColumnAt(last ? addMinutes(last.ts, interval()) : fmtLocal(roundToInterval(nowSeoul(), interval())));
+    });
+    $('chartBtn').addEventListener('click', () => {
+      $('chartWrap').hidden = !$('chartWrap').hidden;
+      $('chartBtn').classList.toggle('is-active', !$('chartWrap').hidden);
+      if ($('chartWrap').hidden && chart) { chart.destroy(); chart = null; } else renderChart();
+    });
+    $('saveBtn').addEventListener('click', saveAll);
+    $('exportPdfBtn').addEventListener('click', exportPdf);
+    $('fullscreenBtn').addEventListener('click', () => {
+      const on = $('anr').classList.toggle('is-fullscreen');
+      document.body.classList.toggle('anr-lock', on);
+      $('fullscreenBtn').innerHTML = on ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+    });
+    $('resetForm').addEventListener('submit', () => { state.dirty = false; });
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); }
+      if (e.key === 'Escape' && $('anr').classList.contains('is-fullscreen')) $('fullscreenBtn').click();
+    });
+    const tick = () => {
+      const d = nowSeoul();
+      $('liveClock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  // ===================== Init =====================
+  loadState(initial);
+  const migratedLegacy = state.rows.length !== (initial.case.rows || []).length;
+  bindInfoInputs();
+  bindNote();
+  bindEventAdd();
+  bindGrid();
+  bindRowsManager();
+  bindToolbar();
+  renderQuickEvents();
+  renderRowsManager();
+  renderEvents();
+  renderBmi();
+  renderDurations();
+  renderAll();
+  if (migratedLegacy) markDirty(); // 이전 버전 항목을 서버로 옮기기 위해 저장 유도
+  requestAnimationFrame(() => { $('gridWrap').scrollLeft = $('gridWrap').scrollWidth; });
+})();
 </script>
 {% endblock %}
