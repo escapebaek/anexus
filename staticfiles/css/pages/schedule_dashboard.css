@@ -123,6 +123,24 @@
 .orb-btn:hover,
 .orb-btn.is-active { background: rgba(255, 255, 255, 0.28); }
 
+/* ---------- 업로드 작업 안내 ---------- */
+.orb-job {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 12px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  border: 1px solid var(--orb-border);
+  background: #fff;
+  color: var(--orb-primary);
+}
+.orb-job i { font-size: 16px; }
+.orb-job-running { background: rgba(43, 88, 118, 0.06); border-color: rgba(43, 88, 118, 0.25); }
+.orb-job-done { background: #e9f6ef; border-color: #b5dfc6; color: #1f7a4a; }
+.orb-job-error { background: #fdecea; border-color: #f5c2bd; color: #b3261e; }
+
 /* ---------- 본문: 보드 + 사이드바 ---------- */
 .orb-body {
   display: grid;

@@ -273,8 +273,9 @@ class UploadActionTests(TestCase):
         from unittest import mock
         from django.core.files.uploadedfile import SimpleUploadedFile
         records = [rec('205', '10:00', '홍길동', 'TKRA', '11111111 (M/70)')]
-        with mock.patch('schedule.views.extract_schedules_from_text', return_value=records):
-            post['file'] = SimpleUploadedFile('s.txt', b'schedule')
+        with mock.patch('schedule.views.extract_schedules', return_value=records), \
+                mock.patch('schedule.views.start_background', side_effect=lambda f, *a: f(*a)):
+            post['file'] = SimpleUploadedFile('s.txt', '자유 형식 메모'.encode())
             return self.client.post(reverse('schedule_dashboard'), post)
 
     def test_missing_action_defaults_to_update(self):
@@ -356,3 +357,169 @@ class GeminiFallbackTests(TestCase):
         calls, exc = self.run_with({'m1': 403, 'm2': 200, 'm3': 200})
         self.assertEqual(calls, ['m1'])
         self.assertIn('API 키', str(exc))
+
+
+
+class TableParserTests(TestCase):
+    """열 이름이 있는 표 형식 파일은 AI 없이 읽음."""
+
+    def test_template_workbook(self):
+        import openpyxl
+        from .table_parser import parse_workbook
+        wb = openpyxl.load_workbook('schedule/surgery_schedule_template.xlsx', data_only=True)
+        records = parse_workbook(wb, 'surgery_schedule_template.xlsx')
+        self.assertEqual(len(records), 20)
+        self.assertEqual(records[0], {
+            'date': '2025-01-30', 'room': 'Rm1', 'time_slot': '8A', 'surgery_name': 'Appendectomy',
+            'department': 'GS', 'surgeon': '김철수', 'anesthesiologist': '', 'duration': 60,
+            'patient_name': '박나나', 'patient_info': 'F/61', 'status': '완료',
+        })
+        self.assertEqual(records[2]['status'], '예정')  # 대기 -> 예정
+
+    def test_csv_with_regnum_cosurgeon_and_two_time_columns(self):
+        from .table_parser import parse_delimited_text
+        text = ('날짜,방,시간,과,병실,등록번호,이름,성/나이,수술명,집도의,마취의,시간,현황\n'
+                '2025-06-01,E1,MD,GS,054/19,71203438,배동규,M/42,부신절제술,김남규,이마취,4:00,수술중\n'
+                '2025-06-01,,,,,,,,부신절제술,박신균,,4:00,\n'
+                ',,11:00,GS,,71203439,김철수,F/50,담낭절제술,김남규,,1시간 30분,\n')
+        records = parse_delimited_text(text)
+        self.assertEqual(len(records), 2)
+        first, second = records
+        self.assertEqual((first['surgeon'], first['anesthesiologist'], first['duration'], first['status']),
+                         ('김남규, 박신균', '이마취', 240, '진행중'))
+        self.assertEqual(first['patient_info'], '71203438 (M/42)')
+        # 병합된 방/날짜 칸은 위 행 값을 이어받음
+        self.assertEqual((second['room'], second['date'], second['duration']), ('E1', '2025-06-01', 90))
+
+    def test_free_text_is_left_for_ai(self):
+        from .table_parser import parse_delimited_text
+        self.assertIsNone(parse_delimited_text('오늘 수술 메모\n7/25 1번방 아침 9시 - 홍길동 충수돌기절제술'))
+
+    def test_table_upload_applies_without_ai(self):
+        from unittest import mock
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        user = get_user_model().objects.create_user('doc', password='x')
+        user.is_specially_approved = True
+        user.save()
+        self.client.force_login(user)
+        csv_bytes = '방,시간,수술명,집도의,환자명\n101,08:00,TKRA,김의사,홍길동\n'.encode('cp949')
+        with mock.patch('schedule.views.extract_schedules') as ai:
+            res = self.client.post(reverse('schedule_dashboard'), {'file': SimpleUploadedFile('s.csv', csv_bytes), 'action': 'update'})
+        ai.assert_not_called()
+        self.assertRedirects(res, reverse('schedule_dashboard'), fetch_redirect_response=False)
+        self.assertEqual(SurgerySchedule.objects.get(user=user).patient_name, '홍길동')
+
+
+class AiProviderTests(TestCase):
+    """무료 AI 제공자: 키가 있는 것만 순서대로, 실패하면 다음 모델/제공자로."""
+
+    def run_with(self, responses, providers='groq,openrouter,gemini', keys=None):
+        from unittest import mock
+        from django.test import override_settings
+        from . import ai_client, gemini_client
+
+        keys = keys if keys is not None else {'GROQ_API_KEY': 'g', 'OPENROUTER_API_KEY': 'o', 'GEMINI_API_KEY': ''}
+        calls = []
+        good = {'schedules': [rec('101', '08:00', 'A', 'Op')]}
+
+        class Resp:
+            def __init__(self, code, body):
+                self.status_code, self.text, self._body = code, json.dumps(body), body
+
+            def json(self):
+                return self._body
+
+        def fake_post(url, **kwargs):
+            model = (kwargs.get('json') or {}).get('model', '')
+            calls.append(model)
+            code, content = responses.get(model, (404, None))
+            body = {'choices': [{'message': {'content': content}}]} if code == 200 else {'error': 'x'}
+            return Resp(code, body)
+
+        with override_settings(SCHEDULE_AI_PROVIDERS=providers, GROQ_MODELS='g1,g2', OPENROUTER_MODELS='o1',
+                               SCHEDULE_AI_TIME_BUDGET=100, **keys), \
+                mock.patch.object(ai_client.requests, 'post', side_effect=fake_post), \
+                mock.patch.object(gemini_client.requests, 'post', side_effect=fake_post):
+            try:
+                return calls, ai_client.extract_schedules('메모', 'm.txt')
+            except gemini_client.ScheduleExtractionError as exc:
+                return calls, exc
+
+    def test_groq_model_fallback(self):
+        calls, result = self.run_with({'g1': (429, None), 'g2': (200, json.dumps({'schedules': [rec('1', '1', 'A', 'Op')]}))})
+        self.assertEqual(calls, ['g1', 'g2'])
+        self.assertEqual(result[0]['patient_name'], 'A')
+
+    def test_falls_through_to_next_provider_and_parses_fenced_json(self):
+        fenced = '```json\n' + json.dumps({'schedules': [rec('1', '1', 'B', 'Op')]}) + '\n```'
+        calls, result = self.run_with({'g1': (503, None), 'g2': (413, None), 'o1': (200, fenced)})
+        self.assertEqual(calls, ['g1', 'g2', 'o1'])
+        self.assertEqual(result[0]['patient_name'], 'B')
+
+    def test_providers_without_keys_are_skipped(self):
+        calls, result = self.run_with({'o1': (200, json.dumps({'schedules': [rec('1', '1', 'C', 'Op')]}))},
+                                      keys={'GROQ_API_KEY': '', 'OPENROUTER_API_KEY': 'o', 'GEMINI_API_KEY': ''})
+        self.assertEqual(calls, ['o1'])
+
+    def test_no_keys_gives_clear_message(self):
+        calls, exc = self.run_with({}, keys={'GROQ_API_KEY': '', 'OPENROUTER_API_KEY': '', 'GEMINI_API_KEY': ''})
+        self.assertEqual(calls, [])
+        self.assertIn('API 키가 설정되어 있지 않습니다', str(exc))
+
+    def test_all_fail_reports_each_provider(self):
+        calls, exc = self.run_with({'g1': (429, None), 'g2': (429, None), 'o1': (503, None)})
+        self.assertIn('Groq', str(exc))
+        self.assertIn('OpenRouter', str(exc))
+
+
+class UploadJobTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def upload(self, **ai):
+        from unittest import mock
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        with mock.patch('schedule.views.extract_schedules', **ai), \
+                mock.patch('schedule.views.start_background', side_effect=lambda f, *a: f(*a)):
+            return self.client.post(reverse('schedule_dashboard'),
+                                     {'file': SimpleUploadedFile('memo.txt', '자유 형식'.encode()), 'action': 'update'})
+
+    def test_ai_upload_runs_as_job(self):
+        from .models import ScheduleUploadJob
+        res = self.upload(return_value=[rec('101', '08:00', '홍길동', 'Op')])
+        job = ScheduleUploadJob.objects.get(user=self.user)
+        self.assertRedirects(res, f"{reverse('schedule_dashboard')}?job={job.id}", fetch_redirect_response=False)
+        status = self.client.get(reverse('schedule_upload_job', args=[job.id])).json()['job']
+        self.assertEqual(status['state'], 'done')
+        self.assertEqual(SurgerySchedule.objects.get(user=self.user).patient_name, '홍길동')
+        page = self.client.get(f"{reverse('schedule_dashboard')}?job={job.id}")
+        self.assertContains(page, '1건을 AI로 읽어 반영했습니다')
+
+    def test_ai_failure_reported_not_500(self):
+        from .gemini_client import ScheduleExtractionError
+        from .models import ScheduleUploadJob
+        self.upload(side_effect=ScheduleExtractionError('모두 혼잡'))
+        job = ScheduleUploadJob.objects.get(user=self.user)
+        self.assertEqual((job.status, job.message), ('error', '모두 혼잡'))
+
+    def test_unexpected_error_becomes_job_error(self):
+        from .models import ScheduleUploadJob
+        self.upload(side_effect=RuntimeError('boom'))
+        self.assertEqual(ScheduleUploadJob.objects.get(user=self.user).status, 'error')
+
+    def test_stale_running_job_marked_failed(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import ScheduleUploadJob
+        job = ScheduleUploadJob.objects.create(user=self.user, filename='x')
+        ScheduleUploadJob.objects.filter(id=job.id).update(updated_at=timezone.now() - timedelta(minutes=30))
+        self.assertEqual(self.client.get(reverse('schedule_upload_job', args=[job.id])).json()['job']['state'], 'error')
+
+    def test_cannot_see_other_users_job(self):
+        from .models import ScheduleUploadJob
+        other = get_user_model().objects.create_user('other', password='x')
+        job = ScheduleUploadJob.objects.create(user=other, filename='x')
+        self.assertEqual(self.client.get(reverse('schedule_upload_job', args=[job.id])).status_code, 404)

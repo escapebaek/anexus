@@ -43,6 +43,13 @@
     </div>
   </header>
 
+  {% if job %}
+  <div class="orb-job orb-job-{{ job.status }}" id="jobBanner" data-job-id="{{ job.id }}" data-state="{{ job.status }}">
+    <i class="fas {% if job.status == 'running' %}fa-spinner fa-spin{% elif job.status == 'done' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+    <span id="jobText">{% if job.status == 'running' %}'{{ job.filename }}' 을(를) AI가 분석 중입니다… 표 형식이 아닌 파일은 1~3분 걸릴 수 있어요. 이 화면을 그대로 두세요.{% else %}{{ job.message }}{% endif %}</span>
+  </div>
+  {% endif %}
+
   <div class="orb-body">
     <!-- ===== 방별 보드 (JS가 화면 너비에 맞춰 여러 열로 배치) ===== -->
     <main class="orb-board" id="board">
@@ -65,7 +72,7 @@
       <section class="side-card" id="uploadCard">
         <h4 class="side-head"><i class="fas fa-file-upload"></i> 일정 업로드</h4>
         <p class="side-hint">
-          기관 엑셀/메모 파일을 그대로 올리면 AI가 읽어 일정을 등록합니다.
+          날짜·방·시간·수술명·환자명 같은 <b>열 이름이 있는 엑셀/CSV</b>는 AI 없이 바로 읽고, 그 밖의 메모 형식만 AI가 분석합니다.
           <b>업데이트</b>는 방·순서가 바뀌어도 같은 환자의 메모·마취의·당직/Hold 표시를 유지합니다.
         </p>
         {% if error_message %}
@@ -534,7 +541,28 @@
     fileLabel.textContent = files[0].name;
   });
 
-  // AI parsing takes a few seconds - disable buttons so the user doesn't double-submit.
+  // ----- 백그라운드 AI 분석 작업 진행 확인 -----
+  const jobBanner = document.getElementById("jobBanner");
+  if (jobBanner && jobBanner.dataset.state === "running") {
+    const JOB_URL = "{% url 'schedule_upload_job' 0 %}".replace("/0/", `/${jobBanner.dataset.jobId}/`);
+    const poll = async () => {
+      try {
+        const res = await fetch(JOB_URL, { credentials: "same-origin" });
+        const data = await res.json();
+        if (data.job && data.job.state !== "running") {
+          if (data.job.state === "done") { location.reload(); return; }
+          jobBanner.className = "orb-job orb-job-error";
+          jobBanner.querySelector("i").className = "fas fa-exclamation-triangle";
+          document.getElementById("jobText").textContent = data.job.message;
+          return;
+        }
+      } catch (e) { /* 일시적 네트워크 오류 - 계속 확인 */ }
+      setTimeout(poll, 3000);
+    };
+    setTimeout(poll, 3000);
+  }
+
+  // Uploading can take a moment - disable buttons so the user doesn't double-submit.
   document.getElementById("uploadForm").addEventListener("submit", (e) => {
     if (!fileInput.files.length) return;
     if (e.submitter && e.submitter.value === "replace" && BOARD.total &&
@@ -544,7 +572,7 @@
     }
     document.getElementById("uploadAction").value = e.submitter && e.submitter.value === "replace" ? "replace" : "update";
     document.querySelectorAll(".btn-upload").forEach((btn) => { btn.disabled = true; });
-    if (e.submitter) e.submitter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI 분석 중...';
+    if (e.submitter) e.submitter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 업로드 중...';
   });
 </script>
 {% endblock %}

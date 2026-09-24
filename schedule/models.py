@@ -45,3 +45,17 @@ class PatientMemo(models.Model):
         
     def __str__(self):
         return f"Memo for {self.schedule.patient_name} ({self.created_at})"
+
+class ScheduleUploadJob(models.Model):
+    """AI 분석이 필요한 업로드를 백그라운드에서 처리하는 작업 (요청 시간 초과 방지)."""
+    STATUS_CHOICES = [("running", "처리 중"), ("done", "완료"), ("error", "오류")]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='schedule_upload_jobs')
+    filename = models.CharField(max_length=255, blank=True)
+    action = models.CharField(max_length=10, default="update")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="running")
+    message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user} {self.filename} ({self.status})"
