@@ -62,6 +62,29 @@ def configured_providers():
     return result
 
 
+KEY_HELP = {
+    "groq": ("GROQ_API_KEY", "https://console.groq.com"),
+    "openrouter": ("OPENROUTER_API_KEY", "https://openrouter.ai/keys"),
+    "gemini": ("GEMINI_API_KEY", "https://aistudio.google.com/apikey"),
+}
+
+
+def unconfigured_providers():
+    """SCHEDULE_AI_PROVIDERS 에 있지만 API 키가 없어 건너뛰는 제공자들."""
+    order = [p.strip().lower() for p in str(settings.SCHEDULE_AI_PROVIDERS or "").split(",") if p.strip()]
+    configured = set(configured_providers())
+    return [name for name in order if name in KEY_HELP and name not in configured]
+
+
+def _missing_key_hint():
+    missing = unconfigured_providers()
+    if not missing:
+        return ""
+    keys = ", ".join(f"{KEY_HELP[name][0]} ({KEY_HELP[name][1]})" for name in missing)
+    return (f" ※ 지금은 {', '.join(n.capitalize() for n in configured_providers()) or '없음'} 만 사용 중입니다. "
+            f"서버 환경변수에 {keys} 를 무료로 발급받아 추가하면, 한도가 찼을 때 자동으로 넘어가 분석합니다.")
+
+
 def _models(name):
     raw = getattr(settings, OPENAI_COMPATIBLE[name]["models_setting"], "") or ""
     return [m.strip() for m in raw.split(",") if m.strip()]
@@ -165,4 +188,5 @@ def extract_schedules(source_text, filename=""):
         except ScheduleExtractionError as exc:
             logger.warning("AI provider %s failed: %s", name, exc)
             errors.append(str(exc))
-    raise ScheduleExtractionError(" / ".join(errors) or "AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.")
+    raise ScheduleExtractionError(
+        (" / ".join(errors) or "AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.") + _missing_key_hint())
