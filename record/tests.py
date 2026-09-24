@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import AnesthesiaRecord, AnesthesiaCase, FreeTextNote
+from .models import AnesthesiaRecord, AnesthesiaCase, FreeTextNote, RecordTemplate
 
 
 class SaveAllTests(TestCase):
@@ -95,3 +95,86 @@ class SaveAllTests(TestCase):
         res = self.client.get(reverse('anesthesia_record'))
         self.assertEqual(res.status_code, 200)
         self.assertNotContains(res, '</script><script>alert(1)')
+
+
+class PageStateTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def state(self):
+        res = self.client.get(reverse('anesthesia_record'))
+        self.assertEqual(res.status_code, 200)
+        return res.context['state']
+
+    def test_new_case_when_nothing_saved(self):
+        state = self.state()
+        self.assertTrue(state['is_new'])
+        self.assertEqual(state['records'], [])
+        # GET 만으로 빈 케이스 행을 만들지 않음
+        self.assertFalse(AnesthesiaCase.objects.filter(user=self.user).exists())
+
+    def test_existing_record_is_loaded(self):
+        AnesthesiaRecord.objects.create(user=self.user, hr=70)
+        state = self.state()
+        self.assertFalse(state['is_new'])
+        self.assertEqual(state['records'][0]['hr'], 70)
+
+    def test_blank_case_counts_as_new(self):
+        AnesthesiaCase.objects.create(user=self.user, info={'interval': '', 'patient_name': ' '})
+        self.assertTrue(self.state()['is_new'])
+
+
+class TemplateTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user('doc', password='x')
+        self.user.is_approved = True
+        self.user.save()
+        self.other = User.objects.create_user('other', password='x')
+        self.client.force_login(self.user)
+
+    def save(self, name, data):
+        return self.client.post(reverse('record_template_save'), json.dumps({'name': name, 'data': data}),
+                                content_type='application/json')
+
+    def test_save_keeps_only_template_fields(self):
+        res = self.save('TKRA spinal', {
+            'info': {'anesth_type': 'Spinal', 'anesth_detail': 'L3-4', 'patient_name': '홍길동', 'anesth_start': '2026-09-23T15:00'},
+            'rows': [{'name': 'BT', 'group': 'vital', 'unit': '℃'}],
+            'note': 'Time out done',
+        })
+        self.assertEqual(res.status_code, 200)
+        data = RecordTemplate.objects.get(user=self.user).data
+        self.assertEqual(data['info'], {'anesth_type': 'Spinal', 'anesth_detail': 'L3-4'})
+        self.assertEqual(data['rows'], [{'name': 'BT', 'group': 'vital', 'unit': '℃'}])
+        self.assertEqual(data['note'], 'Time out done')
+        self.assertEqual([t['name'] for t in res.json()['templates']], ['TKRA spinal'])
+
+    def test_same_name_overwrites(self):
+        self.save('GA', {'note': 'a'})
+        self.save('GA', {'note': 'b'})
+        self.assertEqual(RecordTemplate.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(RecordTemplate.objects.get(user=self.user).data['note'], 'b')
+
+    def test_name_required(self):
+        self.assertEqual(self.save('  ', {}).status_code, 400)
+
+    def test_templates_listed_on_page(self):
+        self.save('GA', {'note': 'x'})
+        res = self.client.get(reverse('anesthesia_record'))
+        self.assertEqual([t['name'] for t in res.context['state']['templates']], ['GA'])
+
+    def test_cannot_delete_other_users_template(self):
+        theirs = RecordTemplate.objects.create(user=self.other, name='theirs')
+        res = self.client.post(reverse('record_template_delete', args=[theirs.id]))
+        self.assertEqual(res.status_code, 404)
+        self.assertTrue(RecordTemplate.objects.filter(id=theirs.id).exists())
+
+    def test_delete_own_template(self):
+        tpl = RecordTemplate.objects.create(user=self.user, name='mine')
+        res = self.client.post(reverse('record_template_delete', args=[tpl.id]))
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(RecordTemplate.objects.filter(id=tpl.id).exists())
