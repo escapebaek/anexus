@@ -1,4 +1,5 @@
 import json
+import math
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
@@ -14,6 +15,7 @@ from .models import AnesthesiaRecord, FreeTextNote, AnesthesiaCase
 # 기본 행(HR/SBP/DBP/SpO2)은 모델 컬럼, 나머지는 extra_vitals(JSON)에 저장
 BASE_FIELDS = ('hr', 'sbp', 'dbp', 'spo2')
 ROW_GROUPS = ('vital', 'gas', 'fluid', 'output', 'drug', 'etc')
+INT_MIN, INT_MAX = -2**31, 2**31 - 1
 
 
 def _record_to_dict(record):
@@ -47,7 +49,7 @@ def _page_state(user):
 
 def _parse_local_dt(value):
     """'YYYY-MM-DDTHH:MM' (Asia/Seoul 로컬) -> aware datetime."""
-    if not value:
+    if not value or not isinstance(value, str):
         return None
     try:
         naive = datetime.strptime(value[:16], '%Y-%m-%dT%H:%M')
@@ -63,9 +65,13 @@ def _parse_int(value):
     if value == '':
         return None
     try:
-        return int(round(float(value)))
+        num = float(value)
     except ValueError:
         raise ValueError(value)
+    # inf/nan 및 DB IntegerField 범위를 벗어나는 값은 500 대신 입력 오류로 처리
+    if not math.isfinite(num) or not INT_MIN <= round(num) <= INT_MAX:
+        raise ValueError(value)
+    return int(round(num))
 
 
 def _clean_extra(extra):
@@ -79,9 +85,14 @@ def _clean_extra(extra):
         text = str(value).strip()[:100]
         try:
             num = float(text)
-            cleaned[key] = int(num) if num.is_integer() and '.' not in text else num
         except ValueError:
             cleaned[key] = text
+            continue
+        if not math.isfinite(num):
+            # NaN/Infinity는 JSON(DB)에 저장할 수 없으므로 문자열로 보존
+            cleaned[key] = text
+        else:
+            cleaned[key] = int(num) if num.is_integer() and '.' not in text else num
     return cleaned
 
 
@@ -134,15 +145,25 @@ def save_all(request):
     """케이스 정보 + 기록(노트) + 모든 시간 컬럼을 한 번에 저장 (트랜잭션)."""
     try:
         payload = json.loads(request.body or b'{}')
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({'ok': False, 'error': '잘못된 요청 형식입니다.'}, status=400)
 
+    case_data = payload.get('case') if isinstance(payload, dict) else None
+    columns = payload.get('columns') if isinstance(payload, dict) else None
+    if not isinstance(payload, dict) or not isinstance(case_data or {}, dict) or not isinstance(columns or [], list):
+        return JsonResponse({'ok': False, 'error': '잘못된 요청 형식입니다.'}, status=400)
+    case_data = case_data or {}
+    info = case_data.get('info') if isinstance(case_data.get('info'), dict) else {}
+
     user = request.user
-    patient_id = str(payload.get('case', {}).get('info', {}).get('patient_id', '') or 'unknown')[:50]
+    patient_id = str(info.get('patient_id', '') or 'unknown')[:50]
     errors = []
     parsed_columns = []
 
-    for idx, col in enumerate(payload.get('columns', []) or []):
+    for idx, col in enumerate(columns or []):
+        if not isinstance(col, dict):
+            errors.append(f'{idx + 1}번째 컬럼: 형식이 올바르지 않습니다.')
+            continue
         ts = _parse_local_dt(col.get('timestamp'))
         if ts is None:
             errors.append(f'{idx + 1}번째 컬럼: 시간이 올바르지 않습니다.')
@@ -152,7 +173,7 @@ def save_all(request):
             try:
                 values[field] = _parse_int(col.get(field))
             except ValueError as exc:
-                errors.append(f'{col.get("timestamp", "")[11:16]} {field.upper()}: 숫자가 아닙니다 ({exc}).')
+                errors.append(f'{col["timestamp"][11:16]} {field.upper()}: 숫자가 아닙니다 ({exc}).')
         parsed_columns.append((col, ts, values))
 
     if errors:
@@ -160,8 +181,7 @@ def save_all(request):
 
     with transaction.atomic():
         case, _ = AnesthesiaCase.objects.select_for_update().get_or_create(user=user)
-        case_data = payload.get('case', {}) or {}
-        case.info = _clean_info(case_data.get('info', {}))
+        case.info = _clean_info(info)
         case.events = _clean_events(case_data.get('events', []))
         case.rows = _clean_rows(case_data.get('rows', []))
         case.save()
@@ -171,7 +191,8 @@ def save_all(request):
             note.content = str(payload.get('note') or '')
             note.save()
 
-        deleted = [int(i) for i in payload.get('deleted', []) or [] if str(i).lstrip('-').isdigit() and int(i) > 0]
+        deleted = payload.get('deleted') if isinstance(payload.get('deleted'), list) else []
+        deleted = [int(i) for i in deleted if str(i).lstrip('-').isdigit() and int(i) > 0]
         if deleted:
             AnesthesiaRecord.objects.filter(user=user, id__in=deleted).delete()
 

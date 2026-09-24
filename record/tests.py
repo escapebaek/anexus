@@ -73,6 +73,22 @@ class SaveAllTests(TestCase):
         self.assertEqual(AnesthesiaRecord.objects.count(), 0)
         self.assertFalse(AnesthesiaCase.objects.filter(user=self.user).exists())
 
+    def test_out_of_range_numbers_are_400_not_500(self):
+        for bad in ('1e400', 'nan', '99999999999'):
+            res = self.post(self.base_payload([{'id': None, 'timestamp': '2026-09-23T15:00', 'hr': bad}]))
+            self.assertEqual(res.status_code, 400, bad)
+        res = self.post(self.base_payload([
+            {'id': None, 'timestamp': '2026-09-23T15:00', 'extra_vitals': {'EtCO2': 'nan', 'MAC': 'inf'}},
+        ]))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['state']['records'][0]['extra_vitals'], {'EtCO2': 'nan', 'MAC': 'inf'})
+
+    def test_malformed_payload_is_400_not_500(self):
+        for payload in ([], {'case': 'x'}, {'columns': {'a': 1}}, {'columns': ['x']},
+                        {'columns': [{'timestamp': 123}]}):
+            self.assertEqual(self.post(payload).status_code, 400, payload)
+        self.assertEqual(self.post({'case': None, 'columns': []}).status_code, 200)
+
     def test_cannot_touch_other_users_records(self):
         theirs = AnesthesiaRecord.objects.create(user=self.other, hr=50)
         self.post(self.base_payload(
