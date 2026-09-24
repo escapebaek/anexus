@@ -28,9 +28,8 @@ class SurgerySchedule(models.Model):
     # 현황판에서 수술 단위로 지정: 당직으로 넘길 수술 / Hold 수술 (업데이트 시 유지)
     on_call = models.BooleanField(default=False)
     hold = models.BooleanField(default=False)
-    # 현황판에서 직접 정한 방 안 순서 (0 = 지정 안 함 -> 시간 순으로 뒤에) / 직접 옮긴 방은 업데이트 파일이 되돌리지 않음
+    # 현황판에서 직접 정한 방 안 순서 (0 = 지정 안 함 -> 시간 순으로 뒤에). 스케줄 업데이트 시 초기화.
     position = models.PositiveIntegerField(default=0)
-    room_locked = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.date} - {self.room} - {self.surgery_name} ({self.status})"

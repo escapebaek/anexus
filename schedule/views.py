@@ -198,9 +198,10 @@ def move_case_in_room(schedule, direction):
 
 
 def move_case_to_room(schedule, room):
-    """다른 방으로 옮김 (그 방의 순서 지정 수술들 뒤, 나머지와는 시간 순). 이후 업데이트 파일이 되돌리지 않음."""
-    schedule.room, schedule.room_locked, schedule.position = room, True, 0
-    schedule.save(update_fields=["room", "room_locked", "position"])
+    """다른 방으로 옮김 (그 방의 순서 지정 수술들 뒤, 나머지와는 시간 순).
+    다음 스케줄 업데이트 때는 파일의 방·순서로 다시 맞춰짐."""
+    schedule.room, schedule.position = room, 0
+    schedule.save(update_fields=["room", "position"])
 
 
 def apply_manual_status(schedule, target):
@@ -588,11 +589,6 @@ def update_schedules_from_records(records, user, existing_schedules):
         for manual_field in ("anesthesiologist", "anesthesia_type"):
             if not data[manual_field]:
                 data[manual_field] = getattr(schedule, manual_field)
-        if schedule.room_locked:
-            # 현황판에서 직접 옮긴 방은 파일의 방으로 되돌리지 않음
-            data["room"] = schedule.room
-        elif data["room"] != schedule.room:
-            schedule.position = 0  # 파일에서 방이 바뀌면 예전 방의 순서 지정은 의미 없음
         if schedule.status_locked:
             # 현황판에서 수동으로 바꾼 상태(완료/진행중 등)는 파일 상태로 되돌리지 않음
             data["status"] = schedule.status
@@ -600,6 +596,9 @@ def update_schedules_from_records(records, user, existing_schedules):
             for field, value in data.items():
                 setattr(schedule, field, value)
             schedule.save()
+
+    # 방·순서는 업로드한 파일이 기준: 현황판에서 직접 옮기거나 정렬한 순서는 여기서 초기화
+    SurgerySchedule.objects.filter(user=user).exclude(position=0).update(position=0)
 
     # Whatever wasn't claimed wasn't matched by anything in this upload - the case is no
     # longer part of the schedule, so remove it (and its memo along with it).

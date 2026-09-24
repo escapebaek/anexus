@@ -466,6 +466,13 @@ class AiProviderTests(TestCase):
         self.assertEqual(calls, [])
         self.assertIn('API 키가 설정되어 있지 않습니다', str(exc))
 
+    def test_only_gemini_configured_hints_other_keys(self):
+        calls, exc = self.run_with({}, providers='groq,gemini,openrouter',
+                                   keys={'GROQ_API_KEY': '', 'OPENROUTER_API_KEY': '', 'GEMINI_API_KEY': 'k'})
+        self.assertIn('Gemini 만 사용 중', str(exc))
+        self.assertIn('GROQ_API_KEY', str(exc))
+        self.assertIn('OPENROUTER_API_KEY', str(exc))
+
     def test_all_fail_reports_each_provider(self):
         calls, exc = self.run_with({'g1': (429, None), 'g2': (429, None), 'o1': (503, None)})
         self.assertIn('Groq', str(exc))
@@ -712,14 +719,20 @@ class ManualRoomOrderTests(TestCase):
         self.assertEqual(self.order('101'), ['A', 'C'])
         self.assertEqual(self.order('205'), ['B'])
 
-    def test_manual_room_and_order_survive_schedule_update(self):
+    def test_schedule_update_resets_manual_room_and_order_to_file(self):
         self.post(self.b, {'room': '205'})
-        self.post(self.c, {'move': 'up'})           # 101: C, A
-        records = [rec('101', '08:00', 'A', 'Op'), rec('101', '10:00', 'B', 'Op'), rec('101', '12:00', 'C', 'Op'),
+        self.post(self.c, {'move': 'up'})           # B 는 205 로, 101: C 를 A 앞으로
+        self.assertEqual(self.order('101'), ['C', 'A'])
+        # 업데이트 파일: B 는 101 그대로, C 는 301 로 바뀜 -> 파일이 기준
+        records = [rec('101', '08:00', 'A', 'Op'), rec('101', '10:00', 'B', 'Op'), rec('301', '09:00', 'C', 'Op'),
                    rec('101', '13:00', 'D', 'Op')]
         update_schedules_from_records(records, self.user, list(SurgerySchedule.objects.filter(user=self.user)))
-        self.assertEqual(self.order('205'), ['B'])            # 파일은 101 이지만 직접 옮긴 방 유지
-        self.assertEqual(self.order('101'), ['C', 'A', 'D'])  # 직접 정한 순서 유지, 새 수술은 뒤에
+        self.assertEqual(self.order('101'), ['A', 'B', 'D'])
+        self.assertEqual(self.order('301'), ['C'])
+        self.assertEqual(self.order('205'), [])
+        self.assertFalse(SurgerySchedule.objects.filter(user=self.user).exclude(position=0).exists())
+        # 메모 등 수술별 정보는 그대로 같은 수술에 남음 (같은 행이 갱신됨)
+        self.assertEqual(SurgerySchedule.objects.get(user=self.user, patient_name='B').id, self.b.id)
 
     def test_invalid_room_or_move_rejected(self):
         for payload in ({'room': '  '}, {'move': 'sideways'}):
