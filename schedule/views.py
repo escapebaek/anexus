@@ -9,7 +9,7 @@ import os
 import re
 import subprocess
 from io import BytesIO
-from .models import SurgerySchedule, PatientMemo, RoomFlag
+from .models import SurgerySchedule, PatientMemo
 from difflib import SequenceMatcher
 from django.db import transaction
 from django.views.decorators.http import require_POST
@@ -83,11 +83,14 @@ def _room_sort_key(room):
     return (room == "", [(0, int(p), "") if p.isdigit() else (1, 0, p.lower()) for p in parts if p])
 
 
-def build_board(schedules, flags=None, memos=None):
-    """Schedules -> JSON-able board data: rooms (naturally sorted, each with its cases, the
-    case to feature on the room's row and its 당직/Hold flags) plus overall counts.
-    flags: {room: RoomFlag}, memos: {schedule_id: memo text}."""
-    flags = flags or {}
+# 현황판에서 수동으로 지정하는 상태값
+MANUAL_STATUS = {"ongoing": "진행중", "finished": "완료", "pending": "예정"}
+
+
+def build_board(schedules, memos=None):
+    """Schedules -> JSON-able board data: rooms (naturally sorted, each with its cases and
+    the case to feature on the room's row) plus overall counts.
+    memos: {schedule_id: memo text}."""
     memos = memos or {}
     rooms = defaultdict(list)
     for schedule in schedules:
@@ -113,8 +116,14 @@ def build_board(schedules, flags=None, memos=None):
                 "patient_info": s.patient_info,
                 "status": s.status,
                 "group": group,
+                "status_locked": s.status_locked,
+                "on_call": s.on_call,
+                "hold": s.hold,
                 "memo": memos.get(s.id, ""),
             })
+            if group != "finished":
+                counts["on_call"] += s.on_call
+                counts["hold"] += s.hold
         groups = [c["group"] for c in cases]
         # 방 행에 보여줄 케이스: 진행 중 > 다음 예정 > 마지막 완료
         if "ongoing" in groups:
@@ -123,17 +132,11 @@ def build_board(schedules, flags=None, memos=None):
             current = groups.index("pending")
         else:
             current = len(cases) - 1
-        flag = flags.get(room)
-        on_call, hold = bool(flag and flag.on_call), bool(flag and flag.hold)
-        counts["on_call"] += on_call
-        counts["hold"] += hold
         board_rooms.append({
             "room": room,
             "state": cases[current]["group"],
             "current": current,
             "cases": cases,
-            "on_call": on_call,
-            "hold": hold,
         })
 
     total = counts["ongoing"] + counts["pending"] + counts["finished"]
@@ -146,20 +149,65 @@ def build_board(schedules, flags=None, memos=None):
     }
 
 
+def _memo_map(user, schedule_ids=None):
+    """{schedule_id: 메모} - 일정별 첫 메모 (handle_memo GET 과 같은 것), 내용이 있는 것만."""
+    qs = PatientMemo.objects.filter(schedule__user=user)
+    if schedule_ids is not None:
+        qs = qs.filter(schedule_id__in=schedule_ids)
+    memos = {}
+    for schedule_id, content in qs.order_by("id").values_list("schedule_id", "content"):
+        memos.setdefault(schedule_id, (content or "").strip())
+    return {k: v for k, v in memos.items() if v}
+
+
+def _room_schedules(user, room):
+    return list(SurgerySchedule.objects.filter(user=user, room=room).order_by("date", "room", "time_slot", "id"))
+
+
+def apply_manual_status(schedule, target):
+    """현황판에서 수술 상태를 수동으로 변경하고, 같은 방의 다른 수술을 맞춰 조정.
+    - 완료: 이 수술을 완료로 하고, 방에 진행 중인 수술이 없으면 바로 다음 예정 수술을
+      진행중으로 (다음 수술이 Hold 면 자동 시작하지 않음)
+    - 진행중: 같은 방에서 진행 중이던 다른 수술은 예정으로 되돌림
+    - 예정: 이 수술만 예정으로
+    수동으로 바꾼 수술은 status_locked 로 표시해 이후 업데이트 파일이 덮어쓰지 않게 함."""
+    room_cases = _room_schedules(schedule.user, schedule.room)
+    changed = []
+
+    def set_status(case, value):
+        if case.status != value or not case.status_locked:
+            case.status, case.status_locked = value, True
+            changed.append(case)
+
+    if target == "ongoing":
+        for case in room_cases:
+            if case.id != schedule.id and status_group(case.status) == "ongoing":
+                set_status(case, MANUAL_STATUS["pending"])
+        set_status(schedule, MANUAL_STATUS["ongoing"])
+    elif target == "finished":
+        set_status(schedule, MANUAL_STATUS["finished"])
+        others_ongoing = any(
+            c.id != schedule.id and status_group(c.status) == "ongoing" for c in room_cases)
+        if not others_ongoing:
+            index = next(i for i, c in enumerate(room_cases) if c.id == schedule.id)
+            nxt = next((c for c in room_cases[index + 1:] if status_group(c.status) == "pending"), None)
+            if nxt is not None and not nxt.hold:
+                set_status(nxt, MANUAL_STATUS["ongoing"])
+    else:
+        set_status(schedule, MANUAL_STATUS["pending"])
+
+    for case in changed:
+        case.save(update_fields=["status", "status_locked"])
+    return changed
+
+
 @login_required
 @user_is_specially_approved
 def schedule_dashboard(request):
     form = ScheduleUploadForm()
     error_message = None
     schedules = SurgerySchedule.objects.filter(user=request.user).order_by("date", "room", "time_slot", "id")
-    flags = {f.room: f for f in RoomFlag.objects.filter(user=request.user)}
-    # 일정별 첫 메모 (handle_memo GET 과 같은 것) - 내용이 있는 것만
-    memos = {}
-    for schedule_id, content in (PatientMemo.objects.filter(schedule__user=request.user)
-                                 .order_by("id").values_list("schedule_id", "content")):
-        memos.setdefault(schedule_id, (content or "").strip())
-    memos = {k: v for k, v in memos.items() if v}
-    board = build_board(schedules, flags, memos)
+    board = build_board(schedules, _memo_map(request.user))
 
     if request.method == "POST":
         # 'update'(기본) 또는 'replace' - 값이 빠져도 기존 일정·메모를 지우지 않도록 update 가 기본
@@ -173,7 +221,6 @@ def schedule_dashboard(request):
                 with transaction.atomic():
                     if action == 'replace':
                         SurgerySchedule.objects.filter(user=request.user).delete()
-                        RoomFlag.objects.filter(user=request.user).delete()
                         create_schedules_from_records(records, request.user)
                     else:
                         existing_schedules = list(SurgerySchedule.objects.filter(user=request.user))
@@ -400,6 +447,9 @@ def update_schedules_from_records(records, user, existing_schedules):
             continue
         if not data["anesthesiologist"]:
             data["anesthesiologist"] = schedule.anesthesiologist
+        if schedule.status_locked:
+            # 현황판에서 수동으로 바꾼 상태(완료/진행중 등)는 파일 상태로 되돌리지 않음
+            data["status"] = schedule.status
         if any(getattr(schedule, field) != value for field, value in data.items()):
             for field, value in data.items():
                 setattr(schedule, field, value)
@@ -426,7 +476,8 @@ def update_schedules_from_records(records, user, existing_schedules):
 @user_is_specially_approved
 @require_POST
 def update_schedule(request, schedule_id):
-    """현황판에서 케이스의 마취의를 직접 입력."""
+    """현황판에서 수술 한 건을 수정: 마취의 입력, 당직/Hold 표시, 상태(진행중/완료/예정) 변경.
+    응답으로 그 방의 최신 상태(build_board 의 room 항목)를 돌려줌."""
     schedule = SurgerySchedule.objects.filter(id=schedule_id, user=request.user).first()
     if schedule is None:
         return JsonResponse({"status": "error", "message": "Schedule not found"}, status=404)
@@ -434,33 +485,28 @@ def update_schedule(request, schedule_id):
         data = json.loads(request.body or b"{}")
     except json.JSONDecodeError:
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
-    if "anesthesiologist" in data:
-        schedule.anesthesiologist = str(data.get("anesthesiologist") or "").strip()[:FIELD_MAX_LENGTHS["anesthesiologist"]]
-        schedule.save(update_fields=["anesthesiologist"])
-    return JsonResponse({"status": "success", "anesthesiologist": schedule.anesthesiologist})
-
-
-@login_required
-@user_is_specially_approved
-@require_POST
-def set_room_flag(request):
-    """현황판에서 방을 '당직 넘김' / 'Hold'로 표시하거나 해제."""
-    try:
-        data = json.loads(request.body or b"{}")
-    except json.JSONDecodeError:
+    if not isinstance(data, dict):
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
-    room = str(data.get("room") or "").strip()[:FIELD_MAX_LENGTHS["room"]]
-    if not SurgerySchedule.objects.filter(user=request.user, room=room).exists():
-        return JsonResponse({"status": "error", "message": "Room not found"}, status=404)
-    flag, _ = RoomFlag.objects.get_or_create(user=request.user, room=room)
-    for field in ("on_call", "hold"):
-        if field in data:
-            setattr(flag, field, bool(data[field]))
-    if flag.on_call or flag.hold:
-        flag.save()
-    else:
-        flag.delete()
-    return JsonResponse({"status": "success", "room": room, "on_call": flag.on_call, "hold": flag.hold})
+    if "status" in data and data["status"] not in MANUAL_STATUS:
+        return JsonResponse({"status": "error", "message": "Invalid status"}, status=400)
+
+    with transaction.atomic():
+        fields = []
+        if "anesthesiologist" in data:
+            schedule.anesthesiologist = str(data.get("anesthesiologist") or "").strip()[:FIELD_MAX_LENGTHS["anesthesiologist"]]
+            fields.append("anesthesiologist")
+        for flag in ("on_call", "hold"):
+            if flag in data:
+                setattr(schedule, flag, bool(data[flag]))
+                fields.append(flag)
+        if fields:
+            schedule.save(update_fields=fields)
+        if "status" in data:
+            apply_manual_status(schedule, data["status"])
+
+    room_cases = _room_schedules(request.user, schedule.room)
+    board = build_board(room_cases, _memo_map(request.user, [c.id for c in room_cases]))
+    return JsonResponse({"status": "success", "room": board["rooms"][0]})
 
 
 @login_required

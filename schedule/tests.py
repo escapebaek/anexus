@@ -6,7 +6,7 @@ from django.urls import reverse
 
 import json
 
-from .models import SurgerySchedule, PatientMemo, RoomFlag
+from .models import SurgerySchedule, PatientMemo
 from .views import build_board, status_group, update_schedules_from_records
 
 
@@ -191,19 +191,70 @@ class ApiTests(TestCase):
 
     def test_set_anesthesiologist(self):
         res = self.post(reverse('schedule_update', args=[self.mine.id]), {'anesthesiologist': ' 이마취 '})
-        self.assertEqual(res.json()['anesthesiologist'], '이마취')
+        self.assertEqual(res.json()['room']['cases'][0]['anesthesiologist'], '이마취')
         self.assertEqual(self.post(reverse('schedule_update', args=[self.theirs.id]), {'anesthesiologist': 'x'}).status_code, 404)
 
-    def test_room_flags(self):
-        url = reverse('schedule_room_flag')
-        self.assertEqual(self.post(url, {'room': '101', 'hold': True}).json()['hold'], True)
-        self.post(url, {'room': '101', 'on_call': True})
+    def test_case_flags_are_per_case(self):
+        nxt = make(self.user, '101', '11:00')
+        url = reverse('schedule_update', args=[self.mine.id])
+        room = self.post(url, {'on_call': True}).json()['room']
+        room = self.post(reverse('schedule_update', args=[nxt.id]), {'hold': True}).json()['room']
+        self.assertEqual([(c['on_call'], c['hold']) for c in room['cases']], [(True, False), (False, True)])
         board = self.client.get(reverse('schedule_dashboard')).context['board']
-        self.assertEqual((board['rooms'][0]['hold'], board['rooms'][0]['on_call']), (True, True))
-        self.assertEqual((board['counts']['hold'], board['counts']['on_call']), (1, 1))
-        self.post(url, {'room': '101', 'hold': False, 'on_call': False})
-        self.assertFalse(RoomFlag.objects.filter(user=self.user).exists())
-        self.assertEqual(self.post(url, {'room': '999', 'hold': True}).status_code, 404)
+        self.assertEqual((board['counts']['on_call'], board['counts']['hold']), (1, 1))
+        self.post(url, {'on_call': False})
+        self.mine.refresh_from_db()
+        self.assertFalse(self.mine.on_call)
+        self.assertEqual(self.post(reverse('schedule_update', args=[self.theirs.id]), {'hold': True}).status_code, 404)
+
+    def test_invalid_status_rejected_without_partial_save(self):
+        res = self.post(reverse('schedule_update', args=[self.mine.id]), {'hold': True, 'status': 'bogus'})
+        self.assertEqual(res.status_code, 400)
+        self.mine.refresh_from_db()
+        self.assertFalse(self.mine.hold)
+
+
+class ManualStatusTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+        self.a = make(self.user, '101', '08:00', status='진행중', name='A')
+        self.b = make(self.user, '101', '10:00', status='예정', name='B')
+        self.c = make(self.user, '101', '12:00', status='예정', name='C')
+        self.other_room = make(self.user, '102', '08:00', status='진행중', name='X')
+
+    def set_status(self, case, status):
+        res = self.client.post(reverse('schedule_update', args=[case.id]), json.dumps({'status': status}),
+                               content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        return res.json()['room']
+
+    def statuses(self):
+        return [SurgerySchedule.objects.get(id=c.id).status for c in (self.a, self.b, self.c, self.other_room)]
+
+    def test_complete_starts_next_case(self):
+        room = self.set_status(self.a, 'finished')
+        self.assertEqual(self.statuses(), ['완료', '진행중', '예정', '진행중'])
+        self.assertEqual(room['cases'][room['current']]['patient_name'], 'B')
+
+    def test_complete_does_not_auto_start_held_case(self):
+        SurgerySchedule.objects.filter(id=self.b.id).update(hold=True)
+        self.set_status(self.a, 'finished')
+        self.assertEqual(self.statuses(), ['완료', '예정', '예정', '진행중'])
+
+    def test_reopen_finished_case_sets_current_back_to_pending(self):
+        self.set_status(self.a, 'finished')           # A 완료, B 진행중
+        self.set_status(self.a, 'ongoing')            # A 다시 진행중 -> B 예정
+        self.assertEqual(self.statuses(), ['진행중', '예정', '예정', '진행중'])
+
+    def test_manual_status_survives_schedule_update(self):
+        self.set_status(self.a, 'finished')
+        records = [rec(r, t, n, 'Op', '12345678 (M/40)', status='예정')
+                   for r, t, n in [('101', '08:00', 'A'), ('101', '10:00', 'B'), ('101', '12:00', 'C'), ('102', '08:00', 'X')]]
+        update_schedules_from_records(records, self.user, list(SurgerySchedule.objects.filter(user=self.user)))
+        self.assertEqual(self.statuses(), ['완료', '진행중', '예정', '예정'])
 
 
 class UploadActionTests(TestCase):
@@ -216,7 +267,7 @@ class UploadActionTests(TestCase):
         self.client.force_login(self.user)
         self.case = make(self.user, '101', '08:00', name='홍길동', surgery='TKRA', info='11111111 (M/70)')
         PatientMemo.objects.create(schedule=self.case, content='memo')
-        RoomFlag.objects.create(user=self.user, room='101', hold=True)
+        SurgerySchedule.objects.filter(id=self.case.id).update(hold=True, on_call=True)
 
     def upload(self, **post):
         from unittest import mock
@@ -235,10 +286,73 @@ class UploadActionTests(TestCase):
     def test_update_keeps_memo_and_flags(self):
         self.upload(action='update')
         self.assertEqual(PatientMemo.objects.get().content, 'memo')
-        self.assertTrue(RoomFlag.objects.filter(user=self.user, room='101', hold=True).exists())
+        self.assertTrue(SurgerySchedule.objects.filter(user=self.user, room='205', hold=True, on_call=True).exists())
 
     def test_replace_clears_everything(self):
         self.upload(action='replace')
         self.assertFalse(PatientMemo.objects.exists())
-        self.assertFalse(RoomFlag.objects.filter(user=self.user).exists())
+        self.assertFalse(SurgerySchedule.objects.filter(user=self.user, hold=True).exists())
         self.assertEqual(SurgerySchedule.objects.get(user=self.user).room, '205')
+
+
+class GeminiFallbackTests(TestCase):
+    """무료 등급: 과부하(503)·한도(429)·없는 모델(404)이면 다음 무료 모델로 넘어감."""
+
+    def run_with(self, responses):
+        from unittest import mock
+        from django.test import override_settings
+        from . import gemini_client
+
+        calls = []
+
+        class Resp:
+            def __init__(self, code, text='{}'):
+                self.status_code, self.text = code, text
+
+            def json(self):
+                return json.loads(self.text)
+
+        ok_body = json.dumps({'candidates': [{'content': {'parts': [{'text': json.dumps({'schedules': [rec('101', '08:00', 'A', 'Op')]})}]}}]})
+
+        def fake_post(url, **kwargs):
+            model = url.split('/models/')[1].split(':')[0]
+            calls.append(model)
+            code = responses[model].pop(0) if isinstance(responses[model], list) else responses[model]
+            return Resp(code, ok_body if code == 200 else 'error')
+
+        with override_settings(GEMINI_API_KEY='k', GEMINI_MODEL='m1', GEMINI_FALLBACK_MODELS='m2, m3,m1'), \
+                mock.patch.object(gemini_client.requests, 'post', side_effect=fake_post), \
+                mock.patch.object(gemini_client.time, 'sleep'):
+            try:
+                result = gemini_client.extract_schedules_from_text('data', 'f.txt')
+            except gemini_client.ScheduleExtractionError as exc:
+                return calls, exc
+        return calls, result
+
+    def test_overloaded_model_falls_back(self):
+        calls, result = self.run_with({'m1': 503, 'm2': 200, 'm3': 200})
+        self.assertEqual(calls, ['m1', 'm1', 'm2'])
+        self.assertEqual(result[0]['patient_name'], 'A')
+
+    def test_quota_and_missing_model_skip_ahead(self):
+        calls, result = self.run_with({'m1': 429, 'm2': 404, 'm3': 200})
+        self.assertEqual(calls, ['m1', 'm2', 'm3'])
+        self.assertIsInstance(result, list)
+
+    def test_overload_recovers_on_retry(self):
+        calls, result = self.run_with({'m1': [503, 200], 'm2': 200, 'm3': 200})
+        self.assertEqual(calls, ['m1', 'm1'])
+
+    def test_all_quota_exhausted_message(self):
+        calls, exc = self.run_with({'m1': 429, 'm2': 429, 'm3': 429})
+        self.assertIn('무료 사용량 한도', str(exc))
+
+    def test_all_overloaded_message(self):
+        calls, exc = self.run_with({'m1': 503, 'm2': 503, 'm3': 503})
+        self.assertEqual(calls, ['m1', 'm1', 'm2', 'm2', 'm3', 'm3'])
+        self.assertIn('혼잡', str(exc))
+
+    def test_bad_key_stops_immediately(self):
+        calls, exc = self.run_with({'m1': 403, 'm2': 200, 'm3': 200})
+        self.assertEqual(calls, ['m1'])
+        self.assertIn('API 키', str(exc))
