@@ -1,188 +1,100 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load dict_extras %} 
+{% block title %}수술 현황판 · ANExuS{% endblock %}
 {% block custom_css %}
   <link href="{% static 'css/pages/schedule_dashboard.css' %}" rel="stylesheet" />
 {% endblock %}
-{# load our custom filter #}
 
 {% block page_content %}
 {% csrf_token %}
-<div class="dashboard-container">
-  <div class="dashboard-hero">
-    <div class="hero-content">
-      <h1 class="hero-title">Surgery Schedule Dashboard</h1>
-      <p class="hero-subtitle">Memo Loading Requires 2~3 seconds</p>
+<div class="orb" id="orb">
+  <!-- ===== 상단 바: 브랜드 · 현황 · 날짜/시계 ===== -->
+  <header class="orb-top">
+    <div class="orb-brand">
+      <span class="orb-logo"><i class="fas fa-procedures"></i></span>
+      <div>
+        <div class="orb-title">수술 현황판</div>
+        <div class="orb-sub">ANExuS OR Board</div>
+      </div>
     </div>
-  </div>
-  <div style="text-align:right; font-size:0.7rem; opacity:0.35; padding:0.25rem 1rem 0;">build {{ build_version }}</div>
 
-  <div class="schedule-wrapper">
-    {% if schedule_by_room %}
-      <div class="schedule-grid">
-        {% for room, schedules in schedule_by_room.items %}
-          <!-- Default state: folded -->
-          <div class="schedule-card collapsed">
-            <div class="room-header">
-              <div class="room-info">
-                <h3 class="room-title">{{ room }}</h3>
-              </div>
-              <!-- Toggle button default text "Open" because card is folded -->
-              <button class="toggle-room" onclick="toggleRoom(this)">Open</button>
-            </div>
-
-            <!-- Full schedule timeline (hidden by default) -->
-            <div class="schedule-timeline" style="display: none;">
-              {% for schedule in schedules %}
-                <div class="timeline-item" data-status="{{ schedule.status }}">
-                  <div class="timeline-status">
-                    <span class="status-indicator"></span>
-                  </div>
-                  <div class="timeline-time">
-                    <span class="time">{{ schedule.time_slot }}</span>
-                    <span class="duration">{{ schedule.duration }}분</span>
-                  </div>
-                  <div class="timeline-content">
-                    <h4 class="surgery-name">{{ schedule.surgery_name }}</h4>
-                    <div class="surgery-details">
-                      <span class="detail-item">
-                        <i class="fas fa-user-md"></i>
-                        {{ schedule.surgeon }}
-                      </span>
-                    </div>
-                    <div class="patient-info">
-                      <span class="patient-name">
-                        <i class="fas fa-user"></i>
-                        {{ schedule.patient_name }}
-                      </span>
-                      <span class="patient-tag">{{ schedule.patient_info }}</span>
-                      <button class="memo-btn"
-                              onclick="openMemoModal('{{ schedule.id }}', '{{ schedule.patient_name }}')">
-                        <i class="fas fa-pen-fancy"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              {% endfor %}
-            </div>
-
-            <!-- Summary view (visible by default when folded) -->
-            <div class="schedule-summary" style="display: block;">
-              {% with summary=summary_by_room|get_item:room %}
-                {% if summary.ongoing %}
-                  <div class="timeline-item" data-status="{{ summary.ongoing.status }}">
-                    <div class="timeline-status">
-                      <span class="status-indicator"></span>
-                    </div>
-                    <div class="timeline-time">
-                      <span class="time">{{ summary.ongoing.time_slot }}</span>
-                      <span class="duration">{{ summary.ongoing.duration }}분</span>
-                    </div>
-                    <div class="timeline-content">
-                      <h4 class="surgery-name">{{ summary.ongoing.surgery_name }}</h4>
-                      <div class="surgery-details">
-                        <span class="detail-item">
-                          <i class="fas fa-user-md"></i>
-                          {{ summary.ongoing.surgeon }}
-                        </span>
-                      </div>
-                      <div class="patient-info">
-                        <span class="patient-name">
-                          <i class="fas fa-user"></i>
-                          {{ summary.ongoing.patient_name }}
-                        </span>
-                        <span class="patient-tag">{{ summary.ongoing.patient_info }}</span>
-                        <!-- Memo button in summary view -->
-                        <button class="memo-btn"
-                                onclick="openMemoModal('{{ summary.ongoing.id }}', '{{ summary.ongoing.patient_name }}')">
-                          <i class="fas fa-pen-fancy"></i>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                {% else %}
-                  <div class="timeline-item no-ongoing">
-                    <div class="timeline-content">
-                      <h4>No ongoing surgery</h4>
-                    </div>
-                  </div>
-                {% endif %}
-
-                <div class="summary-counts">
-                  {% if summary.pending %}
-                    <span class="pending-count">Remaining: {{ summary.pending }}</span>
-                  {% endif %}
-                  {% if summary.finished %}
-                    <span class="finished-count">Finished: {{ summary.finished }}</span>
-                  {% endif %}
-                </div>
-              {% endwith %}
-            </div>
-          </div>
-        {% endfor %}
+    <div class="orb-stats">
+      <div class="orb-legend">
+        <span class="lg lg-ongoing"><i></i>진행중 <b>{{ board.counts.ongoing }}</b></span>
+        <span class="lg lg-pending"><i></i>예정 <b>{{ board.counts.pending }}</b></span>
+        <span class="lg lg-finished"><i></i>완료 <b>{{ board.counts.finished }}</b></span>
       </div>
-    {% else %}
-      <div class="empty-state">
-        <i class="fas fa-calendar-times"></i>
-        <h3>등록된 수술 일정이 없습니다</h3>
-        <p>새로운 수술 일정을 업로드해주세요.</p>
-        <button class="btn-upload-empty">일정 업로드</button>
+      <div class="orb-progress" title="완료 {{ board.counts.finished }} / 전체 {{ board.total }}">
+        <div class="orb-progress-bar"><span id="progressFill"></span></div>
+        <span class="orb-progress-text">남은 <b>{{ board.remaining }}</b> / 전체 {{ board.total }}</span>
       </div>
-    {% endif %}
+    </div>
 
-    <!-- Always show the file upload section -->
-    <div class="upload-section">
-      <div class="upload-card">
-        <div class="upload-content">
-          <div class="upload-header">
-            <div class="upload-icon">
-              <i class="fas fa-file-upload"></i>
-            </div>
-            <h3>새로운 수술 스케줄 업로드</h3>
-            <p class="upload-description">
-              기관에서 사용하는 엑셀/메모 파일을 그대로 업로드하세요. AI가 내용을 읽어 자동으로 일정을 등록합니다.
-            </p>
-          </div>
-          {% if error_message %}
-            <div class="upload-error">
-              <i class="fas fa-exclamation-triangle"></i>
-              {{ error_message }}
-            </div>
-          {% endif %}
-          {% if form.file.errors %}
-            <div class="upload-error">
-              <i class="fas fa-exclamation-triangle"></i>
-              {{ form.file.errors|join:" " }}
-            </div>
-          {% endif %}
-          <form method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
-            {% csrf_token %}
-            <div class="file-drop-area">
-              <input type="file" name="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.csv,.txt"/>
-              <label for="fileInput" class="file-label">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <span>파일을 선택하거나 끌어다 놓으세요</span>
-                <span class="file-type-hint">Supported: Excel (.xlsx, .xls), CSV, TXT</span>
-              </label>
-            </div>
-            <div class="upload-actions">
-              <button type="submit" name="action" value="update" class="btn-upload btn-update">
-                <i class="fas fa-sync-alt"></i>
-                스케줄 업데이트
-              </button>
-              <button type="submit" name="action" value="replace" class="btn-upload btn-replace">
-                <i class="fas fa-upload"></i>
-                전체 교체
-              </button>
-            </div>
-          </form>
+    <div class="orb-clock">
+      <div class="orb-date" id="orbDate"></div>
+      <div class="orb-time" id="orbTime">--:--:--</div>
+    </div>
+
+    <div class="orb-actions">
+      <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
+      <button type="button" class="orb-btn" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
+    </div>
+  </header>
+
+  <div class="orb-body">
+    <!-- ===== 방별 보드 (JS가 화면 너비에 맞춰 여러 열로 배치) ===== -->
+    <main class="orb-board" id="board">
+      {% if not board.rooms %}
+        <div class="orb-empty">
+          <i class="fas fa-calendar-times"></i>
+          <h3>등록된 수술 일정이 없습니다</h3>
+          <p>오른쪽 <b>일정 업로드</b>에서 기관 스케줄 파일을 올려주세요.</p>
         </div>
-      </div>
-    </div>
+      {% endif %}
+    </main>
+
+    <!-- ===== 사이드바 ===== -->
+    <aside class="orb-side">
+      <section class="side-card">
+        <h4 class="side-head"><i class="fas fa-heartbeat"></i> 진행 중인 방</h4>
+        <ul class="side-list" id="ongoingList"></ul>
+      </section>
+
+      <section class="side-card" id="uploadCard">
+        <h4 class="side-head"><i class="fas fa-file-upload"></i> 일정 업로드</h4>
+        <p class="side-hint">기관 엑셀/메모 파일을 그대로 올리면 AI가 읽어 일정을 등록합니다. 메모는 불러오는 데 2~3초 걸립니다.</p>
+        {% if error_message %}
+          <div class="upload-error"><i class="fas fa-exclamation-triangle"></i> {{ error_message }}</div>
+        {% endif %}
+        {% if form.file.errors %}
+          <div class="upload-error"><i class="fas fa-exclamation-triangle"></i> {{ form.file.errors|join:" " }}</div>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+          {% csrf_token %}
+          <div class="file-drop-area">
+            <input type="file" name="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.csv,.txt"/>
+            <label for="fileInput" class="file-label">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span>파일 선택 또는 끌어다 놓기</span>
+              <span class="file-type-hint">.xlsx .xls .csv .txt</span>
+            </label>
+          </div>
+          <div class="upload-actions">
+            <button type="submit" name="action" value="update" class="btn-upload btn-update" title="등록 환자의 메모를 유지하며 갱신">
+              <i class="fas fa-sync-alt"></i> 업데이트
+            </button>
+            <button type="submit" name="action" value="replace" class="btn-upload btn-replace" title="기존 일정을 모두 지우고 새로 등록">
+              <i class="fas fa-upload"></i> 전체 교체
+            </button>
+          </div>
+        </form>
+      </section>
+      <div class="orb-build">build {{ build_version }}</div>
+    </aside>
   </div>
 </div>
 
-<!-- Memo Modal (unchanged) -->
+<!-- Memo Modal -->
 <div id="memoModal" class="memo-modal">
   <div class="memo-modal-content">
     <div class="memo-modal-header">
@@ -205,57 +117,157 @@
     </div>
   </div>
 </div>
-<script>
-      let currentScheduleId = null;
 
-  // Toggle function: if collapsed (default) then "Open" shows full timeline; if open, then "Fold" returns to summary.
-  function toggleRoom(button) {
-    var card = button.closest(".schedule-card");
-    var timeline = card.querySelector(".schedule-timeline");
-    var summary = card.querySelector(".schedule-summary");
-    if (card.classList.contains("collapsed")) {
-      // Expand: show full timeline and hide summary
-      card.classList.remove("collapsed");
-      timeline.style.display = "block";
-      summary.style.display = "none";
-      button.textContent = "Fold";
-    } else {
-      // Collapse: hide timeline and show summary
-      card.classList.add("collapsed");
-      timeline.style.display = "none";
-      summary.style.display = "block";
-      button.textContent = "Open";
-    }
+{{ board|json_script:"board-data" }}
+
+<script>
+  // ===================== 수술 현황판 =====================
+  const BOARD = JSON.parse(document.getElementById("board-data").textContent);
+  const STATUS_LABEL = { ongoing: "진행중", pending: "예정", finished: "완료" };
+  const expanded = new Set();
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
+
+  let compact = false;  // 좁은 화면: 환자 열 생략
+
+  function caseCells(c, extraTime) {
+    const surgeon = [c.department, c.surgeon].filter(Boolean).join(" · ");
+    const patient = [c.patient_name, c.patient_info].filter(Boolean).join(" ");
+    return `
+      <td class="c-time"><span>${esc(c.time_slot) || "-"}</span>${extraTime || ""}</td>
+      <td class="c-op"><div class="op-bar op-${c.group}" title="${esc(c.surgery_name)}${c.duration ? " (" + c.duration + "분)" : ""} · ${esc(c.status)}">
+        ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}<span>${esc(c.surgery_name) || "-"}</span></div></td>
+      <td class="c-doc" title="${esc(surgeon)}">${esc(c.surgeon) || "-"}${c.department ? `<small>${esc(c.department)}</small>` : ""}</td>
+      ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
+      <td class="c-memo"><button type="button" class="memo-btn" data-memo="${c.id}" data-name="${esc(c.patient_name)}" title="메모"><i class="fas fa-pen-fancy"></i></button></td>`;
+  }
+
+  function roomBody(r) {
+    const cur = r.cases[r.current];
+    const others = r.cases.length - 1;
+    const open = expanded.has(r.room);
+    const more = others ? `<span class="more" title="이 방의 다른 일정 ${others}건">+${others}</span>` : "";
+    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}" data-room="${esc(r.room)}">
+      <tr class="main-row"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
+        <th class="c-room">${esc(r.room) || "-"}</th>${caseCells(cur, more)}
+      </tr>`;
+    if (open) {
+      r.cases.forEach((c, i) => {
+        if (i === r.current) return;
+        html += `<tr class="sub-row"><th class="c-room"><span class="dot dot-${c.group}" title="${esc(c.status)}"></span></th>${caseCells(c)}</tr>`;
+      });
+    }
+    return html + "</tbody>";
+  }
+
+  function renderBoard() {
+    const board = document.getElementById("board");
+    if (!BOARD.rooms.length) return;
+    const width = board.clientWidth;
+    compact = width < 560;
+    const cols = Math.max(1, Math.min(4, Math.floor(width / 440), BOARD.rooms.length));
+    const perCol = Math.ceil(BOARD.rooms.length / cols);
+    let html = "";
+    for (let i = 0; i < cols; i++) {
+      const rooms = BOARD.rooms.slice(i * perCol, (i + 1) * perCol);
+      if (!rooms.length) continue;
+      html += `<table class="orb-table">
+        <colgroup><col class="w-room"><col class="w-time"><col><col class="w-doc">${compact ? "" : '<col class="w-pt">'}<col class="w-memo"></colgroup>
+        <thead><tr><th>방</th><th>시간</th><th>수술명</th><th>집도의</th>${compact ? "" : "<th>환자</th>"}<th></th></tr></thead>
+        ${rooms.map(roomBody).join("")}
+      </table>`;
+    }
+    board.innerHTML = html;
+    board.style.setProperty("--cols", cols);
+  }
+
+  function renderSide() {
+    const list = document.getElementById("ongoingList");
+    const rows = BOARD.rooms.filter(r => r.state === "ongoing").map(r => {
+      const c = r.cases[r.current];
+      return `<li><span class="side-room">${esc(r.room)}</span><span class="side-op" title="${esc(c.surgery_name)}">${esc(c.surgery_name)}</span><span class="side-doc">${esc(c.surgeon)}</span></li>`;
+    });
+    list.innerHTML = rows.join("") || '<li class="side-empty">진행 중인 수술이 없습니다.</li>';
+    document.getElementById("progressFill").style.width =
+      (BOARD.total ? Math.round(BOARD.counts.finished / BOARD.total * 100) : 0) + "%";
+  }
+
+  function tickClock() {
+    const now = new Date();
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+    }).formatToParts(now).map(p => [p.type, p.value]));
+    document.getElementById("orbDate").textContent = `${parts.year}년 ${parts.month}월 ${parts.day}일 (${parts.weekday})`;
+    document.getElementById("orbTime").textContent = `${parts.hour}:${parts.minute}:${parts.second}`;
+  }
+
+  document.getElementById("board").addEventListener("click", (e) => {
+    const memo = e.target.closest("[data-memo]");
+    if (memo) return openMemoModal(memo.dataset.memo, memo.dataset.name);
+    const row = e.target.closest(".main-row");
+    if (!row) return;
+    const room = row.parentElement.dataset.room;
+    const data = BOARD.rooms.find(r => r.room === room);
+    if (!data || data.cases.length < 2) return;
+    expanded.has(room) ? expanded.delete(room) : expanded.add(room);
+    renderBoard();
+  });
+
+  const expandBtn = document.getElementById("expandAllBtn");
+  expandBtn.addEventListener("click", () => {
+    const multi = BOARD.rooms.filter(r => r.cases.length > 1).map(r => r.room);
+    const allOpen = multi.length && multi.every(r => expanded.has(r));
+    expanded.clear();
+    if (!allOpen) multi.forEach(r => expanded.add(r));
+    expandBtn.classList.toggle("is-active", !allOpen);
+    expandBtn.querySelector("span").textContent = allOpen ? "모두 펼치기" : "모두 접기";
+    renderBoard();
+  });
+
+  const orb = document.getElementById("orb");
+  document.getElementById("fullscreenBtn").addEventListener("click", () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (orb.requestFullscreen) orb.requestFullscreen();
+  });
+  document.addEventListener("fullscreenchange", () => {
+    document.getElementById("fullscreenBtn").innerHTML =
+      document.fullscreenElement ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+    renderBoard();
+  });
+
+  let resizeTimer = null;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderBoard, 150); });
+
+  renderBoard();
+  renderSide();
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // ===================== 메모 =====================
+  let currentScheduleId = null;
 
   function openMemoModal(scheduleId, patientName) {
     currentScheduleId = scheduleId;
     const modal = document.getElementById("memoModal");
-    const patientNameElement = document.getElementById("memoPatientName");
     const memoText = document.getElementById("memoText");
-
-    patientNameElement.textContent = patientName;
+    document.getElementById("memoPatientName").textContent = patientName || "환자";
     modal.classList.add("active");
+    memoText.value = "";
 
-    // Get CSRF token
     const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
     fetch(`/api/memos/${scheduleId}/`, {
       method: "GET",
-      headers: {
-        "X-CSRFToken": csrfToken,
-        "Content-Type": "application/json"
-      },
+      headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/json" },
       credentials: "same-origin"
     })
       .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
       })
-      .then((data) => {
-        memoText.value = data.content || "";
-      })
+      .then((data) => { memoText.value = data.content || ""; })
       .catch((error) => {
         console.error("Error fetching memo:", error);
         memoText.value = "";
@@ -268,21 +280,15 @@
     const saveButton = document.querySelector(".btn-save");
 
     if (!currentScheduleId) {
-      console.error("No schedule ID found");
       alert("Error: Could not identify the current schedule.");
       return;
     }
-
     saveButton.disabled = true;
-    saveButton.innerHTML = "Saving...";
+    saveButton.innerHTML = "저장 중...";
 
     fetch(`/api/memos/${currentScheduleId}/`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": csrfToken,
-        Accept: "application/json"
-      },
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken, Accept: "application/json" },
       credentials: "same-origin",
       body: JSON.stringify({ content: memoText })
     })
@@ -297,89 +303,55 @@
         })
       )
       .then((data) => {
-        if (data.status === "success") {
-          closeMemoModal();
-        } else {
-          throw new Error(data.message || "Unknown error occurred");
-        }
+        if (data.status === "success") closeMemoModal();
+        else throw new Error(data.message || "Unknown error occurred");
       })
       .catch((error) => {
         console.error("Error saving memo:", error);
-        alert(`Failed to save memo: ${error.message}`);
+        alert(`메모 저장에 실패했습니다: ${error.message}`);
       })
       .finally(() => {
         saveButton.disabled = false;
-        saveButton.innerHTML = 'Save <i class="fas fa-check"></i>';
+        saveButton.innerHTML = '저장하기 <i class="fas fa-check"></i>';
       });
   }
 
   function closeMemoModal() {
-    const modal = document.getElementById("memoModal");
-    modal.classList.remove("active");
+    document.getElementById("memoModal").classList.remove("active");
     currentScheduleId = null;
   }
 
-  // Close modal when clicking outside or pressing ESC
   document.addEventListener("click", (e) => {
-    const modal = document.getElementById("memoModal");
-    if (e.target === modal) {
-      closeMemoModal();
-    }
+    if (e.target === document.getElementById("memoModal")) closeMemoModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeMemoModal();
-    }
+    if (e.key === "Escape") closeMemoModal();
   });
 
-  // File upload preview and drag/drop handling (unchanged)
+  // ===================== 업로드 =====================
   const fileInput = document.getElementById("fileInput");
   const fileLabel = document.querySelector(".file-label span");
   fileInput.addEventListener("change", (e) => {
-    if (e.target.files.length > 0) {
-      fileLabel.textContent = e.target.files[0].name;
-    }
+    if (e.target.files.length > 0) fileLabel.textContent = e.target.files[0].name;
   });
   const dropArea = document.querySelector(".file-drop-area");
-  ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
-    dropArea.addEventListener(eventName, preventDefaults, false);
+  ["dragenter", "dragover", "dragleave", "drop"].forEach((name) => {
+    dropArea.addEventListener(name, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
   });
-  function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-  ["dragenter", "dragover"].forEach((eventName) => {
-    dropArea.addEventListener(eventName, highlight, false);
-  });
-  ["dragleave", "drop"].forEach((eventName) => {
-    dropArea.addEventListener(eventName, unhighlight, false);
-  });
-  function highlight(e) {
-    dropArea.classList.add("highlight");
-  }
-  function unhighlight(e) {
-    dropArea.classList.remove("highlight");
-  }
-  dropArea.addEventListener("drop", handleDrop, false);
-  function handleDrop(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
+  ["dragenter", "dragover"].forEach((name) => dropArea.addEventListener(name, () => dropArea.classList.add("highlight")));
+  ["dragleave", "drop"].forEach((name) => dropArea.addEventListener(name, () => dropArea.classList.remove("highlight")));
+  dropArea.addEventListener("drop", (e) => {
+    const files = e.dataTransfer.files;
+    if (!files.length) return;
     fileInput.files = files;
     fileLabel.textContent = files[0].name;
-  }
+  });
 
   // AI parsing takes a few seconds - disable buttons so the user doesn't double-submit.
   document.getElementById("uploadForm").addEventListener("submit", (e) => {
     if (!fileInput.files.length) return;
-    document.querySelectorAll(".btn-upload").forEach((btn) => {
-      btn.disabled = true;
-    });
-    const clicked = e.submitter;
-    if (clicked) {
-      clicked.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI가 파일을 분석 중입니다...';
-    }
+    document.querySelectorAll(".btn-upload").forEach((btn) => { btn.disabled = true; });
+    if (e.submitter) e.submitter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI 분석 중...';
   });
-    </script>
-    {% endblock %}
-  </div>
-</div>
+</script>
+{% endblock %}

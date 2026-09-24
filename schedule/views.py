@@ -57,31 +57,87 @@ FIELD_MAX_LENGTHS = {
 }
 
 
+# Free-text status values (whatever the uploaded file / Gemini used) -> board group.
+ONGOING_STATUSES = {"진행중", "수술중", "마취중", "입실", "진행"}
+FINISHED_STATUSES = {"완료", "종료", "수술완료", "퇴실", "회복", "회복실"}
+
+
+def status_group(status):
+    """'ongoing' | 'finished' | 'pending' for the dashboard board colors/counts."""
+    status = _normalize_text(status)
+    if status in ONGOING_STATUSES:
+        return "ongoing"
+    if status in FINISHED_STATUSES:
+        return "finished"
+    return "pending"
+
+
+def _room_sort_key(room):
+    """Natural order: 101, 102, ..., 110, 201, then P1, P2, ..., P10; blank rooms last."""
+    room = _normalize_text(room)
+    parts = re.split(r"(\d+)", room)
+    return (room == "", [(0, int(p), "") if p.isdigit() else (1, 0, p.lower()) for p in parts if p])
+
+
+def build_board(schedules):
+    """Schedules -> JSON-able board data: rooms (naturally sorted, each with its cases and
+    the case to feature on the room's row) plus overall counts for the header."""
+    rooms = defaultdict(list)
+    for schedule in schedules:
+        rooms[schedule.room].append(schedule)
+
+    board_rooms = []
+    counts = {"ongoing": 0, "pending": 0, "finished": 0}
+    for room in sorted(rooms, key=_room_sort_key):
+        cases = []
+        for s in rooms[room]:
+            group = status_group(s.status)
+            counts[group] += 1
+            cases.append({
+                "id": s.id,
+                "date": s.date.isoformat(),
+                "time_slot": s.time_slot,
+                "surgery_name": s.surgery_name,
+                "department": s.department,
+                "surgeon": s.surgeon,
+                "duration": s.duration,
+                "patient_name": s.patient_name,
+                "patient_info": s.patient_info,
+                "status": s.status,
+                "group": group,
+            })
+        groups = [c["group"] for c in cases]
+        # 방 행에 보여줄 케이스: 진행 중 > 다음 예정 > 마지막 완료
+        if "ongoing" in groups:
+            current = groups.index("ongoing")
+        elif "pending" in groups:
+            current = groups.index("pending")
+        else:
+            current = len(cases) - 1
+        board_rooms.append({
+            "room": room,
+            "state": cases[current]["group"],
+            "current": current,
+            "cases": cases,
+        })
+
+    total = sum(counts.values())
+    return {
+        "rooms": board_rooms,
+        "counts": counts,
+        "total": total,
+        "remaining": total - counts["finished"],
+        "dates": sorted({c["date"] for r in board_rooms for c in r["cases"]}),
+    }
+
+
 @login_required
 @user_is_specially_approved
 def schedule_dashboard(request):
     form = ScheduleUploadForm()
     error_message = None
-    schedules = SurgerySchedule.objects.filter(user=request.user).order_by("date", "room", "time_slot")
-
-    schedule_by_room = defaultdict(list)
-    for schedule in schedules:
-        schedule_by_room[schedule.room].append(schedule)
-
-    # Build a summary dictionary for each room:
-    summary_by_room = {}
-    for room, schedules in schedule_by_room.items():
-        summary = {'ongoing': None, 'pending': 0, 'finished': 0}
-        for schedule in schedules:
-            if schedule.status in ["진행중", "수술중"]:
-                # pick the first ongoing surgery (if any)
-                if summary['ongoing'] is None:
-                    summary['ongoing'] = schedule
-            elif schedule.status == "완료":
-                summary['finished'] += 1
-            else:
-                summary['pending'] += 1
-        summary_by_room[room] = summary
+    schedules = SurgerySchedule.objects.filter(user=request.user).order_by("date", "room", "time_slot", "id")
+    board = build_board(schedules)
 
     if request.method == "POST":
         action = request.POST.get('action', 'replace')  # 'replace' 또는 'update'
@@ -103,8 +159,7 @@ def schedule_dashboard(request):
                 return redirect("schedule_dashboard")
 
     return render(request, "schedule/dashboard.html", {
-        "schedule_by_room": dict(schedule_by_room),
-        "summary_by_room": summary_by_room,
+        "board": board,
         "form": form,
         "error_message": error_message,
         "build_version": BUILD_VERSION,
