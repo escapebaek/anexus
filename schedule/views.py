@@ -9,7 +9,10 @@ import os
 import re
 import subprocess
 from io import BytesIO
-from .models import SurgerySchedule, PatientMemo
+from .models import SurgerySchedule, PatientMemo, RoomFlag
+from difflib import SequenceMatcher
+from django.db import transaction
+from django.views.decorators.http import require_POST
 from .gemini_client import extract_schedules_from_text, ScheduleExtractionError
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -51,6 +54,7 @@ FIELD_MAX_LENGTHS = {
     "surgery_name": 200,
     "department": 50,
     "surgeon": 50,
+    "anesthesiologist": 50,
     "patient_name": 50,
     "patient_info": 20,
     "status": 50,
@@ -79,15 +83,18 @@ def _room_sort_key(room):
     return (room == "", [(0, int(p), "") if p.isdigit() else (1, 0, p.lower()) for p in parts if p])
 
 
-def build_board(schedules):
-    """Schedules -> JSON-able board data: rooms (naturally sorted, each with its cases and
-    the case to feature on the room's row) plus overall counts for the header."""
+def build_board(schedules, flags=None, memos=None):
+    """Schedules -> JSON-able board data: rooms (naturally sorted, each with its cases, the
+    case to feature on the room's row and its 당직/Hold flags) plus overall counts.
+    flags: {room: RoomFlag}, memos: {schedule_id: memo text}."""
+    flags = flags or {}
+    memos = memos or {}
     rooms = defaultdict(list)
     for schedule in schedules:
         rooms[schedule.room].append(schedule)
 
     board_rooms = []
-    counts = {"ongoing": 0, "pending": 0, "finished": 0}
+    counts = {"ongoing": 0, "pending": 0, "finished": 0, "on_call": 0, "hold": 0}
     for room in sorted(rooms, key=_room_sort_key):
         cases = []
         for s in rooms[room]:
@@ -100,11 +107,13 @@ def build_board(schedules):
                 "surgery_name": s.surgery_name,
                 "department": s.department,
                 "surgeon": s.surgeon,
+                "anesthesiologist": s.anesthesiologist,
                 "duration": s.duration,
                 "patient_name": s.patient_name,
                 "patient_info": s.patient_info,
                 "status": s.status,
                 "group": group,
+                "memo": memos.get(s.id, ""),
             })
         groups = [c["group"] for c in cases]
         # 방 행에 보여줄 케이스: 진행 중 > 다음 예정 > 마지막 완료
@@ -114,14 +123,20 @@ def build_board(schedules):
             current = groups.index("pending")
         else:
             current = len(cases) - 1
+        flag = flags.get(room)
+        on_call, hold = bool(flag and flag.on_call), bool(flag and flag.hold)
+        counts["on_call"] += on_call
+        counts["hold"] += hold
         board_rooms.append({
             "room": room,
             "state": cases[current]["group"],
             "current": current,
             "cases": cases,
+            "on_call": on_call,
+            "hold": hold,
         })
 
-    total = sum(counts.values())
+    total = counts["ongoing"] + counts["pending"] + counts["finished"]
     return {
         "rooms": board_rooms,
         "counts": counts,
@@ -137,22 +152,32 @@ def schedule_dashboard(request):
     form = ScheduleUploadForm()
     error_message = None
     schedules = SurgerySchedule.objects.filter(user=request.user).order_by("date", "room", "time_slot", "id")
-    board = build_board(schedules)
+    flags = {f.room: f for f in RoomFlag.objects.filter(user=request.user)}
+    # 일정별 첫 메모 (handle_memo GET 과 같은 것) - 내용이 있는 것만
+    memos = {}
+    for schedule_id, content in (PatientMemo.objects.filter(schedule__user=request.user)
+                                 .order_by("id").values_list("schedule_id", "content")):
+        memos.setdefault(schedule_id, (content or "").strip())
+    memos = {k: v for k, v in memos.items() if v}
+    board = build_board(schedules, flags, memos)
 
     if request.method == "POST":
-        action = request.POST.get('action', 'replace')  # 'replace' 또는 'update'
+        # 'update'(기본) 또는 'replace' - 값이 빠져도 기존 일정·메모를 지우지 않도록 update 가 기본
+        action = 'replace' if request.POST.get('action') == 'replace' else 'update'
         form = ScheduleUploadForm(request.POST, request.FILES)
         if form.is_valid():
             uploaded_file = form.cleaned_data["file"]
             try:
                 source_text = extract_text_from_upload(uploaded_file)
                 records = extract_schedules_from_text(source_text, uploaded_file.name)
-                if action == 'replace':
-                    SurgerySchedule.objects.filter(user=request.user).delete()
-                    create_schedules_from_records(records, request.user)
-                else:
-                    existing_schedules = list(SurgerySchedule.objects.filter(user=request.user))
-                    update_schedules_from_records(records, request.user, existing_schedules)
+                with transaction.atomic():
+                    if action == 'replace':
+                        SurgerySchedule.objects.filter(user=request.user).delete()
+                        RoomFlag.objects.filter(user=request.user).delete()
+                        create_schedules_from_records(records, request.user)
+                    else:
+                        existing_schedules = list(SurgerySchedule.objects.filter(user=request.user))
+                        update_schedules_from_records(records, request.user, existing_schedules)
             except (ScheduleExtractionError, ValueError) as exc:
                 error_message = str(exc)
             else:
@@ -213,6 +238,7 @@ def _normalize_record(record):
         "surgery_name": str(record.get("surgery_name") or "").strip(),
         "department": str(record.get("department") or "").strip(),
         "surgeon": str(record.get("surgeon") or "").strip(),
+        "anesthesiologist": str(record.get("anesthesiologist") or "").strip(),
         "duration": duration,
         "patient_name": str(record.get("patient_name") or "").strip(),
         "patient_info": str(record.get("patient_info") or "").strip(),
@@ -274,86 +300,110 @@ def _slot_key(date, room, time_slot):
     return (date, _normalize_text(room), _normalize_text(time_slot))
 
 
+def _op_similarity(a, b):
+    """0..1 similarity of two surgery names, ignoring case, spacing and punctuation
+    (so "TKRA (Rt)" ~ "TKRA Rt" but is clearly closer to it than to "TKRA (Lt)")."""
+    def norm(value):
+        return re.sub(r"[^0-9a-z가-힣]+", " ", (value or "").lower()).strip()
+    a, b = norm(a), norm(b)
+    if not a or not b:
+        return 0.0
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def _match_score(data, schedule):
+    """How likely an uploaded record and an existing row are the same case, or None if they
+    can't be (different patient). Same registration number or same patient name is required;
+    two different registration numbers always mean two different patients, even with the
+    same name. Among one patient's several cases, surgery name similarity (then surgeon,
+    then an exact case key) decides which old case - and memo - a new record inherits."""
+    new_reg = _registration_number(data["patient_info"])
+    old_reg = _registration_number(schedule.patient_info)
+    same_reg = bool(new_reg and old_reg and new_reg == old_reg)
+    if new_reg and old_reg and not same_reg:
+        return None
+    same_name = bool(data["patient_name"]) and _normalize_text(data["patient_name"]) == _normalize_text(schedule.patient_name)
+    if not (same_reg or same_name):
+        return None
+    score = (100 if same_reg else 0) + (50 if same_name else 0)
+    score += 20 * _op_similarity(data["surgery_name"], schedule.surgery_name)
+    if _normalize_text(data["surgeon"]) and _normalize_text(data["surgeon"]) == _normalize_text(schedule.surgeon):
+        score += 5
+    if _case_key(data["patient_name"], data["surgery_name"], data["surgeon"]) == _case_key(
+            schedule.patient_name, schedule.surgery_name, schedule.surgeon):
+        score += 10
+    return score
+
+
 def update_schedules_from_records(records, user, existing_schedules):
     """Gemini-extracted records -> synced SurgerySchedule rows for `user`.
 
-    Each new record is matched against the existing rows in this order:
-      1. registration number (_registration_number), if both sides have one - the
-         strongest signal, since it's just digits Gemini has to transcribe verbatim;
-      2. patient name alone, if exactly one existing (unclaimed) schedule has that name -
-         deliberately NOT also requiring surgery_name/surgeon to match here. Real
-         schedule exports can reword a surgery name or surgeon slightly between two
-         uploads of "the same" case (translated vs Korean, abbreviated, punctuation),
-         and requiring an exact match on top of the name turned out to make matching
-         fail far too often in practice - which, combined with the delete-on-no-match
-         step below, showed up as memos getting wiped on nearly every update;
-      3. patient name plus surgery_name/surgeon (_case_key), only used to disambiguate
-         when a patient has *more than one* case on file that day;
-      4. (date, room, time_slot) (_slot_key), for records with no patient name at all.
-    A match updates that row in place (same pk), so its memo is kept even if
-    date/room/time/status (or surgery_name/surgeon wording) changed. A new record with
-    no match is inserted fresh (no memo yet, as expected for a genuinely new case). An
+    Every new record is paired with at most one existing row, so the row (same pk) and
+    therefore its memo carry over even if room, time, order, status or the wording of the
+    surgery name/surgeon changed:
+      1. Candidate pairs need the same registration number (_registration_number) or the
+         same patient name, and never two *different* registration numbers.
+      2. Pairs are scored (_match_score) and assigned best-first across the whole upload,
+         not record by record - so when one patient has several cases, each new record
+         goes to the old case with the most similar surgery name instead of whichever old
+         case happened to come first (which used to swap memos between the cases).
+      3. Records with no patient name at all fall back to (date, room, time_slot).
+    A matched row is updated in place; a manually entered anesthesiologist is kept when
+    the new file has none. A record with no match is inserted fresh (no memo yet). An
     existing row with no match in the new upload is treated as no longer part of the
-    schedule (cancelled, or just not in this file) and is deleted - PatientMemo cascades
-    on delete, so its memo goes with it, per how this was asked to behave.
+    schedule and deleted - PatientMemo cascades, so its memo goes with it.
     """
-    by_regnum = {}
-    by_name = defaultdict(list)
-    by_slot = {}
-    for schedule in existing_schedules:
-        regnum = _registration_number(schedule.patient_info)
-        if regnum:
-            by_regnum.setdefault(regnum, schedule)
-        if schedule.patient_name:
-            by_name[_normalize_text(schedule.patient_name)].append(schedule)
-        else:
-            by_slot[_slot_key(schedule.date, schedule.room, schedule.time_slot)] = schedule
-
-    claimed_ids = set()
-    matched_count = 0
-    created_count = 0
-
+    datas = []
     for raw_record in records:
         data = _normalize_record(raw_record)
         if not _has_identity(data):
             logger.warning("Skipping unidentifiable schedule record: %r", raw_record)
             continue
+        datas.append(data)
 
-        schedule = None
+    pairs = []
+    for i, data in enumerate(datas):
+        for schedule in existing_schedules:
+            score = _match_score(data, schedule)
+            if score is not None:
+                pairs.append((score, i, schedule.id))
+    # 점수 높은 쌍부터 배정 (동점이면 파일 순서 / 기존 id 순)
+    pairs.sort(key=lambda p: (-p[0], p[1], p[2]))
 
-        regnum = _registration_number(data["patient_info"])
-        if regnum:
-            candidate = by_regnum.get(regnum)
-            if candidate is not None and candidate.id not in claimed_ids:
-                schedule = candidate
+    by_id = {schedule.id: schedule for schedule in existing_schedules}
+    assigned = {}
+    claimed_ids = set()
+    for score, i, schedule_id in pairs:
+        if i in assigned or schedule_id in claimed_ids:
+            continue
+        assigned[i] = by_id[schedule_id]
+        claimed_ids.add(schedule_id)
 
-        if schedule is None and data["patient_name"]:
-            candidates = [s for s in by_name.get(_normalize_text(data["patient_name"]), []) if s.id not in claimed_ids]
-            if len(candidates) == 1:
-                schedule = candidates[0]
-            elif len(candidates) > 1:
-                key = _case_key(data["patient_name"], data["surgery_name"], data["surgeon"])
-                for candidate in candidates:
-                    if _case_key(candidate.patient_name, candidate.surgery_name, candidate.surgeon) == key:
-                        schedule = candidate
-                        break
+    by_slot = {}
+    for schedule in existing_schedules:
+        if not schedule.patient_name:
+            by_slot.setdefault(_slot_key(schedule.date, schedule.room, schedule.time_slot), schedule)
+    for i, data in enumerate(datas):
+        if i in assigned or data["patient_name"]:
+            continue
+        candidate = by_slot.get(_slot_key(data["date"], data["room"], data["time_slot"]))
+        if candidate is not None and candidate.id not in claimed_ids:
+            assigned[i] = candidate
+            claimed_ids.add(candidate.id)
 
-        if schedule is None and not data["patient_name"]:
-            candidate = by_slot.get(_slot_key(data["date"], data["room"], data["time_slot"]))
-            if candidate is not None and candidate.id not in claimed_ids:
-                schedule = candidate
-
-        if schedule:
-            claimed_ids.add(schedule.id)
-            matched_count += 1
-            changed = any(getattr(schedule, field) != value for field, value in data.items())
-            if changed:
-                for field, value in data.items():
-                    setattr(schedule, field, value)
-                schedule.save()
-        else:
+    created_count = 0
+    for i, data in enumerate(datas):
+        schedule = assigned.get(i)
+        if schedule is None:
             created_count += 1
             SurgerySchedule.objects.create(user=user, **data)
+            continue
+        if not data["anesthesiologist"]:
+            data["anesthesiologist"] = schedule.anesthesiologist
+        if any(getattr(schedule, field) != value for field, value in data.items()):
+            for field, value in data.items():
+                setattr(schedule, field, value)
+            schedule.save()
 
     # Whatever wasn't claimed wasn't matched by anything in this upload - the case is no
     # longer part of the schedule, so remove it (and its memo along with it).
@@ -368,8 +418,49 @@ def update_schedules_from_records(records, user, existing_schedules):
 
     logger.info(
         "update_schedules_from_records: user=%s matched=%d created=%d deleted=%d",
-        user, matched_count, created_count, len(stale),
+        user, len(assigned), created_count, len(stale),
     )
+
+
+@login_required
+@user_is_specially_approved
+@require_POST
+def update_schedule(request, schedule_id):
+    """현황판에서 케이스의 마취의를 직접 입력."""
+    schedule = SurgerySchedule.objects.filter(id=schedule_id, user=request.user).first()
+    if schedule is None:
+        return JsonResponse({"status": "error", "message": "Schedule not found"}, status=404)
+    try:
+        data = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    if "anesthesiologist" in data:
+        schedule.anesthesiologist = str(data.get("anesthesiologist") or "").strip()[:FIELD_MAX_LENGTHS["anesthesiologist"]]
+        schedule.save(update_fields=["anesthesiologist"])
+    return JsonResponse({"status": "success", "anesthesiologist": schedule.anesthesiologist})
+
+
+@login_required
+@user_is_specially_approved
+@require_POST
+def set_room_flag(request):
+    """현황판에서 방을 '당직 넘김' / 'Hold'로 표시하거나 해제."""
+    try:
+        data = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    room = str(data.get("room") or "").strip()[:FIELD_MAX_LENGTHS["room"]]
+    if not SurgerySchedule.objects.filter(user=request.user, room=room).exists():
+        return JsonResponse({"status": "error", "message": "Room not found"}, status=404)
+    flag, _ = RoomFlag.objects.get_or_create(user=request.user, room=room)
+    for field in ("on_call", "hold"):
+        if field in data:
+            setattr(flag, field, bool(data[field]))
+    if flag.on_call or flag.hold:
+        flag.save()
+    else:
+        flag.delete()
+    return JsonResponse({"status": "success", "room": room, "on_call": flag.on_call, "hold": flag.hold})
 
 
 @login_required
@@ -378,7 +469,8 @@ def update_schedules_from_records(records, user, existing_schedules):
 @require_http_methods(["GET", "POST"])
 def handle_memo(request, schedule_id):
     try:
-        schedule = SurgerySchedule.objects.get(id=schedule_id)
+        # 본인 일정의 메모만 읽고 쓸 수 있음
+        schedule = SurgerySchedule.objects.get(id=schedule_id, user=request.user)
     except SurgerySchedule.DoesNotExist:
         return JsonResponse({
             'status': 'error',
@@ -386,7 +478,7 @@ def handle_memo(request, schedule_id):
         }, status=404)
 
     if request.method == "GET":
-        memo = PatientMemo.objects.filter(schedule_id=schedule_id).first()
+        memo = PatientMemo.objects.filter(schedule=schedule).order_by("id").first()
         return JsonResponse({
             'status': 'success',
             'content': memo.content if memo else ''
@@ -397,10 +489,12 @@ def handle_memo(request, schedule_id):
             data = json.loads(request.body)
             content = data.get('content', '')
 
-            memo, created = PatientMemo.objects.update_or_create(
-                schedule=schedule,
-                defaults={'content': content}
-            )
+            memo = PatientMemo.objects.filter(schedule=schedule).order_by("id").first()
+            if memo is None:
+                PatientMemo.objects.create(schedule=schedule, content=content)
+            else:
+                memo.content = content
+                memo.save(update_fields=["content", "updated_at"])
 
             return JsonResponse({
                 'status': 'success',

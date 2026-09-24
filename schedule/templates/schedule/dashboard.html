@@ -23,6 +23,8 @@
         <span class="lg lg-ongoing"><i></i>진행중 <b>{{ board.counts.ongoing }}</b></span>
         <span class="lg lg-pending"><i></i>예정 <b>{{ board.counts.pending }}</b></span>
         <span class="lg lg-finished"><i></i>완료 <b>{{ board.counts.finished }}</b></span>
+        <span class="lg lg-oncall"><span class="fa fa-moon"></span>당직 <b id="countOnCall">{{ board.counts.on_call }}</b></span>
+        <span class="lg lg-hold"><span class="fa fa-pause-circle"></span>Hold <b id="countHold">{{ board.counts.hold }}</b></span>
       </div>
       <div class="orb-progress" title="완료 {{ board.counts.finished }} / 전체 {{ board.total }}">
         <div class="orb-progress-bar"><span id="progressFill"></span></div>
@@ -48,21 +50,24 @@
         <div class="orb-empty">
           <i class="fas fa-calendar-times"></i>
           <h3>등록된 수술 일정이 없습니다</h3>
-          <p>오른쪽 <b>일정 업로드</b>에서 기관 스케줄 파일을 올려주세요.</p>
+          <p><b>일정 업로드</b>에서 기관 스케줄 파일을 올려주세요.</p>
         </div>
       {% endif %}
     </main>
 
     <!-- ===== 사이드바 ===== -->
     <aside class="orb-side">
-      <section class="side-card">
-        <h4 class="side-head"><i class="fas fa-heartbeat"></i> 진행 중인 방</h4>
-        <ul class="side-list" id="ongoingList"></ul>
+      <section class="side-card side-hold">
+        <h4 class="side-head"><i class="fas fa-pause-circle"></i> Hold 수술 <span class="side-count" id="holdCount"></span></h4>
+        <ul class="side-list" id="holdList"></ul>
       </section>
 
       <section class="side-card" id="uploadCard">
         <h4 class="side-head"><i class="fas fa-file-upload"></i> 일정 업로드</h4>
-        <p class="side-hint">기관 엑셀/메모 파일을 그대로 올리면 AI가 읽어 일정을 등록합니다. 메모는 불러오는 데 2~3초 걸립니다.</p>
+        <p class="side-hint">
+          기관 엑셀/메모 파일을 그대로 올리면 AI가 읽어 일정을 등록합니다.
+          <b>업데이트</b>는 방·순서가 바뀌어도 같은 환자의 메모·마취의·당직/Hold 표시를 유지합니다.
+        </p>
         {% if error_message %}
           <div class="upload-error"><i class="fas fa-exclamation-triangle"></i> {{ error_message }}</div>
         {% endif %}
@@ -71,6 +76,8 @@
         {% endif %}
         <form method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
           {% csrf_token %}
+          <!-- 제출 중 버튼을 비활성화하면 버튼 값이 전송되지 않으므로, 선택한 동작은 이 필드로 보냄 -->
+          <input type="hidden" name="action" id="uploadAction" value="update" />
           <div class="file-drop-area">
             <input type="file" name="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.csv,.txt"/>
             <label for="fileInput" class="file-label">
@@ -80,10 +87,10 @@
             </label>
           </div>
           <div class="upload-actions">
-            <button type="submit" name="action" value="update" class="btn-upload btn-update" title="등록 환자의 메모를 유지하며 갱신">
+            <button type="submit" value="update" class="btn-upload btn-update" title="등록 환자의 메모를 유지하며 갱신">
               <i class="fas fa-sync-alt"></i> 업데이트
             </button>
-            <button type="submit" name="action" value="replace" class="btn-upload btn-replace" title="기존 일정을 모두 지우고 새로 등록">
+            <button type="submit" value="replace" class="btn-upload btn-replace" title="기존 일정·메모·표시를 모두 지우고 새로 등록">
               <i class="fas fa-upload"></i> 전체 교체
             </button>
           </div>
@@ -94,20 +101,28 @@
   </div>
 </div>
 
+<!-- 방 메뉴 (방 번호 클릭) -->
+<div class="room-menu" id="roomMenu" hidden>
+  <div class="rm-title" id="roomMenuTitle"></div>
+  <button type="button" class="rm-opt" data-flag="on_call"><i class="fas fa-moon"></i> 당직으로 넘김</button>
+  <button type="button" class="rm-opt" data-flag="hold"><i class="fas fa-pause-circle"></i> Hold</button>
+  <button type="button" class="rm-opt rm-expand" data-expand><i class="fas fa-list"></i> 전체 일정 보기</button>
+</div>
+
 <!-- Memo Modal -->
 <div id="memoModal" class="memo-modal">
   <div class="memo-modal-content">
     <div class="memo-modal-header">
       <div class="memo-header-content">
         <h3 id="memoPatientName"></h3>
-        <span class="memo-subtitle">환자 메모</span>
+        <span class="memo-subtitle" id="memoSubtitle">환자 메모</span>
       </div>
       <button class="close-modal" onclick="closeMemoModal()">
         <i class="fas fa-times"></i>
       </button>
     </div>
     <div class="memo-modal-body">
-      <textarea id="memoText" class="memo-textarea" placeholder="환자에 대한 메모를 입력하세요..."></textarea>
+      <textarea id="memoText" class="memo-textarea" placeholder="환자·수술에 대한 메모를 입력하세요... (스케줄 업데이트 후에도 유지됩니다)"></textarea>
       <div class="memo-modal-footer">
         <button class="btn-save" onclick="saveMemoAndClose()">
           저장하기
@@ -123,25 +138,43 @@
 <script>
   // ===================== 수술 현황판 =====================
   const BOARD = JSON.parse(document.getElementById("board-data").textContent);
-  const STATUS_LABEL = { ongoing: "진행중", pending: "예정", finished: "완료" };
+  const ROOM_FLAG_URL = "{% url 'schedule_room_flag' %}";
+  const SCHEDULE_URL = (id) => "{% url 'schedule_update' 0 %}".replace("/0/", `/${id}/`);
   const expanded = new Set();
+  let compact = false;  // 좁은 화면: 환자 열 생략
 
+  const csrf = () => document.querySelector("[name=csrfmiddlewaretoken]").value;
   function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
-
-  let compact = false;  // 좁은 화면: 환자 열 생략
+  async function postJSON(url, body) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
+      credentials: "same-origin",
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.status !== "success") throw new Error(data.message || `HTTP ${res.status}`);
+    return data;
+  }
+  const findCase = (id) => {
+    for (const r of BOARD.rooms) for (const c of r.cases) if (String(c.id) === String(id)) return c;
+    return null;
+  };
 
   function caseCells(c, extraTime) {
-    const surgeon = [c.department, c.surgeon].filter(Boolean).join(" · ");
+    const sub = [c.department, c.surgeon, c.duration ? c.duration + "분" : ""].filter(Boolean).join(" · ");
     const patient = [c.patient_name, c.patient_info].filter(Boolean).join(" ");
     return `
       <td class="c-time"><span>${esc(c.time_slot) || "-"}</span>${extraTime || ""}</td>
-      <td class="c-op"><div class="op-bar op-${c.group}" title="${esc(c.surgery_name)}${c.duration ? " (" + c.duration + "분)" : ""} · ${esc(c.status)}">
-        ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}<span>${esc(c.surgery_name) || "-"}</span></div></td>
-      <td class="c-doc" title="${esc(surgeon)}">${esc(c.surgeon) || "-"}${c.department ? `<small>${esc(c.department)}</small>` : ""}</td>
+      <td class="c-op"><div class="op-bar op-${c.group}" title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
+        ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
+        <div class="op-text"><span class="op-name">${esc(c.surgery_name) || "-"}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div></div></td>
+      <td class="c-anes" data-anes="${c.id}" title="클릭해서 마취의 입력">${c.anesthesiologist ? esc(c.anesthesiologist) : '<span class="anes-empty">+ 입력</span>'}</td>
       ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
-      <td class="c-memo"><button type="button" class="memo-btn" data-memo="${c.id}" data-name="${esc(c.patient_name)}" title="메모"><i class="fas fa-pen-fancy"></i></button></td>`;
+      <td class="c-memo"><button type="button" class="memo-btn${c.memo ? " has-memo" : ""}" data-memo="${c.id}"
+        title="${c.memo ? esc(c.memo.length > 200 ? c.memo.slice(0, 200) + "…" : c.memo) : "메모 작성"}"><i class="fas ${c.memo ? "fa-sticky-note" : "fa-pen-fancy"}"></i></button></td>`;
   }
 
   function roomBody(r) {
@@ -149,9 +182,10 @@
     const others = r.cases.length - 1;
     const open = expanded.has(r.room);
     const more = others ? `<span class="more" title="이 방의 다른 일정 ${others}건">+${others}</span>` : "";
-    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}" data-room="${esc(r.room)}">
+    const flags = (r.on_call ? '<i class="fas fa-moon" title="당직으로 넘김"></i>' : "") + (r.hold ? '<i class="fas fa-pause-circle" title="Hold"></i>' : "");
+    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}${r.hold ? " is-hold" : ""}${r.on_call ? " is-oncall" : ""}" data-room="${esc(r.room)}">
       <tr class="main-row"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
-        <th class="c-room">${esc(r.room) || "-"}</th>${caseCells(cur, more)}
+        <th class="c-room" data-room-menu title="방 메뉴: 당직 넘김 / Hold"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}</th>${caseCells(cur, more)}
       </tr>`;
     if (open) {
       r.cases.forEach((c, i) => {
@@ -166,16 +200,16 @@
     const board = document.getElementById("board");
     if (!BOARD.rooms.length) return;
     const width = board.clientWidth;
-    compact = width < 560;
-    const cols = Math.max(1, Math.min(4, Math.floor(width / 440), BOARD.rooms.length));
+    compact = width < 600;
+    const cols = Math.max(1, Math.min(4, Math.floor(width / 480), BOARD.rooms.length));
     const perCol = Math.ceil(BOARD.rooms.length / cols);
     let html = "";
     for (let i = 0; i < cols; i++) {
       const rooms = BOARD.rooms.slice(i * perCol, (i + 1) * perCol);
       if (!rooms.length) continue;
       html += `<table class="orb-table">
-        <colgroup><col class="w-room"><col class="w-time"><col><col class="w-doc">${compact ? "" : '<col class="w-pt">'}<col class="w-memo"></colgroup>
-        <thead><tr><th>방</th><th>시간</th><th>수술명</th><th>집도의</th>${compact ? "" : "<th>환자</th>"}<th></th></tr></thead>
+        <colgroup><col class="w-room"><col class="w-time"><col><col class="w-anes">${compact ? "" : '<col class="w-pt">'}<col class="w-memo"></colgroup>
+        <thead><tr><th>방</th><th>시간</th><th>수술명 <small>과 · 집도의</small></th><th>마취의</th>${compact ? "" : "<th>환자</th>"}<th></th></tr></thead>
         ${rooms.map(roomBody).join("")}
       </table>`;
     }
@@ -184,29 +218,140 @@
   }
 
   function renderSide() {
-    const list = document.getElementById("ongoingList");
-    const rows = BOARD.rooms.filter(r => r.state === "ongoing").map(r => {
+    const held = BOARD.rooms.filter(r => r.hold);
+    document.getElementById("holdCount").textContent = held.length ? held.length : "";
+    document.getElementById("holdList").innerHTML = held.map(r => {
       const c = r.cases[r.current];
-      return `<li><span class="side-room">${esc(r.room)}</span><span class="side-op" title="${esc(c.surgery_name)}">${esc(c.surgery_name)}</span><span class="side-doc">${esc(c.surgeon)}</span></li>`;
-    });
-    list.innerHTML = rows.join("") || '<li class="side-empty">진행 중인 수술이 없습니다.</li>';
+      const left = r.cases.filter(x => x.group !== "finished").length;
+      return `<li>
+        <span class="side-room">${esc(r.room)}</span>
+        <div class="side-main">
+          <span class="side-op" title="${esc(c.surgery_name)}">${esc(c.time_slot)} ${esc(c.surgery_name)}</span>
+          <span class="side-sub">${esc([c.surgeon, c.anesthesiologist && "마취 " + c.anesthesiologist, left > 1 ? `남은 ${left}건` : ""].filter(Boolean).join(" · "))}</span>
+        </div>
+        <button type="button" class="side-release" data-release="${esc(r.room)}" title="Hold 해제"><i class="fas fa-play"></i></button>
+      </li>`;
+    }).join("") || '<li class="side-empty">Hold된 수술이 없습니다.<br><small>방 번호를 눌러 Hold를 지정하세요.</small></li>';
+    document.getElementById("countHold").textContent = held.length;
+    document.getElementById("countOnCall").textContent = BOARD.rooms.filter(r => r.on_call).length;
     document.getElementById("progressFill").style.width =
       (BOARD.total ? Math.round(BOARD.counts.finished / BOARD.total * 100) : 0) + "%";
   }
 
   function tickClock() {
-    const now = new Date();
     const parts = Object.fromEntries(new Intl.DateTimeFormat("ko-KR", {
       timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short",
       hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
-    }).formatToParts(now).map(p => [p.type, p.value]));
+    }).formatToParts(new Date()).map(p => [p.type, p.value]));
     document.getElementById("orbDate").textContent = `${parts.year}년 ${parts.month}월 ${parts.day}일 (${parts.weekday})`;
     document.getElementById("orbTime").textContent = `${parts.hour}:${parts.minute}:${parts.second}`;
   }
 
+  // ----- 방 메뉴: 당직 넘김 / Hold -----
+  const menu = document.getElementById("roomMenu");
+  let menuRoom = null;
+  function openRoomMenu(room, anchor) {
+    const r = BOARD.rooms.find(x => x.room === room);
+    if (!r) return;
+    menuRoom = room;
+    document.getElementById("roomMenuTitle").textContent = `${room}번 방`;
+    menu.querySelectorAll("[data-flag]").forEach(b => b.classList.toggle("is-on", !!r[b.dataset.flag]));
+    menu.querySelector("[data-expand]").hidden = r.cases.length < 2;
+    menu.querySelector("[data-expand]").innerHTML = expanded.has(room)
+      ? '<i class="fas fa-compress-alt"></i> 일정 접기' : '<i class="fas fa-list"></i> 전체 일정 보기';
+    menu.hidden = false;
+    const a = anchor.getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(a.left, window.innerWidth - menu.offsetWidth - 8)) + "px";
+    const below = a.bottom + 4;
+    menu.style.top = (below + menu.offsetHeight > window.innerHeight ? Math.max(8, a.top - menu.offsetHeight - 4) : below) + "px";
+  }
+  window.addEventListener("scroll", () => closeRoomMenu(), true);
+  function closeRoomMenu() { menu.hidden = true; menuRoom = null; }
+
+  async function setFlag(room, patch) {
+    const r = BOARD.rooms.find(x => x.room === room);
+    if (!r) return;
+    const prev = { on_call: r.on_call, hold: r.hold };
+    Object.assign(r, patch);  // 낙관적 반영
+    renderBoard(); renderSide();
+    try {
+      const data = await postJSON(ROOM_FLAG_URL, Object.assign({ room }, patch));
+      r.on_call = data.on_call; r.hold = data.hold;
+    } catch (err) {
+      Object.assign(r, prev);
+      alert("표시를 저장하지 못했습니다: " + err.message);
+    }
+    renderBoard(); renderSide();
+  }
+
+  menu.addEventListener("click", (e) => {
+    const room = menuRoom;
+    const r = BOARD.rooms.find(x => x.room === room);
+    if (!r) return;
+    const flag = e.target.closest("[data-flag]");
+    if (flag) {
+      closeRoomMenu();
+      return setFlag(room, { [flag.dataset.flag]: !r[flag.dataset.flag] });
+    }
+    if (e.target.closest("[data-expand]")) {
+      closeRoomMenu();
+      expanded.has(room) ? expanded.delete(room) : expanded.add(room);
+      renderBoard();
+    }
+  });
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !menu.contains(e.target) && !e.target.closest("[data-room-menu]")) closeRoomMenu();
+  });
+
+  document.getElementById("holdList").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-release]");
+    if (btn) setFlag(btn.dataset.release, { hold: false });
+  });
+
+  // ----- 마취의 직접 입력 -----
+  function editAnesthesiologist(td) {
+    const c = findCase(td.dataset.anes);
+    if (!c || td.querySelector("input")) return;
+    td.innerHTML = `<input type="text" class="anes-input" maxlength="50" value="${esc(c.anesthesiologist)}" placeholder="마취의" />`;
+    const input = td.querySelector("input");
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = async (save) => {
+      if (done) return;
+      done = true;
+      const value = input.value.trim();
+      if (!save || value === c.anesthesiologist) return renderBoard();
+      const prev = c.anesthesiologist;
+      c.anesthesiologist = value;
+      renderBoard(); renderSide();
+      try {
+        const data = await postJSON(SCHEDULE_URL(c.id), { anesthesiologist: value });
+        c.anesthesiologist = data.anesthesiologist;
+      } catch (err) {
+        c.anesthesiologist = prev;
+        alert("마취의를 저장하지 못했습니다: " + err.message);
+      }
+      renderBoard(); renderSide();
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); finish(true); }
+      if (e.key === "Escape") { e.stopPropagation(); finish(false); }
+    });
+    input.addEventListener("blur", () => finish(true));
+  }
+
   document.getElementById("board").addEventListener("click", (e) => {
     const memo = e.target.closest("[data-memo]");
-    if (memo) return openMemoModal(memo.dataset.memo, memo.dataset.name);
+    if (memo) return openMemoModal(memo.dataset.memo);
+    const anes = e.target.closest("[data-anes]");
+    if (anes) return editAnesthesiologist(anes);
+    const roomCell = e.target.closest("[data-room-menu]");
+    if (roomCell) {
+      const room = roomCell.closest(".room").dataset.room;
+      if (menuRoom === room) return closeRoomMenu();
+      return openRoomMenu(room, roomCell);
+    }
     const row = e.target.closest(".main-row");
     if (!row) return;
     const room = row.parentElement.dataset.room;
@@ -235,6 +380,11 @@
   document.addEventListener("fullscreenchange", () => {
     document.getElementById("fullscreenBtn").innerHTML =
       document.fullscreenElement ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+    // 전체화면일 때도 메뉴·메모창이 보이도록 전체화면 요소 안으로 옮김
+    const host = document.fullscreenElement || document.body;
+    host.appendChild(menu);
+    host.appendChild(document.getElementById("memoModal"));
+    closeRoomMenu();
     renderBoard();
   });
 
@@ -249,46 +399,43 @@
   // ===================== 메모 =====================
   let currentScheduleId = null;
 
-  function openMemoModal(scheduleId, patientName) {
+  function openMemoModal(scheduleId) {
+    const c = findCase(scheduleId);
     currentScheduleId = scheduleId;
-    const modal = document.getElementById("memoModal");
     const memoText = document.getElementById("memoText");
-    document.getElementById("memoPatientName").textContent = patientName || "환자";
-    modal.classList.add("active");
-    memoText.value = "";
-
-    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
-    fetch(`/api/memos/${scheduleId}/`, {
-      method: "GET",
-      headers: { "X-CSRFToken": csrfToken, "Content-Type": "application/json" },
-      credentials: "same-origin"
-    })
+    document.getElementById("memoPatientName").textContent = (c && c.patient_name) || "환자";
+    document.getElementById("memoSubtitle").textContent =
+      c ? ["환자 메모", c.patient_info, c.surgery_name].filter(Boolean).join(" · ") : "환자 메모";
+    document.getElementById("memoModal").classList.add("active");
+    // 페이지에 이미 있는 메모를 바로 보여주고, 서버 최신값으로 갱신
+    memoText.value = (c && c.memo) || "";
+    memoText.focus();
+    fetch(`/api/memos/${scheduleId}/`, { method: "GET", credentials: "same-origin" })
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
       })
-      .then((data) => { memoText.value = data.content || ""; })
-      .catch((error) => {
-        console.error("Error fetching memo:", error);
-        memoText.value = "";
-      });
+      .then((data) => {
+        if (currentScheduleId === scheduleId && document.activeElement !== memoText) memoText.value = data.content || "";
+        else if (currentScheduleId === scheduleId && memoText.value === ((c && c.memo) || "")) memoText.value = data.content || "";
+      })
+      .catch((error) => console.error("Error fetching memo:", error));
   }
 
   function saveMemoAndClose() {
     const memoText = document.getElementById("memoText").value;
-    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
     const saveButton = document.querySelector(".btn-save");
-
     if (!currentScheduleId) {
       alert("Error: Could not identify the current schedule.");
       return;
     }
+    const scheduleId = currentScheduleId;
     saveButton.disabled = true;
     saveButton.innerHTML = "저장 중...";
 
-    fetch(`/api/memos/${currentScheduleId}/`, {
+    fetch(`/api/memos/${scheduleId}/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken, Accept: "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrf(), Accept: "application/json" },
       credentials: "same-origin",
       body: JSON.stringify({ content: memoText })
     })
@@ -303,8 +450,11 @@
         })
       )
       .then((data) => {
-        if (data.status === "success") closeMemoModal();
-        else throw new Error(data.message || "Unknown error occurred");
+        if (data.status !== "success") throw new Error(data.message || "Unknown error occurred");
+        const c = findCase(scheduleId);
+        if (c) c.memo = memoText.trim();
+        renderBoard();
+        closeMemoModal();
       })
       .catch((error) => {
         console.error("Error saving memo:", error);
@@ -325,7 +475,8 @@
     if (e.target === document.getElementById("memoModal")) closeMemoModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeMemoModal();
+    if (e.key === "Escape") { closeMemoModal(); closeRoomMenu(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && currentScheduleId) saveMemoAndClose();
   });
 
   // ===================== 업로드 =====================
@@ -350,6 +501,12 @@
   // AI parsing takes a few seconds - disable buttons so the user doesn't double-submit.
   document.getElementById("uploadForm").addEventListener("submit", (e) => {
     if (!fileInput.files.length) return;
+    if (e.submitter && e.submitter.value === "replace" && BOARD.total &&
+        !confirm("전체 교체는 기존 일정과 메모, 당직/Hold 표시를 모두 지우고 새로 등록합니다.\n메모를 유지하려면 '업데이트'를 사용하세요. 계속할까요?")) {
+      e.preventDefault();
+      return;
+    }
+    document.getElementById("uploadAction").value = e.submitter && e.submitter.value === "replace" ? "replace" : "update";
     document.querySelectorAll(".btn-upload").forEach((btn) => { btn.disabled = true; });
     if (e.submitter) e.submitter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI 분석 중...';
   });
