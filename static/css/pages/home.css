@@ -3,8 +3,8 @@
 /* Hero Section - Optimized for performance */
 .hero-section {
   position: relative;
-  height: 85vh;
-  min-height: 600px;
+  min-height: min(460px, 56vh);
+  padding: 72px 0 64px;
   background: var(--primary-gradient);
   color: white;
   display: flex;
@@ -27,7 +27,7 @@
   position: absolute;
   border-radius: 50%;
   filter: blur(40px);
-  animation: float 8s ease-in-out infinite;
+  animation: float 10s ease-in-out infinite;
   will-change: transform;
 }
 
@@ -62,7 +62,7 @@
   margin-bottom: 1rem;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   opacity: 0;
-  animation: fadeInUp 0.8s ease-out 0.3s forwards;
+  animation: fadeInUp 0.5s ease-out 0.1s forwards;
 }
 
 .hero-subtitle {
@@ -70,8 +70,8 @@
   font-weight: 400;
   margin-bottom: 2rem;
   opacity: 0;
-  animation: fadeInUp 0.8s ease-out 0.6s forwards;
-  min-height: 4rem; /* 2줄 높이 고정 — 삭제 중 레이아웃 흔들림 방지 */
+  animation: fadeInUp 0.5s ease-out 0.2s forwards;
+  min-height: 3.6rem; /* 2줄 높이 고정 — 삭제 중 레이아웃 흔들림 방지 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -108,7 +108,7 @@
   justify-content: center;
   flex-wrap: wrap;
   opacity: 0;
-  animation: fadeInUp 0.8s ease-out 0.9s forwards;
+  animation: fadeInUp 0.5s ease-out 0.3s forwards;
 }
 
 .btn-hero {
@@ -117,10 +117,9 @@
   font-weight: 600;
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   text-decoration: none;
   display: inline-block;
-  will-change: transform;
 }
 
 .btn-hero-primary {
@@ -135,7 +134,6 @@
 }
 
 .btn-hero:hover {
-  transform: translateY(-2px) scale(1.02);
   color: white;
   text-decoration: none;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
@@ -150,81 +148,6 @@
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-/* Features Section - Optimized spacing */
-.features-section {
-  background: #ffffff;
-  padding: 60px 0;
-  position: relative;
-}
-
-.section-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  text-align: center;
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 3rem;
-  position: relative;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.6s ease;
-}
-
-.section-title::after {
-  content: "";
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 50px;
-  height: 3px;
-  background: var(--primary-gradient);
-  border-radius: 2px;
-}
-
-.section-title.revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Enhanced Feature Buttons */
-.btn-feature {
-  background: var(--primary-gradient);
-  color: white;
-  padding: 0.7rem 1.5rem;
-  border-radius: 25px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  border: none;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  display: inline-block;
-  box-shadow: 0 3px 10px rgba(43, 88, 118, 0.2);
-  will-change: transform;
-}
-
-.btn-feature:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 5px 15px rgba(43, 88, 118, 0.3);
-  color: white;
-  text-decoration: none;
-}
-
-.btn-feature.disabled {
-  background: #dee2e6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  color: #6c757d;
-}
-
-.btn-feature.disabled:hover {
-  transform: none;
-  box-shadow: none;
-}
-
 /* Optimized Animations */
 @keyframes float {
   0%,
@@ -232,14 +155,14 @@
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-15px);
+    transform: translateY(-10px);
   }
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -247,96 +170,199 @@
   }
 }
 
-/* Scroll Reveal Animation - Performance optimized */
+/* Features: 섹션별 카드 묶음 */
+.features-section {
+  background: #ffffff;
+  padding: 48px 0 64px;
+}
+
+.lp-section + .lp-section {
+  margin-top: 2.75rem;
+}
+
+.lp-section-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin-bottom: 1rem;
+  padding-left: 0.85rem;
+  border-left: 4px solid;
+  border-image: var(--primary-gradient) 1;
+}
+
+.lp-section-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  margin: 0;
+}
+
+.lp-section-sub {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.lp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 1200px) {
+  .lp-grid {
+    grid-template-columns: repeat(var(--lp-cols, 5), minmax(0, 1fr));
+  }
+}
+
+/* 카드 전체가 링크 */
+.lp-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 1.1rem 1.1rem 0.95rem;
+  background: #fff;
+  border: 1px solid rgba(43, 88, 118, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+a.lp-card:hover,
+a.lp-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(43, 88, 118, 0.35);
+  box-shadow: 0 10px 24px rgba(43, 88, 118, 0.14);
+  color: inherit;
+  text-decoration: none;
+}
+
+a.lp-card:focus-visible {
+  outline: 3px solid rgba(43, 88, 118, 0.35);
+  outline-offset: 2px;
+}
+
+.lp-card.is-locked {
+  cursor: not-allowed;
+  background: #fafbfc;
+}
+
+.lp-card.is-locked .lp-icon {
+  opacity: 0.55;
+}
+
+.lp-icon {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--primary-gradient);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+
+.lp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 auto;
+}
+
+.lp-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  line-height: 1.3;
+}
+
+.lp-text {
+  font-size: 0.85rem;
+  color: #6c757d;
+  line-height: 1.45;
+}
+
+.lp-foot {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.lp-go {
+  color: var(--primary-dark);
+  opacity: 0.75;
+  transition: opacity 0.2s ease;
+}
+
+.lp-go i {
+  font-size: 0.7rem;
+  margin-left: 0.2rem;
+}
+
+a.lp-card:hover .lp-go {
+  opacity: 1;
+}
+
+.lp-state {
+  color: #6c757d;
+}
+
+.lp-state i {
+  margin-right: 0.2rem;
+}
+
+/* 스크롤 등장 — 짧고 작게 */
 .scroll-reveal {
   opacity: 0;
-  transform: translateY(15px);
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-  will-change: transform, opacity;
+  transform: translateY(8px);
+  transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .scroll-reveal.revealed {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
-/* Responsive Design - Mobile first approach */
-@media (max-width: 1400px) {
-  .hero-title {
-    font-size: 3rem;
-  }
-}
-
+/* Responsive */
 @media (max-width: 1200px) {
   .hero-title {
     font-size: 2.8rem;
-  }
-
-  .section-title {
-    font-size: 2.3rem;
-  }
-}
-
-@media (max-width: 992px) {
-  .hero-section {
-    height: 75vh;
-    min-height: 500px;
-  }
-
-  .hero-title {
-    font-size: 2.5rem;
-  }
-
-  .hero-subtitle {
-    font-size: 1.2rem;
-  }
-
-  .section-title {
-    font-size: 2.1rem;
-    margin-bottom: 2.5rem;
-  }
-
-  .features-section {
-    padding: 50px 0;
   }
 }
 
 @media (max-width: 768px) {
   .hero-section {
-    height: 70vh;
-    min-height: 450px;
+    min-height: 0;
+    padding: 48px 0 44px;
   }
 
   .hero-title {
-    font-size: 2.2rem;
-    margin-bottom: 0.8rem;
+    font-size: 2.1rem;
+    margin-bottom: 0.6rem;
   }
 
   .hero-subtitle {
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .hero-buttons {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.8rem;
+    font-size: 1.05rem;
+    margin-bottom: 1.25rem;
   }
 
   .btn-hero {
-    padding: 0.8rem 1.5rem;
+    padding: 0.7rem 1.4rem;
     font-size: 0.9rem;
-    width: auto;
-    min-width: 200px;
-  }
-
-  .section-title {
-    font-size: 1.9rem;
-    margin-bottom: 2rem;
   }
 
   .features-section {
-    padding: 40px 0;
+    padding: 32px 0 48px;
+  }
+
+  .lp-section + .lp-section {
+    margin-top: 2rem;
   }
 
   .orb-1,
@@ -347,23 +373,61 @@
   }
 }
 
+/* 휴대폰: 한 줄에 카드 두 장, 간결하게 */
 @media (max-width: 576px) {
   .hero-title {
-    font-size: 1.9rem;
+    font-size: 1.8rem;
   }
 
   .hero-subtitle {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .btn-hero {
-    padding: 0.7rem 1.3rem;
+    padding: 0.6rem 1.1rem;
     font-size: 0.85rem;
-    min-width: 180px;
   }
 
-  .section-title {
-    font-size: 1.7rem;
+  .lp-section-title {
+    font-size: 1.15rem;
+  }
+
+  .lp-section-sub {
+    font-size: 0.8rem;
+  }
+
+  .lp-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .lp-card {
+    padding: 0.85rem 0.8rem 0.75rem;
+    gap: 0.5rem;
+    border-radius: 12px;
+  }
+
+  .lp-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 0.9rem;
+  }
+
+  .lp-title {
+    font-size: 0.9rem;
+  }
+
+  .lp-text {
+    font-size: 0.75rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .lp-foot {
+    font-size: 0.72rem;
   }
 
   .orb-1,
@@ -374,20 +438,23 @@
   }
 }
 
-/* Performance optimizations */
+/* 움직임 줄이기 설정 존중 */
 @media (prefers-reduced-motion: reduce) {
-  .gradient-orb {
+  .gradient-orb,
+  .hero-cursor {
     animation: none;
   }
 
   .hero-title,
-    .hero-subtitle,
-    .hero-buttons {
+  .hero-subtitle,
+  .hero-buttons {
     animation: none;
     opacity: 1;
   }
 
-  .scroll-reveal {
+  .scroll-reveal,
+  .lp-card,
+  a.lp-card:hover {
     transition: none;
     opacity: 1;
     transform: none;
@@ -403,115 +470,8 @@
   .btn-hero {
     border: 2px solid rgba(255, 255, 255, 0.8);
   }
-}
 
-/* Feature Cards - Compact styling for landing page */
-.feature-card {
-  background: white;
-  border-radius: 16px;
-  padding: 1.25rem;
-  height: 100%;
-  transition: box-shadow 0.35s ease, transform 0.35s ease;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  /* 3D tilt */
-  transform-style: preserve-3d;
-  position: relative;
-  overflow: hidden;
-  will-change: transform;
-}
-
-/* 마우스 방향 빛 반사 */
-.feature-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(
-    circle at var(--mx, 50%) var(--my, 50%),
-    rgba(255, 255, 255, 0.22) 0%,
-    transparent 65%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.feature-card:hover::after {
-  opacity: 1;
-}
-
-.feature-card:hover {
-  box-shadow: 0 18px 40px rgba(43, 88, 118, 0.18);
-}
-
-.feature-icon {
-  width: 50px;
-  height: 50px;
-  background: var(--primary-gradient);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.75rem;
-  font-size: 1.25rem;
-  color: white;
-  transform: rotate(45deg) translateZ(12px);
-  transition: all 0.3s ease;
-}
-
-.feature-icon i {
-  transform: rotate(-45deg);
-}
-
-.feature-card:hover .feature-icon {
-  transform: rotate(90deg) translateZ(16px);
-}
-
-/* 틸트 중엔 transition 제거해 부드러운 추적 */
-.feature-card.is-tilting {
-  transition: box-shadow 0.35s ease;
-}
-
-@media (hover: none) {
-  /* 터치 기기에선 틸트 비활성화 */
-  .feature-card::after { display: none; }
-}
-
-.feature-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #2b5876;
-  margin-bottom: 0.4rem;
-  line-height: 1.3;
-}
-
-.feature-text {
-  color: #6c757d;
-  margin-bottom: 0.75rem;
-  flex-grow: 1;
-  font-size: 0.85rem;
-  line-height: 1.4;
-}
-
-/* Custom responsive grid for more cards per row */
-/* XXL screens (1400px+): 6 cards per row */
-@media (min-width: 1400px) {
-  .col-xxl-custom {
-    flex: 0 0 auto;
-    width: 16.666667%; /* 100% / 6 = 16.667% */
-  }
-}
-
-/* XL screens (1200px - 1399px): 5 cards per row */
-@media (min-width: 1200px) and (max-width: 1399.98px) {
-  .col-xl-custom {
-    flex: 0 0 auto;
-    width: 20%; /* 100% / 5 = 20% */
+  .lp-card {
+    border-color: #2b5876;
   }
 }

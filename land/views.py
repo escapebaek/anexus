@@ -1,24 +1,57 @@
-from django.shortcuts import render, reverse
+from django.shortcuts import render
+from django.urls import reverse
+
+from accounts.decorators import is_member
+
+
+def _card(title, text, url, icon):
+    # 외부 사이트는 새 탭으로 연다
+    return {'title': title, 'text': text, 'url': url, 'icon': icon, 'external': url.startswith('http')}
+
 
 def home(request):
-    cards = [
-        {"title": "Board", "text": "Join discussions and share knowledge.", "url": reverse('board_index'), "icon": "fas fa-comments"},
-        {"title": "Drug Calculator", "text": "Accurate drug dosage calculations.", "url": "https://escapebaek.github.io/anesthesia-calculator/", "icon": "fas fa-calculator"},
-        {"title": "Pediatric Calculator", "text": "Accurate calculations for pediatric anesthesia.", "url": "https://escapebaek.github.io/pediatric-anesthesia-calculator/", "icon": "fas fa-baby"},
-        {"title": "Coagulation Guideline", "text": "Find the latest coagulation guidelines.", "url": reverse('coag_index'), "icon": "fas fa-vial"},
-        {"title": "Questions", "text": "More information about board exam.", "url": reverse('question_home'), "icon": "fas fa-question-circle"},
-        {"title": "Schedule", "text": "Surgery schedule for today.", "url": reverse('schedule_dashboard'), "icon": "fas fa-calendar-alt"},
-        {"title": "Anes Chat", "text": "Chat with other anesthesiologists.", "url": "https://escapebaek.github.io/chat/", "icon": "fas fa-comments"},
-        {"title": "Record", "text": "Anesthesia record for today.", "url": reverse('anesthesia_record'), "icon": "fas fa-pencil-alt"},
-        {"title": "Journal Stand", "text": "Read the latest issues from our curated journals.", "url": reverse('journal:journal_stand'), "icon": "fas fa-book-open"},
-        {"title": "Drug Dictionary", "text": "Find the latest drug information.", "url": reverse('drugdictionary:drug_info'), "icon": "fas fa-pills"},
-        {"title": "Trends in Anesthesia", "text": "Recents anesthesia trends in major journals.", "url": "https://escapebaek.github.io/trends_anesthesia/", "icon": "fas fa-link"},
-        {"title": "SNUH Anesthesia", "text": "More information for alumni.", "url": "https://dept.snuh.org/dept/AN/index.do", "icon": "fas fa-hospital"},
-        {"title": "KSA", "text": "Korean Society of Anesthesiologists.", "url": "https://www.anesthesia.or.kr/", "icon": "fas fa-user-md"},
-        {"title": "NYSORA", "text": "World-wide renowned educational organization with focus in anesthesiology.", "url": "https://www.nysora.com/", "icon": "fas fa-book-medical"},
-        {"title": "OrphanAnesthesia", "text": "Anesthesia care for rare diseases.", "url": "https://www.orphananesthesia.eu/en/rare-diseases/published-guidelines.html", "icon": "fas fa-dna"},
-        {"title": "Virtual TEE", "text": "Virtual TEE for education.", "url": "https://pie.med.utoronto.ca/TEE/TEE_content/TEE_standardViews_intro.html", "icon": "fas fa-heartbeat"},
-        {"title": "Virtual FOB", "text": "Virtual FOB for education.", "url": "https://pie.med.utoronto.ca/VB/VB_content/simulation.html", "icon": "fas fa-lungs"},
-        {"title": "ACCRAC", "text": "Podcast for board examination.", "url": "https://accrac.com/", "icon": "fas fa-podcast"},
+    sections = [
+        {
+            'id': 'anexus',
+            'cols': 4,  # 넓은 화면에서 한 줄 카드 수 (끝줄이 한두 장만 남지 않게)
+            'title': 'ANExuS',
+            'subtitle': 'Built-in tools for daily practice and study.',
+            'cards': [
+                _card('Board', 'Join discussions and share knowledge.', reverse('board_index'), 'fas fa-comments'),
+                _card('Questions', 'Practice questions for the board exam.', reverse('question_home'), 'fas fa-question-circle'),
+                _card('Schedule', 'Surgery schedule for today.', reverse('schedule_dashboard'), 'fas fa-calendar-alt'),
+                _card('Record', 'Anesthesia record for today.', reverse('anesthesia_record'), 'fas fa-pencil-alt'),
+                _card('Journal Stand', 'Read the latest issues from our curated journals.', reverse('journal:journal_stand'), 'fas fa-book-open'),
+                _card('Drug Dictionary', 'Find the latest drug information.', reverse('drugdictionary:drug_info'), 'fas fa-pills'),
+                _card('Coagulation Guideline', 'Find the latest coagulation guidelines.', reverse('coag_index'), 'fas fa-vial'),
+            ],
+        },
+        {
+            'id': 'tools',
+            'cols': 5,  # 넓은 화면에서 한 줄 카드 수 (끝줄이 한두 장만 남지 않게)
+            'title': 'Calculators & Simulators',
+            'subtitle': 'Quick calculations and hands-on learning.',
+            'cards': [
+                _card('Drug Calculator', 'Accurate drug dosage calculations.', 'https://escapebaek.github.io/anesthesia-calculator/', 'fas fa-calculator'),
+                _card('Pediatric Calculator', 'Accurate calculations for pediatric anesthesia.', 'https://escapebaek.github.io/pediatric-anesthesia-calculator/', 'fas fa-baby'),
+                _card('Anes Chat', 'Chat with other anesthesiologists.', 'https://escapebaek.github.io/chat/', 'fas fa-user-friends'),
+                _card('Virtual TEE', 'Virtual TEE for education.', 'https://pie.med.utoronto.ca/TEE/TEE_content/TEE_standardViews_intro.html', 'fas fa-heartbeat'),
+                _card('Virtual FOB', 'Virtual FOB for education.', 'https://pie.med.utoronto.ca/VB/VB_content/simulation.html', 'fas fa-lungs'),
+            ],
+        },
+        {
+            'id': 'resources',
+            'cols': 6,  # 넓은 화면에서 한 줄 카드 수 (끝줄이 한두 장만 남지 않게)
+            'title': 'Resources',
+            'subtitle': 'Societies, references and learning materials.',
+            'cards': [
+                _card('Trends in Anesthesia', 'Recent anesthesia trends in major journals.', 'https://escapebaek.github.io/trends_anesthesia/', 'fas fa-chart-line'),
+                _card('KSA', 'Korean Society of Anesthesiologists.', 'https://www.anesthesia.or.kr/', 'fas fa-user-md'),
+                _card('SNUH Anesthesia', 'More information for alumni.', 'https://dept.snuh.org/dept/AN/index.do', 'fas fa-hospital'),
+                _card('NYSORA', 'Renowned educational organization in anesthesiology.', 'https://www.nysora.com/', 'fas fa-book-medical'),
+                _card('OrphanAnesthesia', 'Anesthesia care for rare diseases.', 'https://www.orphananesthesia.eu/en/rare-diseases/published-guidelines.html', 'fas fa-dna'),
+                _card('ACCRAC', 'Podcast for board examination.', 'https://accrac.com/', 'fas fa-podcast'),
+            ],
+        },
     ]
-    return render(request, 'land/home.html', {'cards': cards})
+    return render(request, 'land/home.html', {'sections': sections, 'is_member': is_member(request.user)})
