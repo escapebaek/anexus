@@ -128,7 +128,6 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),  # 프로젝트 루트의 static 폴더 추가
     os.path.join(BASE_DIR, 'schedule', 'static'),  # schedule 앱의 static 폴더
 ]
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -139,7 +138,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Media files, Media 설정
 # MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-DEFAULT_FILE_STORAGE = 'anhub.storage_backends.SupabaseStorage'
+# Django 5.1+ 에서는 DEFAULT_FILE_STORAGE / STATICFILES_STORAGE 설정이 무시되므로 STORAGES 로 지정.
+# (예전 설정만 있으면 업로드 파일이 Render 서버 디스크에 저장되어 재배포 때 사라지고,
+#  주소는 Supabase 를 가리켜 이미지가 깨짐)
+STORAGES = {
+    "default": {"BACKEND": "anhub.storage_backends.SupabaseStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+# 게시판 편집기 이미지: 한글·공백 파일명도 문제없도록 board/연/월/무작위이름 으로 저장
+CKEDITOR_5_FILE_STORAGE = "anhub.storage_backends.EditorImageStorage"
 
 # Supabase 설정
 SUPABASE_URL = config('SUPABASE_URL')

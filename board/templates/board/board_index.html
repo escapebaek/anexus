@@ -12,10 +12,20 @@
     <!-- 페이지 헤더 -->
     <div class="board-header">
       <h2 class="section-title text-gradient" style="margin-bottom: 0;">ANExuS Board</h2>
-      <a href="{% url 'board_create' %}" class="btn btn-gradient">
-        <i class="fas fa-pen me-2"></i>새 글 작성
-      </a>
+      <div class="board-header-actions">
+        <form method="get" class="board-search" role="search">
+          <input type="search" name="q" value="{{ query }}" placeholder="제목·내용·작성자 검색" aria-label="게시글 검색" />
+          <button type="submit" title="검색"><i class="fas fa-search"></i></button>
+          {% if query %}<a href="{% url 'board_index' %}" class="board-search-clear" title="검색 지우기"><i class="fas fa-times"></i></a>{% endif %}
+        </form>
+        <a href="{% url 'board_create' %}" class="btn btn-gradient">
+          <i class="fas fa-pen me-2"></i>새 글 작성
+        </a>
+      </div>
     </div>
+    {% if query %}
+    <p class="board-search-result">'<b>{{ query }}</b>' 검색 결과 {{ page_obj.paginator.count|add:notices.count }}건</p>
+    {% endif %}
 
     <!-- 게시글 목록 컨테이너 -->
     <div class="board-list-container">
@@ -42,8 +52,8 @@
             <a href="{% url 'board_detail' notice.pk %}" class="post-title-link notice-title">
               <i class="fas fa-pin me-1"></i>{{ notice.title }}
             </a>
-            {% if notice.comments.count > 0 %}
-            <span class="comment-count ms-1">[{{ notice.comments.count }}]</span>
+            {% if notice.comment_count > 0 %}
+            <span class="comment-count ms-1">[{{ notice.comment_count }}]</span>
             {% endif %}
           </div>
           <div class="post-author">{{ notice.author }}</div>
@@ -59,8 +69,8 @@
             <a href="{% url 'board_detail' board.pk %}" class="post-title-link">
               {{ board.title }}
             </a>
-            {% if board.comments.count > 0 %}
-            <span class="comment-count ms-1">[{{ board.comments.count }}]</span>
+            {% if board.comment_count > 0 %}
+            <span class="comment-count ms-1">[{{ board.comment_count }}]</span>
             {% endif %}
           </div>
           <div class="post-author">{{ board.author }}</div>
@@ -70,7 +80,7 @@
         {% if not notices %}
         <li class="empty-board">
           <div class="empty-icon"><i class="fas fa-feather-alt"></i></div>
-          <p>아직 작성된 게시글이 없습니다.<br>첫 번째 글을 남겨주세요!</p>
+          {% if query %}<p>검색 결과가 없습니다.</p>{% else %}<p>아직 작성된 게시글이 없습니다.<br>첫 번째 글을 남겨주세요!</p>{% endif %}
         </li>
         {% endif %}
         {% endfor %}
@@ -85,7 +95,7 @@
           {# 이전 페이지 버튼 #}
           {% if page_obj.has_previous %}
             <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a>
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}">&laquo;</a>
             </li>
           {% else %}
             <li class="page-item disabled">
@@ -101,7 +111,7 @@
               </li>
             {% else %}
               <li class="page-item">
-                <a class="page-link" href="?page={{ page_number }}">{{ page_number }}</a>
+                <a class="page-link" href="?page={{ page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}">{{ page_number }}</a>
               </li>
             {% endif %}
           {% endfor %}
@@ -109,7 +119,7 @@
           {# 다음 페이지 버튼 #}
           {% if page_obj.has_next %}
             <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a>
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}">&raquo;</a>
             </li>
           {% else %}
             <li class="page-item disabled">
