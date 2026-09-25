@@ -15,6 +15,7 @@ urlpatterns = [
     path('analytics/exam/<int:exam_id>/', views.exam_analytics, name='exam_analytics'),
     path('analytics/overview/', views.analytics_overview, name='analytics_overview'),
     path('analytics/exams/', views.exam_stats_list, name='exam_stats_list'),
+    path('review/', views.review_wrong, name='review_wrong'),
     path('analytics/result/<int:result_id>/', views.result_analytics, name='result_analytics'),
     path('result/<int:result_id>/delete/', views.delete_result, name='delete_result'),
     

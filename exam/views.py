@@ -12,6 +12,10 @@ from django.db.models import Prefetch
 from django.core.paginator import Paginator
 from collections import defaultdict
 from datetime import datetime, timedelta
+import re
+
+from django.utils.timezone import localtime
+
 from .grading import grade, MAX_QUESTIONS_PER_RESULT
 
 
@@ -334,212 +338,20 @@ def toggle_bookmark(request, question_id):
 @user_is_approved
 def question_home(request):
     sections = [
-        {"title": "Question Bank", "text": "Practice exams and question banks",
+        {"title": "Question Bank", "text": "시험 회차별로 풀기",
          "url": reverse('exam_list'), "icon_class": "book"},
-        {"title": "Question Categories", "text": "Browse questions by category",
+        {"title": "Question Categories", "text": "카테고리별로 풀기",
          "url": reverse('category_list'), "icon_class": "folder"},
-        {"title": "Bookmarked Questions", "text": "Your saved questions",
+        {"title": "Bookmarked Questions", "text": "북마크한 문제 복습",
          "url": reverse('bookmarked_questions'), "icon_class": "bookmark"},
-        {"title": "My Results", "text": "View your saved results",
+        {"title": "Wrong Answers", "text": "오답노트: 마지막에 틀린 문제 다시 풀기",
+         "url": reverse('review_wrong'), "icon_class": "redo"},
+        {"title": "My Results", "text": "응시 기록과 채점 결과",
          "url": reverse('my_results'), "icon_class": "list-alt"},
-        {"title": "Exam Analytics", "text": "Statistics by exam round",
-         "url": reverse('exam_stats_list'), "icon_class": "chart-bar"},
-        {"title": "Overall Analytics", "text": "Category accuracy across all attempts",
-         "url": reverse('analytics_overview'), "icon_class": "chart-pie"},
+        {"title": "My Stats", "text": "점수 추이·카테고리 정답률",
+         "url": reverse('analytics_overview'), "icon_class": "chart-line"},
     ]
     return render(request, 'exam/question_home.html', {'sections': sections})
-
-@login_required
-@user_is_approved
-def exam_stats_list(request):
-    """Per-exam statistics overview — lists every exam the user has attempted"""
-    results = (
-        ExamResult.objects
-        .filter(user=request.user, exam__isnull=False)
-        .select_related('exam')
-        .order_by('exam__display_order', 'exam__title', '-date_taken')
-    )
-
-    exam_data = {}
-    order_key = {}
-    for r in results:
-        eid = r.exam_id
-        if eid not in exam_data:
-            exam_data[eid] = {
-                'exam': r.exam,
-                'attempts': 0,
-                'scores': [],
-                'last_taken': r.date_taken,
-            }
-            order_key[eid] = (r.exam.display_order, r.exam.title)
-        total = (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
-        pct = round((r.num_correct / total) * 100, 1) if total else 0
-        exam_data[eid]['attempts'] += 1
-        exam_data[eid]['scores'].append(pct)
-
-    exam_list = []
-    for eid, data in sorted(exam_data.items(), key=lambda kv: order_key[kv[0]]):
-        scores = data['scores']
-        avg = round(sum(scores) / len(scores), 1) if scores else 0
-        exam_list.append({
-            'exam': data['exam'],
-            'attempts': data['attempts'],
-            'avg_score': avg,
-            'best_score': round(max(scores), 1) if scores else 0,
-            'last_taken': data['last_taken'],
-        })
-
-    return render(request, 'exam/exam_stats_list.html', {
-        'exam_list': exam_list,
-        'has_data': bool(exam_list),
-    })
-
-# ============ Helper Functions ============
-def calculate_improvement_rate(results):
-    """Calculate score improvement between first half and second half of attempts"""
-    if len(results) < 2:
-        return 0
-    scores = []
-    for r in results:
-        total = (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
-        pct = (r.num_correct / total) * 100 if total else 0
-        scores.append(pct)
-    scores.reverse()  # chronological order
-    mid = len(scores) // 2
-    first_half_avg = sum(scores[:mid]) / mid if mid > 0 else 0
-    second_half_avg = sum(scores[mid:]) / (len(scores) - mid) if (len(scores) - mid) > 0 else 0
-    return round(second_half_avg - first_half_avg, 1)
-
-def identify_weak_categories(category_stats, threshold=70):
-    """Identify categories with accuracy below threshold"""
-    weak = []
-    for cat, s in category_stats.items():
-        denom = (s['correct'] + s['incorrect'])
-        if denom > 0:
-            acc = (s['correct'] / denom * 100)
-            if acc < threshold:
-                weak.append({'name': cat, 'accuracy': round(acc, 1), 'total': denom})
-    return sorted(weak, key=lambda x: x['accuracy'])
-
-def identify_strong_categories(category_stats, threshold=70):
-    """Identify categories with accuracy above threshold"""
-    strong = []
-    for cat, s in category_stats.items():
-        denom = (s['correct'] + s['incorrect'])
-        if denom > 0:
-            acc = (s['correct'] / denom * 100)
-            if acc >= threshold:
-                strong.append({'name': cat, 'accuracy': round(acc, 1), 'total': denom})
-    return sorted(strong, key=lambda x: x['accuracy'], reverse=True)
-
-def calculate_moving_average(scores, window=3):
-    """Calculate moving average for trend smoothing"""
-    if len(scores) < window:
-        return [round(s, 1) for s in scores]
-    moving_avg = []
-    for i in range(len(scores)):
-        if i < window - 1:
-            moving_avg.append(round(scores[i], 1))
-        else:
-            avg = sum(scores[i-window+1:i+1]) / window
-            moving_avg.append(round(avg, 1))
-    return moving_avg
-
-def calculate_recent_vs_overall(scores, recent_count=3):
-    """Compare recent N attempts average vs overall average"""
-    if len(scores) < 2:
-        return {'recent_avg': scores[0] if scores else 0, 'overall_avg': scores[0] if scores else 0, 'diff': 0}
-    overall_avg = sum(scores) / len(scores) if scores else 0
-    recent = scores[-recent_count:] if len(scores) >= recent_count else scores
-    recent_avg = sum(recent) / len(recent) if recent else 0
-    return {
-        'recent_avg': round(recent_avg, 1),
-        'overall_avg': round(overall_avg, 1),
-        'diff': round(recent_avg - overall_avg, 1)
-    }
-
-def calculate_target_gap(avg_pct, target=60):
-    """Calculate gap to target score"""
-    gap = target - avg_pct
-    return {
-        'target': target,
-        'gap': round(max(0, gap), 1),
-        'reached': avg_pct >= target,
-        'progress_pct': round(min(100, (avg_pct / target) * 100), 1) if target > 0 else 100
-    }
-
-def generate_study_recommendation(weak_categories, avg_pct, target=60):
-    """Generate personalized study recommendation"""
-    # Filter out N/A categories as they can't be linked
-    valid_weak_categories = [c for c in weak_categories if c.get('name') and c.get('name') != 'N/A']
-    
-    if not valid_weak_categories:
-        if avg_pct >= target:
-            return {
-                'message': '축하합니다! 목표 점수에 도달했습니다. 현재 실력을 유지하세요!',
-                'priority_category': None,
-                'priority_categories': [],
-                'icon': 'trophy',
-                'type': 'success'
-            }
-        return {
-            'message': '훌륭합니다! 모든 카테고리에서 좋은 성적을 보이고 있습니다.',
-            'priority_category': None,
-            'priority_categories': [],
-            'icon': 'star',
-            'type': 'info'
-        }
-    
-    # Sort by accuracy (lowest first) to find the weakest categories
-    sorted_weak = sorted(valid_weak_categories, key=lambda x: x.get('accuracy', 0))
-    
-    # Get top 3 weakest categories for display
-    top_weak = sorted_weak[:3]
-    priority = sorted_weak[0]  # The weakest one
-    
-    gap_to_target = target - avg_pct
-    
-    # Estimate questions needed (rough calculation)
-    estimated_questions = max(5, int(gap_to_target * 2))
-    
-    # Build message with multiple categories if available
-    if len(top_weak) > 1:
-        category_list = ', '.join([f"'{c['name']}' ({c['accuracy']}%)" for c in top_weak])
-        message = f"다음 카테고리들의 정확도가 가장 낮습니다: {category_list}. '{priority['name']}' 카테고리부터 집중 연습해보세요!"
-    else:
-        message = f"'{priority['name']}' 카테고리의 정확도가 {priority['accuracy']}%로 가장 낮습니다. 이 카테고리를 집중 연습해보세요!"
-    
-    return {
-        'message': message,
-        'priority_category': priority['name'],
-        'priority_accuracy': priority['accuracy'],
-        'priority_categories': top_weak,  # List of top 3 weakest categories
-        'estimated_practice': estimated_questions,
-        'icon': 'lightbulb',
-        'type': 'warning'
-    }
-
-def get_performance_grade(pct):
-    """Get grade and color based on percentage"""
-    if pct >= 90:
-        return {'grade': 'A+', 'label': 'Excellent', 'label_kr': '우수',   'color': '#27ae60'}
-    elif pct >= 80:
-        return {'grade': 'A',  'label': 'Great',     'label_kr': '훌륭',   'color': '#2ecc71'}
-    elif pct >= 70:
-        return {'grade': 'B+', 'label': 'Good',      'label_kr': '양호',   'color': '#2b5876'}
-    elif pct >= 60:
-        return {'grade': 'B',  'label': 'Fair',      'label_kr': '보통',   'color': '#d69e2e'}
-    elif pct >= 50:
-        return {'grade': 'C',  'label': 'Needs Work','label_kr': '노력필요','color': '#e67e22'}
-    else:
-        return {'grade': 'D',  'label': 'Keep Trying','label_kr': '분발',  'color': '#e53e3e'}
-
-def calculate_total_questions_answered(results):
-    """Calculate total number of questions answered across all results"""
-    total = 0
-    for r in results:
-        total += (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
-    return total
 
 # ============ Results History & Analytics ============
 @login_required
@@ -567,276 +379,145 @@ def my_results(request):
         })
     return render(request, 'exam/my_results.html', {'results': display})
 
-@login_required
-@user_is_approved
-def exam_analytics(request, exam_id:int):
-    """Enhanced analytics for a specific exam"""
-    exam = get_object_or_404(Exam, pk=exam_id)
-    results = (
-        ExamResult.objects
-        .filter(user=request.user, exam_id=exam_id)
-        .order_by('-date_taken')
-    )
-    if not results:
-        return render(request, 'exam/exam_analytics.html', {
-            'exam': exam,
-            'has_data': False,
-        })
+WRONG_RESULTS = ('incorrect', 'unanswered')
 
-    attempts = len(results)
-    best_pct = 0.0
-    sum_pct = 0.0
-    category_stats = defaultdict(lambda: {'correct': 0, 'incorrect': 0, 'unanswered': 0, 'noanswer': 0})
-    
-    # Progress data for line chart
-    attempt_dates = []
-    attempt_scores = []
-    
-    for r in reversed(results):  # chronological order
-        total = (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
-        pct = (r.num_correct / total) * 100 if total else 0
-        sum_pct += pct
-        if pct > best_pct:
-            best_pct = pct
-        attempt_dates.append(r.date_taken.strftime('%m/%d'))
-        attempt_scores.append(round(pct, 1))
+
+def question_history(user):
+    """문제별 풀이 기록 {문제ID: {'seen', 'wrong', 'last', 'last_date'}} — 모든 응시 기록을 시간순으로 훑는다.
+    'last' 가 틀림·안 풂이면 아직 못 맞힌 문제(오답노트)."""
+    history = {}
+    results = ExamResult.objects.filter(user=user).order_by('date_taken', 'id').only('date_taken', 'detailed_results')
+    for r in results:
         for d in r.detailed_results or []:
-            cat = d.get('category') or 'N/A'
-            res = d.get('result')
-            if res == 'correct':
-                category_stats[cat]['correct'] += 1
-            elif res == 'incorrect':
-                category_stats[cat]['incorrect'] += 1
-            elif res == 'unanswered':
-                category_stats[cat]['unanswered'] += 1
-            elif res == 'noanswer':
-                category_stats[cat]['noanswer'] += 1
+            if not isinstance(d, dict) or not d.get('question_id') or d.get('result') == 'noanswer':
+                continue
+            h = history.setdefault(d['question_id'], {'seen': 0, 'wrong': 0, 'last': None, 'last_date': None})
+            h['seen'] += 1
+            h['wrong'] += d.get('result') in WRONG_RESULTS
+            h['last'] = d.get('result')
+            h['last_date'] = r.date_taken
+    return history
 
-    avg_pct = round(sum_pct / attempts, 1) if attempts else 0
-    best_pct = round(best_pct, 1)
-    
-    # Calculate improvement rate and trends
-    improvement_rate = calculate_improvement_rate(results)
-    moving_avg = calculate_moving_average(attempt_scores, window=min(3, len(attempt_scores)))
-    
-    # Identify weak and strong categories
-    weak_categories = identify_weak_categories(category_stats)
-    strong_categories = identify_strong_categories(category_stats)
-    
-    # NEW: Enhanced statistics
-    recent_comparison = calculate_recent_vs_overall(attempt_scores)
-    target_gap = calculate_target_gap(avg_pct)
-    study_recommendation = generate_study_recommendation(weak_categories, avg_pct)
-    performance_grade = get_performance_grade(avg_pct)
-    total_questions = calculate_total_questions_answered(results)
-    
-    # Category data
-    labels = []
-    correct_data = []
-    incorrect_data = []
-    unanswered_data = []
-    noanswer_data = []
-    accuracy_pct = []
-    
-    for cat, s in sorted(category_stats.items()):
-        labels.append(cat)
-        correct_data.append(s['correct'])
-        incorrect_data.append(s['incorrect'])
-        unanswered_data.append(s['unanswered'])
-        noanswer_data.append(s['noanswer'])
-        denom = (s['correct'] + s['incorrect'])
-        acc = (s['correct'] / denom * 100) if denom else 0
-        accuracy_pct.append(round(acc, 1))
 
-    return render(request, 'exam/exam_analytics.html', {
-        'has_data': True,
-        'exam': exam,
-        'attempts': attempts,
-        'avg_pct': avg_pct,
-        'best_pct': best_pct,
-        'improvement_rate': improvement_rate,
-        'weak_categories': weak_categories,
-        'strong_categories': strong_categories,
-        'labels': labels,
-        'correct_data': correct_data,
-        'incorrect_data': incorrect_data,
-        'unanswered_data': unanswered_data,
-        'noanswer_data': noanswer_data,
-        'accuracy_pct': accuracy_pct,
-        'latest_result_id': results[0].id,
-        'attempt_dates': attempt_dates,
-        'attempt_scores': attempt_scores,
-        'moving_avg': moving_avg,
-        # NEW: Enhanced statistics
-        'recent_comparison': recent_comparison,
-        'target_gap': target_gap,
-        'study_recommendation': study_recommendation,
-        'performance_grade': performance_grade,
-        'total_questions': total_questions,
-    })
+def still_wrong_questions(user, exam=None):
+    """마지막으로 풀었을 때 틀리거나 안 푼 문제 — 많이 틀린 순, 최근 순."""
+    history = question_history(user)
+    wrong_ids = [qid for qid, h in history.items() if h['last'] in WRONG_RESULTS]
+    questions = visible_questions(user).filter(id__in=wrong_ids).select_related('category', 'exam')
+    if exam is not None:
+        questions = questions.filter(exam=exam)
+    questions = list(questions)
+    for q in questions:
+        q.history = history[q.id]
+    questions.sort(key=lambda q: (-q.history['wrong'], -q.history['last_date'].timestamp()))
+    return questions
+
 
 @login_required
 @user_is_approved
 def analytics_overview(request):
-    """Enhanced aggregate analytics across ALL exams"""
-    results = list(
-        ExamResult.objects
-        .filter(user=request.user)
-        .order_by('-date_taken')
-    )
+    """내 통계: 전체 또는 회차 하나를 골라 점수·카테고리 정답률·오답노트를 한 화면에."""
+    all_results = list(ExamResult.objects.filter(user=request.user).select_related('exam').order_by('date_taken', 'id'))
+    exam_ids = {r.exam_id for r in all_results if r.exam_id}
+    exams = list(visible_exams(request.user).filter(id__in=exam_ids).order_by('display_order', 'date_created'))
+    exam = None
+    if request.GET.get('exam', '').isdigit():
+        exam = next((e for e in exams if e.id == int(request.GET['exam'])), None)
+        if exam is None:
+            return redirect('analytics_overview')
+    results = [r for r in all_results if exam is None or r.exam_id == exam.id]
+
+    context = {'exams': exams, 'exam': exam, 'has_data': bool(results)}
     if not results:
-        return render(request, 'exam/overall_analytics.html', {'has_data': False})
+        return render(request, 'exam/stats.html', context)
 
-    attempts = len(results)
-    best_pct = 0.0
-    sum_pct = 0.0
-    category_stats = defaultdict(lambda: {'correct': 0, 'incorrect': 0, 'unanswered': 0, 'noanswer': 0})
-    
-    # Progress tracking
-    attempt_dates = []
-    attempt_scores = []
-
-    for r in reversed(results):  # chronological order
-        total = (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
-        pct = (r.num_correct / total) * 100 if total else 0
-        sum_pct += pct
-        if pct > best_pct:
-            best_pct = pct
-        attempt_dates.append(r.date_taken.strftime('%m/%d'))
-        attempt_scores.append(round(pct, 1))
-        for d in r.detailed_results or []:
-            cat = d.get('category') or 'N/A'
-            res = d.get('result')
-            if res == 'correct':
-                category_stats[cat]['correct'] += 1
-            elif res == 'incorrect':
-                category_stats[cat]['incorrect'] += 1
-            elif res == 'unanswered':
-                category_stats[cat]['unanswered'] += 1
-            elif res == 'noanswer':
-                category_stats[cat]['noanswer'] += 1
-
-    avg_pct = round(sum_pct / attempts, 1) if attempts else 0
-    best_pct = round(best_pct, 1)
-    
-    # Enhanced analytics
-    improvement_rate = calculate_improvement_rate(results)
-    moving_avg = calculate_moving_average(attempt_scores, window=min(3, len(attempt_scores)))
-    weak_categories = identify_weak_categories(category_stats)
-    strong_categories = identify_strong_categories(category_stats)
-    
-    # NEW: Enhanced statistics
-    recent_comparison = calculate_recent_vs_overall(attempt_scores)
-    target_gap = calculate_target_gap(avg_pct)
-    study_recommendation = generate_study_recommendation(weak_categories, avg_pct)
-    performance_grade = get_performance_grade(avg_pct)
-    total_questions = calculate_total_questions_answered(results)
-
-    # Combined dataset
-    labels_all = []
-    correct_all = []
-    incorrect_all = []
-    unanswered_all = []
-    noanswer_all = []
-    acc_all = []
-
-    for cat, s in sorted(category_stats.items()):
-        labels_all.append(cat)
-        correct_all.append(s['correct'])
-        incorrect_all.append(s['incorrect'])
-        unanswered_all.append(s['unanswered'])
-        noanswer_all.append(s['noanswer'])
-        denom = (s['correct'] + s['incorrect'])
-        acc = (s['correct'] / denom * 100) if denom else 0
-        acc_all.append(round(acc, 1))
-
-    # Per-exam rollups
-    exams_qs = (Exam.objects
-                .filter(id__in=[r.exam_id for r in results if r.exam_id])
-                .order_by('title'))
-    exam_cards = []
-    exam_data = {}
-
-    for ex in exams_qs:
-        ex_results = [r for r in results if r.exam_id == ex.id]
-        ex_attempts = len(ex_results)
-        ex_best = 0.0
-        ex_sum = 0.0
-        ex_cat = defaultdict(lambda: {'correct': 0, 'incorrect': 0, 'unanswered': 0, 'noanswer': 0})
-        for r in ex_results:
-            total = (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
-            pct = (r.num_correct / total) * 100 if total else 0
-            ex_sum += pct
-            if pct > ex_best:
-                ex_best = pct
-            for d in r.detailed_results or []:
-                cat = d.get('category') or 'N/A'
-                rs = d.get('result')
-                if rs == 'correct':
-                    ex_cat[cat]['correct'] += 1
-                elif rs == 'incorrect':
-                    ex_cat[cat]['incorrect'] += 1
-                elif rs == 'unanswered':
-                    ex_cat[cat]['unanswered'] += 1
-                elif rs == 'noanswer':
-                    ex_cat[cat]['noanswer'] += 1
-
-        ex_avg = round(ex_sum / ex_attempts, 1) if ex_attempts else 0
-        ex_best = round(ex_best, 1)
-        exam_cards.append({
-            'id': ex.id,
-            'title': ex.title,
-            'attempts': ex_attempts,
-            'avg_pct': ex_avg,
-            'best_pct': ex_best,
-        })
-
-        ex_labels, ex_correct, ex_incorrect, ex_unanswered, ex_noanswer, ex_acc = [], [], [], [], [], []
-        for cat, s in sorted(ex_cat.items()):
-            ex_labels.append(cat)
-            ex_correct.append(s['correct'])
-            ex_incorrect.append(s['incorrect'])
-            ex_unanswered.append(s['unanswered'])
-            ex_noanswer.append(s['noanswer'])
-            denom = (s['correct'] + s['incorrect'])
-            acc = (s['correct'] / denom * 100) if denom else 0
-            ex_acc.append(round(acc, 1))
-
-        exam_data[str(ex.id)] = {
-            'labels': ex_labels,
-            'correct': ex_correct,
-            'incorrect': ex_incorrect,
-            'unanswered': ex_unanswered,
-            'noanswer': ex_noanswer,
-            'accuracy': ex_acc,
-        }
-
-    return render(request, 'exam/overall_analytics.html', {
-        'has_data': True,
-        'attempts': attempts,
-        'avg_pct': avg_pct,
-        'best_pct': best_pct,
-        'improvement_rate': improvement_rate,
-        'weak_categories': weak_categories,
-        'strong_categories': strong_categories,
-        'labels_all': labels_all,
-        'correct_all': correct_all,
-        'incorrect_all': incorrect_all,
-        'unanswered_all': unanswered_all,
-        'noanswer_all': noanswer_all,
-        'acc_all': acc_all,
-        'exam_cards': exam_cards,
-        'exam_data': exam_data,
-        'attempt_dates': attempt_dates,
-        'attempt_scores': attempt_scores,
-        'moving_avg': moving_avg,
-        # NEW: Enhanced statistics
-        'recent_comparison': recent_comparison,
-        'target_gap': target_gap,
-        'study_recommendation': study_recommendation,
-        'performance_grade': performance_grade,
-        'total_questions': total_questions,
+    scores = [result_counts(r)[2] for r in results]
+    latest = results[-1]
+    context.update({
+        'attempts': len(results),
+        'latest_pct': scores[-1],
+        'latest': latest,
+        'avg_pct': round(sum(scores) / len(scores), 1),
+        'best_pct': max(scores),
+        'best': results[scores.index(max(scores))],
+        'answered': sum((r.num_correct or 0) + (r.num_incorrect or 0) for r in results),
     })
+
+    # 카테고리 정답률 (정답 미정 문제 제외, 안 푼 문제는 틀린 것으로)
+    by_category = defaultdict(lambda: {'correct': 0, 'graded': 0})
+    for r in results:
+        for d in r.detailed_results or []:
+            if not isinstance(d, dict) or d.get('result') == 'noanswer':
+                continue
+            name = d.get('category') if d.get('category') not in (None, '', 'N/A') else '미분류'
+            by_category[name]['graded'] += 1
+            by_category[name]['correct'] += d.get('result') == 'correct'
+    # 카테고리 풀기 링크는 실제 카테고리이고 주소 패턴(urls.py)에 맞는 이름에만 단다
+    category_names = {n for n in Category.objects.filter(name__in=by_category).values_list('name', flat=True)
+                      if re.fullmatch(r'[\w\s\(\)가-힣%-]+', n)}
+    context['categories'] = sorted(
+        ({'name': name, 'correct': c['correct'], 'graded': c['graded'],
+          'pct': round(c['correct'] / c['graded'] * 100) if c['graded'] else 0,
+          'can_practice': name in category_names}
+         for name, c in by_category.items() if c['graded']),
+        key=lambda c: (c['pct'], -c['graded'], c['name']))
+
+    if exam is None:
+        # 회차별 요약 (시험 회차가 아닌 카테고리·북마크·다시 풀기 기록은 합계에만 들어간다)
+        rows = []
+        for e in exams:
+            er = [r for r in results if r.exam_id == e.id]
+            if not er:
+                continue
+            ep = [result_counts(r)[2] for r in er]
+            rows.append({'exam': e, 'attempts': len(er), 'latest_pct': ep[-1], 'best_pct': max(ep),
+                         'avg_pct': round(sum(ep) / len(ep), 1), 'last_date': er[-1].date_taken})
+        context['exam_rows'] = rows
+        context['other_attempts'] = sum(1 for r in results if not r.exam_id)
+    else:
+        context['trend'] = [{'id': r.id, 'date': r.date_taken, 'pct': result_counts(r)[2],
+                             'correct': result_counts(r)[0], 'total': result_counts(r)[1]} for r in results]
+        context['trend_json'] = json.dumps([{'x': localtime(r.date_taken).strftime('%m/%d'), 'y': result_counts(r)[2],
+                                             'label': localtime(r.date_taken).strftime('%Y.%m.%d %H:%M'),
+                                             'score': f'{result_counts(r)[0]}/{result_counts(r)[1]}'} for r in results])
+
+    wrong = still_wrong_questions(request.user, exam)
+    context['wrong_total'] = len(wrong)
+    context['wrong_top'] = wrong[:12]
+    return render(request, 'exam/stats.html', context)
+
+
+def exam_analytics(request, exam_id):
+    """예전 '회차별 통계' 주소 — 내 통계에서 회차를 고른 화면으로."""
+    return redirect(f"{reverse('analytics_overview')}?exam={exam_id}")
+
+
+def exam_stats_list(request):
+    """예전 '회차 목록 통계' 주소 — 내 통계로."""
+    return redirect('analytics_overview')
+
+
+@login_required
+@user_is_approved
+def review_wrong(request):
+    """오답노트 풀기: 마지막으로 풀었을 때 틀리거나 안 푼 문제들 (?exam= 로 회차 한정, 최대 100문제)."""
+    exam = None
+    if request.GET.get('exam', '').isdigit():
+        exam = get_object_or_404(visible_exams(request.user), id=int(request.GET['exam']))
+    questions = still_wrong_questions(request.user, exam)[:100]
+    if not questions:
+        return redirect(f"{reverse('analytics_overview')}{'?exam=%d' % exam.id if exam else ''}")
+    bookmarked = set(Bookmark.objects.filter(user=request.user, question__in=questions).values_list('question_id', flat=True))
+    for q in questions:
+        q.is_bookmarked = q.id in bookmarked
+    scope = exam.title if exam else '전체'
+    return render(request, 'exam/quiz_unified.html', {
+        'category_name': f'오답노트 · {scope}',
+        'kicker': '오답노트',
+        'quiz_key': f'review_{exam.id if exam else "all"}',
+        'questions': questions,
+    })
+
 
 @require_POST
 @login_required

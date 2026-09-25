@@ -16,7 +16,7 @@
   </header>
 
   <nav class="rs-actions" aria-label="메뉴">
-    <a class="rs-btn" href="{% url 'analytics_overview' %}"><i class="fas fa-chart-pie"></i> 전체 통계</a>
+    <a class="rs-btn" href="{% url 'analytics_overview' %}"><i class="fas fa-chart-line"></i> 내 통계</a>
     <a class="rs-btn rs-btn-quiet" href="{% url 'question_home' %}"><i class="fas fa-arrow-left"></i> 문제은행 홈</a>
   </nav>
 
@@ -34,7 +34,7 @@
       </a>
       <span class="hist-tools">
         {% if r.wrong %}<a class="rs-btn rs-btn-quiet" href="{% url 'retry_result' r.id %}" title="틀린 문제 다시 풀기"><i class="fas fa-redo"></i><span class="hist-tool-label"> 오답 {{ r.wrong }}</span></a>{% endif %}
-        {% if r.is_exam and r.exam_id %}<a class="rs-btn rs-btn-quiet" href="{% url 'exam_analytics' r.exam_id %}" title="이 회차 통계"><i class="fas fa-chart-line"></i></a>{% endif %}
+        {% if r.is_exam and r.exam_id %}<a class="rs-btn rs-btn-quiet" href="{% url 'analytics_overview' %}?exam={{ r.exam_id }}" title="이 회차 통계"><i class="fas fa-chart-line"></i></a>{% endif %}
         <form method="post" action="{% url 'delete_result' r.id %}" onsubmit="return confirm('이 응시 기록을 삭제할까요?');">
           {% csrf_token %}
           <button type="submit" class="rs-btn rs-btn-quiet rs-btn-danger" title="삭제"><i class="fas fa-trash-alt"></i></button>

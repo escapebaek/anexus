@@ -38,7 +38,7 @@
     {% endif %}
     <button type="button" class="rs-btn" id="rsPrint"><i class="fas fa-print"></i> 오답 인쇄·PDF</button>
     <span class="rs-actions-spacer"></span>
-    {% if result.exam_id %}<a class="rs-btn rs-btn-quiet" href="{% url 'exam_analytics' result.exam_id %}"><i class="fas fa-chart-line"></i> 이 회차 통계</a>{% endif %}
+    {% if result.exam_id %}<a class="rs-btn rs-btn-quiet" href="{% url 'analytics_overview' %}?exam={{ result.exam_id }}"><i class="fas fa-chart-line"></i> 이 회차 통계</a>{% endif %}
     <a class="rs-btn rs-btn-quiet" href="{% url 'my_results' %}"><i class="fas fa-list"></i> 응시 기록</a>
     <form method="post" action="{% url 'delete_result' result.id %}" onsubmit="return confirm('이 응시 기록을 삭제할까요?');">
       {% csrf_token %}

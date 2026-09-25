@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block custom_css %}
+  <link href="{% static 'css/pages/exam_result.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block page_content %}
+<div class="rs-page st-page">
+  <header class="rs-head rs-head-compact">
+    <div class="rs-head-text">
+      <p class="rs-kicker">문제은행</p>
+      <h1 class="rs-title">내 통계</h1>
+      <p class="rs-sub">{% if exam %}{{ exam.title }} · {{ attempts }}회 응시{% elif has_data %}전체 · {{ attempts }}회 응시{% else %}아직 응시 기록이 없습니다{% endif %}</p>
+    </div>
+  </header>
+
+  {% if exams %}
+  <!-- 범위: 전체 / 회차 -->
+  <nav class="st-scope" aria-label="통계 범위">
+    <a href="{% url 'analytics_overview' %}" class="{% if not exam %}is-on{% endif %}">전체</a>
+    {% for e in exams %}<a href="{% url 'analytics_overview' %}?exam={{ e.id }}" class="{% if exam and exam.id == e.id %}is-on{% endif %}">{{ e.title }}</a>{% endfor %}
+  </nav>
+  {% endif %}
+
+  {% if not has_data %}
+  <div class="rs-empty-state">
+    <i class="fas fa-chart-line"></i>
+    <p>문제를 풀고 제출하면 점수와 카테고리별 정답률이 여기에 쌓입니다.</p>
+    <a class="rs-btn rs-btn-primary" href="{% url 'exam_list' %}">시험 보러 가기</a>
+  </div>
+  {% else %}
+
+  <!-- 핵심 숫자 -->
+  <section class="st-kpis" aria-label="요약">
+    <a class="st-kpi" href="{% url 'exam_results' %}?result_id={{ latest.id }}">
+      <span class="st-kpi-label">최근 점수</span>
+      <span class="st-kpi-value">{{ latest_pct }}<small>%</small></span>
+      <span class="st-kpi-note">{{ latest.date_taken|date:"m.d" }} · {% if latest.exam %}{{ latest.exam.title }}{% else %}{{ latest.category_name|truncatechars:18 }}{% endif %}</span>
+    </a>
+    <div class="st-kpi">
+      <span class="st-kpi-label">평균 점수</span>
+      <span class="st-kpi-value">{{ avg_pct }}<small>%</small></span>
+      <span class="st-kpi-note">{{ attempts }}회 평균</span>
+    </div>
+    <a class="st-kpi" href="{% url 'exam_results' %}?result_id={{ best.id }}">
+      <span class="st-kpi-label">최고 점수</span>
+      <span class="st-kpi-value">{{ best_pct }}<small>%</small></span>
+      <span class="st-kpi-note">{{ best.date_taken|date:"m.d" }}</span>
+    </a>
+    <div class="st-kpi">
+      <span class="st-kpi-label">푼 문제</span>
+      <span class="st-kpi-value">{{ answered }}<small>문제</small></span>
+      <span class="st-kpi-note">안 푼 문제 제외</span>
+    </div>
+  </section>
+
+  <div class="rs-layout">
+    <div class="rs-main">
+      {% if exam %}
+      <!-- 회차 하나: 점수 추이 -->
+      <section class="st-card" aria-labelledby="stTrendTitle">
+        <div class="st-card-head">
+          <h2 id="stTrendTitle">점수 추이</h2>
+          <span class="st-card-sub">응시할 때마다 · 점수(%)</span>
+        </div>
+        {% if trend|length > 1 %}
+        <div class="st-chart"><canvas id="stTrend" role="img" aria-label="{{ exam.title }} 응시별 점수 추이"></canvas></div>
+        {% endif %}
+        <table class="st-table">
+          <thead><tr><th>응시</th><th>점수</th><th class="st-num">맞음</th><th></th></tr></thead>
+          <tbody>
+            {% for t in trend reversed %}
+            <tr>
+              <td>{{ t.date|date:"Y.m.d H:i" }}</td>
+              <td><span class="st-bar"><span style="width: {{ t.pct }}%"></span></span> <b>{{ t.pct }}%</b></td>
+              <td class="st-num">{{ t.correct }} / {{ t.total }}</td>
+              <td class="st-num"><a href="{% url 'exam_results' %}?result_id={{ t.id }}">결과 보기</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+      {% else %}
+      <!-- 전체: 회차별 요약 -->
+      <section class="st-card" aria-labelledby="stExamsTitle">
+        <div class="st-card-head">
+          <h2 id="stExamsTitle">회차별 점수</h2>
+          <span class="st-card-sub">회차를 누르면 점수 추이를 봅니다</span>
+        </div>
+        {% if exam_rows %}
+        <table class="st-table">
+          <thead><tr><th>회차</th><th>최근</th><th class="st-num st-hide-sm">최고</th><th class="st-num st-hide-sm">평균</th><th class="st-num">응시</th></tr></thead>
+          <tbody>
+            {% for row in exam_rows %}
+            <tr>
+              <td><a href="{% url 'analytics_overview' %}?exam={{ row.exam.id }}"><b>{{ row.exam.title }}</b></a><span class="st-date">{{ row.last_date|date:"m.d" }}</span></td>
+              <td><span class="st-bar"><span style="width: {{ row.latest_pct }}%"></span></span> <b>{{ row.latest_pct }}%</b></td>
+              <td class="st-num st-hide-sm">{{ row.best_pct }}%</td>
+              <td class="st-num st-hide-sm">{{ row.avg_pct }}%</td>
+              <td class="st-num">{{ row.attempts }}회</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="rs-muted">시험 회차로 푼 기록이 없습니다.</p>
+        {% endif %}
+        {% if other_attempts %}<p class="st-foot">카테고리·북마크·다시 풀기로 푼 {{ other_attempts }}회는 위 숫자와 카테고리 정답률에만 들어갑니다.</p>{% endif %}
+      </section>
+      {% endif %}
+
+      <!-- 오답노트 -->
+      <section class="st-card" aria-labelledby="stWrongTitle">
+        <div class="st-card-head">
+          <h2 id="stWrongTitle">오답노트</h2>
+          <span class="st-card-sub">마지막으로 풀었을 때 틀리거나 안 푼 문제{% if exam %} · {{ exam.title }}{% endif %}</span>
+        </div>
+        {% if wrong_total %}
+        <a class="rs-btn rs-btn-primary st-wrong-btn" href="{% url 'review_wrong' %}{% if exam %}?exam={{ exam.id }}{% endif %}">
+          <i class="fas fa-redo"></i> 오답 {% if wrong_total > 100 %}100{% else %}{{ wrong_total }}{% endif %}문제 다시 풀기
+        </a>
+        <ol class="st-wrong">
+          {% for q in wrong_top %}
+          <li>
+            <span class="st-wrong-text">{{ q.question_text|striptags|truncatechars:90 }}</span>
+            <span class="st-wrong-meta">
+              <span class="st-wrong-count">{{ q.history.wrong }}번 틀림</span> / {{ q.history.seen }}번 풀이
+              {% if not exam %}· {{ q.exam.title }}{% endif %}
+              {% if q.category %}· {{ q.category.name }}{% endif %}
+            </span>
+          </li>
+          {% endfor %}
+        </ol>
+        {% if wrong_total > wrong_top|length %}<p class="st-foot">많이 틀린 {{ wrong_top|length }}문제만 보여줍니다 · 전체 {{ wrong_total }}문제</p>{% endif %}
+        <p class="st-foot">다시 풀어서 맞히면 오답노트에서 빠집니다.</p>
+        {% else %}
+        <p class="rs-empty"><i class="fas fa-check-circle"></i> 지금 남은 오답이 없습니다.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <!-- 카테고리별 정답률 -->
+    {% if categories %}
+    <aside class="rs-side" aria-label="카테고리별 정답률">
+      <h2 class="rs-side-title">카테고리별 정답률</h2>
+      <p class="rs-side-sub">낮은 순 · 맞은 문제 / 푼 문제{% if exam %} · {{ exam.title }}{% endif %}</p>
+      <ul class="rs-cats">
+        {% for c in categories %}
+        <li class="{% if c.pct < 60 %}is-weak{% endif %}">
+          <div class="rs-cat-row">
+            <span class="rs-cat-name" title="{{ c.name }}">{% if c.pct < 60 %}<i class="fas fa-exclamation-circle" aria-label="60% 미만"></i> {% endif %}{{ c.name }}</span>
+            <span class="rs-cat-num">{{ c.correct }}/{{ c.graded }} · <b>{{ c.pct }}%</b></span>
+          </div>
+          <div class="st-cat-line">
+            <div class="rs-cat-track"><div class="rs-cat-fill" style="width: {{ c.pct }}%"></div></div>
+            {% if c.can_practice %}<a class="st-cat-go" href="{% url 'category_questions' c.name %}" title="{{ c.name }} 풀기"><i class="fas fa-play"></i></a>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="rs-side-note"><span class="rs-legend-weak"></span> 60% 미만 · <i class="fas fa-play"></i> 그 카테고리 풀기</p>
+    </aside>
+    {% endif %}
+  </div>
+
+  <nav class="rs-actions st-bottom" aria-label="메뉴">
+    <a class="rs-btn rs-btn-quiet" href="{% url 'my_results' %}"><i class="fas fa-list"></i> 응시 기록</a>
+    <a class="rs-btn rs-btn-quiet" href="{% url 'export_analytics_csv' %}"><i class="fas fa-file-csv"></i> CSV로 내보내기</a>
+  </nav>
+  {% endif %}
+</div>
+
+{% if trend and trend|length > 1 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  if (typeof Chart === 'undefined') return;
+  const points = {{ trend_json|safe }};
+  const navy = '#2b5876', ink = '#22313f', muted = '#6b7a8c', grid = '#e6ebf2';
+  new Chart(document.getElementById('stTrend'), {
+    type: 'line',
+    data: {
+      labels: points.map(function (p) { return p.x; }),
+      datasets: [{
+        label: '점수(%)',
+        data: points.map(function (p) { return p.y; }),
+        borderColor: navy,
+        backgroundColor: navy,
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        tension: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff', titleColor: ink, bodyColor: ink, borderColor: '#dfe5ee', borderWidth: 1,
+          padding: 10, displayColors: false,
+          callbacks: {
+            title: function (items) { return points[items[0].dataIndex].label; },
+            label: function (item) { return points[item.dataIndex].y + '%  (' + points[item.dataIndex].score + ')'; }
+          }
+        }
+      },
+      scales: {
+        y: { min: 0, max: 100, ticks: { stepSize: 25, color: muted, callback: function (v) { return v + '%'; } }, grid: { color: grid }, border: { display: false } },
+        x: { ticks: { color: muted, maxRotation: 0, autoSkip: true }, grid: { display: false }, border: { color: grid } }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}
