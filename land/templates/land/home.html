@@ -7,10 +7,8 @@
 {% block page_content %}
 
 <!-- Hero Section -->
-<div
-  class="hero-section position-relative d-flex flex-column justify-content-center align-items-center"
->
-  <div class="hero-background">
+<div class="hero-section">
+  <div class="hero-background" aria-hidden="true">
     <div class="gradient-orb orb-1"></div>
     <div class="gradient-orb orb-2"></div>
   </div>
@@ -18,14 +16,14 @@
   <div class="hero-content text-center">
     <h1 class="hero-title">Welcome to <span class="hero-brand">ANExuS</span></h1>
     <p class="hero-subtitle">
-      <span id="hero-typewriter"></span><span class="hero-cursor" aria-hidden="true"></span>
+      <span id="hero-typewriter">Your one-stop solution for safe and precise anesthesia care.</span><span class="hero-cursor" aria-hidden="true"></span>
     </p>
     <div class="hero-buttons">
       <a href="#features" class="btn btn-hero btn-hero-primary">
         <span>Explore Our Features</span>
-        <i class="fas fa-arrow-right ms-2"></i>
+        <i class="fas fa-arrow-down ms-2"></i>
       </a>
-      <a href="https://escapebaek.github.io/me/" target="_blank" class="btn btn-hero btn-hero-secondary">
+      <a href="https://escapebaek.github.io/me/" target="_blank" rel="noopener noreferrer" class="btn btn-hero btn-hero-secondary">
         <span>About the Developer</span>
         <i class="fas fa-user ms-2"></i>
       </a>
@@ -34,165 +32,104 @@
 </div>
 
 <!-- Feature Cards -->
+{% with member=is_member %}
 <div id="features" class="features-section">
-  <div class="container-fluid">
-    <h2 class="section-title scroll-reveal">Our Features</h2>
-    <div class="row g-3">
+  <div class="container-xxl">
+    {% for section in sections %}
+    <section class="lp-section" id="{{ section.id }}" aria-labelledby="{{ section.id }}-title">
+      <header class="lp-section-head">
+        <h2 class="lp-section-title" id="{{ section.id }}-title">{{ section.title }}</h2>
+        <p class="lp-section-sub">{{ section.subtitle }}</p>
+      </header>
 
-
-      {% for card in cards %}
-      <div class="col-xxl-custom col-xl-custom col-lg-3 col-md-4 col-sm-6">
-        <div
-          class="feature-card scroll-reveal"
-          data-delay="{{ forloop.counter }}"
-        >
-          <div class="feature-icon">
-            <i class="{{ card.icon }}"></i>
-          </div>
-          <h3 class="feature-title">{{ card.title }}</h3>
-          <p class="feature-text">{{ card.text }}</p>
-          {% if user.is_authenticated and user.is_approved or user.is_authenticated and user.is_specially_approved %}
-          <a href="{{ card.url }}" class="btn btn-feature" {% if "github.io" in card.url or "anesthesia.or.kr" in card.url or "nysora.com" in card.url or "orphananesthesia.eu" in card.url or "med.utoronto.ca" in card.url or "accrac.com" in card.url or "snuh.org" in card.url %}target="_blank"{% endif %}>
-            <span>Access Now</span>
-            {% if "github.io" in card.url or "anesthesia.or.kr" in card.url or "nysora.com" in card.url or "orphananesthesia.eu" in card.url or "med.utoronto.ca" in card.url or "accrac.com" in card.url or "snuh.org" in card.url %}
-            <i class="fas fa-external-link-alt ms-1"></i>
+      <div class="lp-grid" style="--lp-cols: {{ section.cols }}">
+        {% for card in section.cards %}
+        {% if member %}
+        <a class="lp-card scroll-reveal" href="{{ card.url }}"{% if card.external %} target="_blank" rel="noopener noreferrer"{% endif %}>
+        {% elif user.is_authenticated %}
+        <div class="lp-card is-locked scroll-reveal" aria-disabled="true" title="관리자 승인 후 이용할 수 있습니다">
+        {% else %}
+        <a class="lp-card scroll-reveal" href="{% url 'login' %}?next={{ card.url|urlencode }}">
+        {% endif %}
+          <span class="lp-icon" aria-hidden="true"><i class="{{ card.icon }}"></i></span>
+          <span class="lp-body">
+            <span class="lp-title">{{ card.title }}</span>
+            <span class="lp-text">{{ card.text }}</span>
+          </span>
+          <span class="lp-foot">
+            {% if member %}
+              {% if card.external %}<span class="lp-go">Open <i class="fas fa-external-link-alt"></i></span><span class="visually-hidden">(opens in a new tab)</span>
+              {% else %}<span class="lp-go">Open <i class="fas fa-arrow-right"></i></span>{% endif %}
+            {% elif user.is_authenticated %}
+              <span class="lp-state"><i class="fas fa-user-clock"></i> 승인 대기 중</span>
             {% else %}
-            <i class="fas fa-chevron-right ms-1"></i>
+              <span class="lp-state"><i class="fas fa-sign-in-alt"></i> 로그인 후 이용</span>
             {% endif %}
-          </a>
-          {% elif user.is_authenticated %}
-          <button class="btn btn-feature disabled" disabled title="관리자 승인 후 이용할 수 있습니다">
-            <span>승인 대기 중</span>
-            <i class="fas fa-user-clock ms-1"></i>
-          </button>
-          {% else %}
-          <a href="{% url 'login' %}?next={{ card.url|urlencode }}" class="btn btn-feature">
-            <span>로그인 후 이용</span>
-            <i class="fas fa-sign-in-alt ms-1"></i>
-          </a>
-          {% endif %}
-        </div>
+          </span>
+        {% if user.is_authenticated and not member %}</div>{% else %}</a>{% endif %}
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
+    </section>
+    {% endfor %}
   </div>
 </div>
+{% endwith %}
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // Optimized Scroll Reveal with Intersection Observer
-    const observerOptions = {
-      threshold: 0.1,
-      rootMargin: "0px 0px -10px 0px",
-    };
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const observer = new IntersectionObserver(function (entries) {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const delay = parseInt(entry.target.dataset.delay) || 0;
-          setTimeout(() => {
-            entry.target.classList.add("revealed");
-          }, delay * 50);
-
+    // 스크롤 등장: 함께 들어오는 카드끼리만 짧게 순차 표시 (최대 0.3초 안쪽)
+    const items = document.querySelectorAll(".scroll-reveal");
+    if (reduceMotion || !("IntersectionObserver" in window)) {
+      items.forEach((el) => el.classList.add("revealed"));
+    } else {
+      const observer = new IntersectionObserver(function (entries) {
+        let i = 0;
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          el.style.transitionDelay = Math.min(i++ * 25, 150) + "ms";
+          el.classList.add("revealed");
+          setTimeout(() => { el.style.transitionDelay = ""; }, 500);  // 이후 hover 는 지연 없이
           observer.unobserve(entry.target);
-        }
-      });
-    }, observerOptions);
+        });
+      }, { threshold: 0.05, rootMargin: "0px 0px -20px 0px" });
+      items.forEach((el) => observer.observe(el));
+    }
 
-    document.querySelectorAll(".scroll-reveal").forEach((el, index) => {
-      if (!el.dataset.delay) {
-        el.dataset.delay = index;
-      }
-      observer.observe(el);
+    document.querySelector(".btn-hero-primary")?.addEventListener("click", function (e) {
+      const target = document.querySelector("#features");
+      if (!target) return;
+      e.preventDefault();
+      const navHeight = document.querySelector(".navbar")?.offsetHeight || 70;
+      window.scrollTo({ top: target.offsetTop - navHeight, behavior: reduceMotion ? "auto" : "smooth" });
     });
 
-    document
-      .querySelector(".btn-hero-primary")
-      ?.addEventListener("click", function (e) {
-        e.preventDefault();
-        const target = document.querySelector("#features");
-        if (target) {
-          const navHeight =
-            document.querySelector(".navbar")?.offsetHeight || 70;
-          const targetPosition = target.offsetTop - navHeight - 20;
-
-          window.scrollTo({
-            top: targetPosition,
-            behavior: "smooth",
-          });
-        }
-      });
-
-    // Typewriter cycling text
-    (function () {
-      const el = document.getElementById("hero-typewriter");
-      if (!el) return;
-
-      const phrases = [
-        "Your one-stop solution for safe and precise anesthesia care.",
-        "Evidence-based drug references at your fingertips.",
-        "Trusted by anesthesia specialists.",
-        "Precise. Safe. Smart.",
-        "Everything you need for modern anesthesia practice.",
-      ];
-
-      let pi = 0, ci = 0, deleting = false;
-
-      function tick() {
-        const phrase = phrases[pi];
-        if (!deleting) {
-          el.textContent = phrase.slice(0, ci + 1);
-          ci++;
-          if (ci === phrase.length) {
-            setTimeout(function () { deleting = true; tick(); }, 2400);
-            return;
-          }
-          setTimeout(tick, 42);
-        } else {
-          el.textContent = phrase.slice(0, ci - 1);
-          ci--;
-          if (ci === 0) {
-            deleting = false;
-            pi = (pi + 1) % phrases.length;
-            setTimeout(tick, 380);
-            return;
-          }
-          setTimeout(tick, 22);
-        }
+    // 문구 순환 (움직임 줄이기 설정이면 첫 문구만 보여준다)
+    const el = document.getElementById("hero-typewriter");
+    if (!el || reduceMotion) return;
+    const phrases = [
+      "Your one-stop solution for safe and precise anesthesia care.",
+      "Evidence-based drug references at your fingertips.",
+      "Made for anesthesiologists, by an anesthesiologist.",
+      "Precise. Safe. Smart.",
+      "Everything you need for modern anesthesia practice.",
+    ];
+    let pi = 0, ci = phrases[0].length, deleting = true;
+    function tick() {
+      const phrase = phrases[pi];
+      if (!deleting) {
+        el.textContent = phrase.slice(0, ++ci);
+        if (ci === phrase.length) { deleting = true; setTimeout(tick, 2600); return; }
+        setTimeout(tick, 42);
+      } else {
+        el.textContent = phrase.slice(0, --ci);
+        if (ci === 0) { deleting = false; pi = (pi + 1) % phrases.length; setTimeout(tick, 380); return; }
+        setTimeout(tick, 22);
       }
-
-      // hero-subtitle fade-in이 끝난 후 시작
-      setTimeout(tick, 1100);
-    })();
-
-    // 3D Card Tilt
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const MAX_TILT = 12; // degrees
-      document.querySelectorAll(".feature-card").forEach((card) => {
-        card.addEventListener("mousemove", function (e) {
-          const r = this.getBoundingClientRect();
-          const cx = r.left + r.width  / 2;
-          const cy = r.top  + r.height / 2;
-          const dx = (e.clientX - cx) / (r.width  / 2); // -1 ~ 1
-          const dy = (e.clientY - cy) / (r.height / 2);
-          const rotX = -dy * MAX_TILT;
-          const rotY =  dx * MAX_TILT;
-          this.classList.add("is-tilting");
-          this.style.transform =
-            `perspective(700px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(6px)`;
-          // 빛 반사 위치
-          const mx = ((e.clientX - r.left) / r.width)  * 100;
-          const my = ((e.clientY - r.top)  / r.height) * 100;
-          this.style.setProperty("--mx", mx + "%");
-          this.style.setProperty("--my", my + "%");
-        });
-
-        card.addEventListener("mouseleave", function () {
-          this.classList.remove("is-tilting");
-          this.style.transform = "";
-        });
-      });
     }
+    setTimeout(tick, 3200);
   });
 </script>
 
