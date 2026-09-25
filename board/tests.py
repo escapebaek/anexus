@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 # Create your tests here.
@@ -139,3 +140,45 @@ class BoardImprovementTests(TestCase):
         few = count_queries()
         add_posts(6)
         self.assertEqual(count_queries(), few)
+
+
+class BoardAccessTests(TestCase):
+    """게시판은 승인 회원(is_approved) 이상만. 특별 승인은 필요 없다."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.approved = User.objects.create_user('approved', password='x', is_approved=True)
+        self.pending = User.objects.create_user('pending', password='x', is_approved=False)
+
+    def test_approved_member_can_use_board(self):
+        from django.urls import reverse
+        self.client.force_login(self.approved)
+        self.assertEqual(self.client.get(reverse('board_index')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('board_create')).status_code, 200)
+
+    def test_pending_member_goes_to_approval_page(self):
+        from django.urls import reverse
+        self.client.force_login(self.pending)
+        self.assertRedirects(self.client.get(reverse('board_index')), reverse('approval_pending'))
+        self.assertRedirects(self.client.get(reverse('board_create')), reverse('approval_pending'))
+
+    def test_anonymous_goes_to_login(self):
+        from django.urls import reverse
+        res = self.client.get(reverse('board_index'))
+        self.assertRedirects(res, reverse('login') + '?next=' + reverse('board_index'), fetch_redirect_response=False)
+
+    def test_image_upload_needs_approval(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        buf = io.BytesIO()
+        Image.new('RGB', (4, 4)).save(buf, 'PNG')
+        self.client.force_login(self.pending)
+        res = self.client.post('/ckeditor5/image_upload/', {'upload': SimpleUploadedFile('a.png', buf.getvalue(), content_type='image/png')})
+        self.assertEqual(res.status_code, 302)
+        self.assertIn('/accounts/pending/', res['Location'])
+
+    def test_footer_year_is_current(self):
+        from django.utils import timezone
+        res = self.client.get('/')
+        self.assertContains(res, f'2024-{timezone.now().year} ANExuS')

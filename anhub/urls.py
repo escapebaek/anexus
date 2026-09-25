@@ -16,6 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django_ckeditor_5.views import upload_file as ckeditor_upload_file
+
+from accounts.decorators import user_is_approved
 from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
@@ -38,6 +41,8 @@ urlpatterns = [
     path('schedule/', include('schedule.urls')),
     path('record/', include('record.urls')),
     path('journal/', include('journal.urls')),
+    # 게시판 사진 업로드는 승인 회원만 (기본 설정은 로그인만 확인한다)
+    path('ckeditor5/image_upload/', user_is_approved(ckeditor_upload_file), name='ck_editor_5_upload_file'),
     path('ckeditor5/', include('django_ckeditor_5.urls')),
     path('api/', include('schedule.urls')),
     
