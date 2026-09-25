@@ -92,6 +92,8 @@ HEADER_RULES = [
     ("anesthesia_type", r"마취(방법|종류|법|형태|유형|방식|구분)|anes\w*type|anaes\w*type|anesthetictype|마취type"),
     ("anesthesiologist", r"마취(의|의사|과|과의사|과의|담당|담당의|전문의|과담당의?|과선생님)$|담당마취|anesthesiologist|anaesthetist|anesthetist|anes\w*(dr|doctor|md|provider|staff|attending|physician)"),
     ("anesthesia_either", r"^마취$|^anes$|^anesth$|^anesthesia$|^anaesthesia$|^anesthetic$"),
+    # 종료(예정) 시각 열: 예상 시간 열이 없을 때 시작 시각과의 차이로 예상 시간을 계산
+    ("end_time", r"종료|끝나는|^끝$|^end(time)?$|^finish|endtime|finishtime|^to$"),
     ("duration", r"소요|예상시간|예상소요|수술시간|duration|^dur$|length|optime|^mins?$|^분$|esttime|estimated"),
     ("date", r"날짜|일자|^수술일|^일$|^date|opdate|surgerydate|casedate|^day$"),
     ("regnum", r"등록번호|병록|차트|환자번호|환자id|mrn|chart|regno|registration|unitno|hospno|patientid|^ptid$|^id$"),
@@ -109,7 +111,7 @@ HEADER_RULES = [
 _HEADER_RULES = [(field, re.compile(pattern)) for field, pattern in HEADER_RULES]
 
 FIELD_LABELS = {
-    "date": "날짜", "room": "방", "time_slot": "시간", "sequence": "순서", "duration": "소요시간",
+    "date": "날짜", "room": "방", "time_slot": "시간", "sequence": "순서", "duration": "소요시간", "end_time": "종료시각",
     "surgery_name": "수술명", "department": "과", "surgeon": "집도의", "anesthesiologist": "마취의",
     "anesthesia_type": "마취방법", "anesthesia_either": "마취", "patient_name": "환자명", "regnum": "등록번호",
     "age_sex": "성별/나이", "patient_info": "환자정보", "status": "상태",
@@ -178,6 +180,8 @@ def _header_report(row, mapping):
             continue
         if index in used_cols:
             label = FIELD_LABELS.get(used_cols[index], used_cols[index])
+            if index in mapping.get("_ai_cols", ()):
+                label += "(AI)"
             used.append(name if _norm_header(name) == _norm_header(label) else f"{name}→{label}")
         else:
             unused.append(name)
@@ -222,6 +226,55 @@ def _parse_duration(value):
         return int(float(hours.group(1)) * 60 if hours else 0) + (int(minutes.group(1)) if minutes else 0)
     match = re.fullmatch(r"\d+(?:\.\d+)?", text)
     return int(float(text)) if match else 0
+
+
+def clock_minutes(value):
+    """'09:30' / '9시 30분' / '8A' / '1:30P' / '2 PM' / time cell -> minutes after midnight, or None."""
+    if value is None or isinstance(value, (int, float)):
+        return None
+    if hasattr(value, "hour") and hasattr(value, "minute"):
+        return value.hour * 60 + value.minute
+    text = _cell_text(value).lower().replace(" ", "")
+    match = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?(?::\d{2})?(a|p|am|pm|오전|오후)?", text)
+    if match:
+        hour, minute, half = int(match.group(1)), int(match.group(2) or 0), match.group(3)
+        if half is None and match.group(2) is None:
+            return None  # 숫자 하나('3')는 순번일 수 있음
+    else:
+        match = re.fullmatch(r"(오전|오후)?(\d{1,2})시(?:(\d{1,2})분)?", text)
+        if not match:
+            return None
+        half, hour, minute = match.group(1), int(match.group(2)), int(match.group(3) or 0)
+    if half in ("p", "pm", "오후") and hour < 12:
+        hour += 12
+    elif half in ("a", "am", "오전") and hour == 12:
+        hour = 0
+    if hour > 23 or minute > 59:
+        return None
+    return hour * 60 + minute
+
+
+def duration_from_times(start, end):
+    """시작·종료(예정) 시각 -> 분. 자정을 넘기면 다음 날로 봄. 알 수 없으면 0."""
+    start, end = clock_minutes(start), clock_minutes(end)
+    if start is None or end is None:
+        return 0
+    minutes = end - start if end > start else end + 24 * 60 - start
+    return minutes if 0 < minutes <= 16 * 60 else 0
+
+
+def plausible_duration_column(values, kind, starts=()):
+    """AI 가 고른 열이 정말 예상 시간(또는 종료 시각)인지 값으로 확인: 절반 이상이 5분~24시간."""
+    values = list(values)
+    filled = [i for i, v in enumerate(values) if _cell_text(v)]
+    if not filled:
+        return False
+    if kind == "duration":
+        ok = [i for i in filled if 5 <= _parse_duration(values[i]) <= 24 * 60]
+    else:
+        starts = list(starts)
+        ok = [i for i in filled if i < len(starts) and duration_from_times(starts[i], values[i]) >= 5]
+    return len(ok) * 2 >= len(filled)
 
 
 def _time_text(value):
@@ -290,7 +343,42 @@ def _find_header(rows):
     return None, None, None
 
 
-def parse_table_rows(rows, filename="", default_date=None, report=None):
+def _find_duration_column(rows, header_index, header, mapping, resolve_duration):
+    """규칙으로 예상 시간/종료 시각 열을 못 찾았을 때, 남은 열 이름과 예시 값을 resolve_duration 에
+    보여주고(AI) 답을 값으로 검증해 mapping 에 추가."""
+    used = {i for k, i in mapping.items() if not k.startswith("_") and isinstance(i, int)}
+    used.update(mapping.get("_age_sex_cols", []))
+    data_rows = [r for r in rows[header_index + 1:header_index + 41] if any(_cell_text(c) for c in r)]
+    column = lambda i: [r[i] if i < len(r) else None for r in data_rows]
+    candidates = []
+    for index, cell in enumerate(header):
+        name = _cell_text(cell)
+        if not name or index in used:
+            continue
+        samples = [_cell_text(v) for v in column(index) if _cell_text(v)][:4]
+        # 환자 정보가 AI 로 나가지 않도록 시간·숫자처럼 생긴 값만 보여줌
+        samples = [v if re.search(r"\d", v) and re.fullmatch(r"[\d\s:.~\-/()apmhrsinAPMHRSIN시간분오전후]{1,16}", v) else "(글자)" for v in samples]
+        candidates.append({"index": index, "header": name, "samples": samples})
+    if not candidates:
+        return
+    try:
+        answer = resolve_duration(candidates)
+    except Exception:
+        return
+    if not answer:
+        return
+    index, kind = answer
+    if kind not in ("duration", "end_time") or index not in {c["index"] for c in candidates}:
+        return
+    starts = column(mapping["time_slot"]) if "time_slot" in mapping else []
+    if kind == "end_time" and not starts:
+        return
+    if plausible_duration_column(column(index), kind, starts):
+        mapping[kind] = index
+        mapping["_ai_cols"] = {index}
+
+
+def parse_table_rows(rows, filename="", default_date=None, report=None, resolve_duration=None):
     """rows: list of row lists (cell values). Returns a list of record dicts in the same
     shape AI extraction returns, or None if this isn't a table we can read reliably
     (then the caller falls back to AI). `report`, if given, is filled with the columns
@@ -301,6 +389,8 @@ def parse_table_rows(rows, filename="", default_date=None, report=None):
     if mapping is None:
         report["reason"] = "열 이름(방·수술명 등)이 있는 머리글 줄을 찾지 못했습니다."
         return None
+    if resolve_duration and "surgery_name" in mapping and "duration" not in mapping and "end_time" not in mapping:
+        _find_duration_column(rows, header_index, header, mapping, resolve_duration)
     used, unused = _header_report(header, mapping)
     report.update(used=used, unused=unused)
     # 수술명 열이 없거나, 환자 열을 못 찾았는데 모르는 열이 남아 있으면 표로 읽지 않고 AI 에 맡김
@@ -377,7 +467,8 @@ def parse_table_rows(rows, filename="", default_date=None, report=None):
             "surgeon": surgeon,
             "anesthesiologist": anesthesiologist,
             "anesthesia_type": anesthesia_type,
-            "duration": _parse_duration(get(row, "duration")),
+            "duration": _parse_duration(get(row, "duration"))
+                        or duration_from_times(get(row, "time_slot"), get(row, "end_time")),
             "patient_name": patient,
             "patient_info": patient_info,
             "status": _status(get(row, "status")),
@@ -387,12 +478,13 @@ def parse_table_rows(rows, filename="", default_date=None, report=None):
     return records or None
 
 
-def parse_workbook(workbook, filename="", default_date=None, report=None):
+def parse_workbook(workbook, filename="", default_date=None, report=None, resolve_duration=None):
     """First sheet with a recognizable table wins; returns None if none has one."""
     report = report if report is not None else {}
     for sheet in workbook.worksheets:
         sheet_report = {}
-        records = parse_table_rows(sheet.iter_rows(values_only=True), filename, default_date, sheet_report)
+        records = parse_table_rows(sheet.iter_rows(values_only=True), filename, default_date, sheet_report,
+                                   resolve_duration)
         report.clear()
         report.update(sheet_report)
         if records:
@@ -400,9 +492,9 @@ def parse_workbook(workbook, filename="", default_date=None, report=None):
     return None
 
 
-def parse_delimited_text(text, filename="", default_date=None, report=None):
+def parse_delimited_text(text, filename="", default_date=None, report=None, resolve_duration=None):
     """CSV / TSV text with a header row."""
     sample = text[:5000]
     delimiter = "\t" if sample.count("\t") > sample.count(",") else ","
     rows = list(csv.reader(io.StringIO(text), delimiter=delimiter))
-    return parse_table_rows(rows, filename, default_date, report)
+    return parse_table_rows(rows, filename, default_date, report, resolve_duration)
