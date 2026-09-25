@@ -45,8 +45,8 @@ class AnswerIndexTests(TestCase):
 class ExamViewTests(TestCase):
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user('u', 'u@x.com', 'pw')
-        self.special_user = User.objects.create_user('s', 's@x.com', 'pw', is_specially_approved=True)
+        self.user = User.objects.create_user('u', 'u@x.com', 'pw', is_approved=True)
+        self.special_user = User.objects.create_user('s', 's@x.com', 'pw', is_specially_approved=True, is_approved=True)
         self.cat = Category.objects.create(name='약리')
         self.exam = Exam.objects.create(title='일반시험')
         self.special = Exam.objects.create(title='특별시험', is_special=True)
@@ -128,7 +128,7 @@ class ExamViewTests(TestCase):
         self.assertContains(page, '자세한 내용을 표시할 수 없습니다')
 
     def test_other_users_result_is_404(self):
-        other = get_user_model().objects.create_user('o', 'o@x.com', 'pw')
+        other = get_user_model().objects.create_user('o', 'o@x.com', 'pw', is_approved=True)
         result = ExamResult.objects.create(user=other, exam=self.exam, num_correct=0, num_incorrect=0, num_unanswered=0, detailed_results=[])
         self.assertEqual(self.client.get(reverse('exam_results') + f'?result_id={result.id}').status_code, 404)
         self.assertEqual(self.client.get(reverse('retry_result', args=[result.id])).status_code, 404)
@@ -231,7 +231,7 @@ class ExamViewTests(TestCase):
 class StatsTests(TestCase):
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user('u', 'u@x.com', 'pw')
+        self.user = User.objects.create_user('u', 'u@x.com', 'pw', is_approved=True)
         self.cat = Category.objects.create(name='약리')
         self.cat2 = Category.objects.create(name='생리')
         self.exam = Exam.objects.create(title='A회차')
@@ -304,7 +304,7 @@ class StatsTests(TestCase):
         self.assertRedirects(page, reverse('analytics_overview') + f'?exam={self.exam_b.id}', fetch_redirect_response=False)
 
     def test_wrong_notebook_hides_special_and_other_users(self):
-        other = get_user_model().objects.create_user('o', 'o@x.com', 'pw')
+        other = get_user_model().objects.create_user('o', 'o@x.com', 'pw', is_approved=True)
         ExamResult.objects.create(user=other, exam=self.exam, num_correct=0, num_incorrect=1, num_unanswered=0,
                                   detailed_results=[{'question_id': self.q[0].id, 'result': 'incorrect'}])
         ExamResult.objects.create(user=self.user, exam=None, category_name='x', num_correct=0, num_incorrect=1, num_unanswered=0,
@@ -327,7 +327,7 @@ class StatsTests(TestCase):
 
 class BackfillMigrationTests(TestCase):
     def test_old_results_get_question_ids(self):
-        user = get_user_model().objects.create_user('u', 'u@x.com', 'pw')
+        user = get_user_model().objects.create_user('u', 'u@x.com', 'pw', is_approved=True)
         cat = Category.objects.create(name='생리')
         exam_a = Exam.objects.create(title='A')
         exam_b = Exam.objects.create(title='B')
@@ -353,7 +353,7 @@ class BackfillMigrationTests(TestCase):
         self.assertNotEqual(same_a.id, same_b.id)
 
     def test_second_pass_ignores_spacing_changes(self):
-        user = get_user_model().objects.create_user('v', 'v@x.com', 'pw')
+        user = get_user_model().objects.create_user('v', 'v@x.com', 'pw', is_approved=True)
         exam = Exam.objects.create(title='C')
         q = make_question(exam, 1, '가', text='문 1. 일측폐환기를 이용한 폐절제술에서\r\n적절한 수액관리 전략으로 옳은 것은?')
         result = ExamResult.objects.create(

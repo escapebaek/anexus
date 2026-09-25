@@ -2,8 +2,9 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 class CustomUser(AbstractUser):
-    is_approved = models.BooleanField(default=True)
-    is_specially_approved = models.BooleanField(default=False)
+    # 새로 가입하면 승인 전(False). 관리자가 승인해야 문제은행 등 회원 전용 기능을 쓸 수 있다.
+    is_approved = models.BooleanField('승인됨', default=False)
+    is_specially_approved = models.BooleanField('특별 승인', default=False)
     real_name = models.CharField(max_length=50, blank=True)
     
     TRAINING_HOSPITAL_CHOICES = [
@@ -34,7 +35,7 @@ class CustomUser(AbstractUser):
         ('상계백', '상계백'),
         ('인제상계백', '인제상계백'),
         
-        # 경기 지역
+        # 경기·인천 지역
         ('아주대', '아주대'),
         ('한림대성심', '한림대성심'),
         ('명지', '명지'),
@@ -71,11 +72,6 @@ class CustomUser(AbstractUser):
         ('대구가톨릭대', '대구가톨릭대'),
         ('대구파티마', '대구파티마'),
         ('동산', '동산'),
-        
-        # 인천 지역
-        ('인하대', '인하대'),
-        ('가천길', '가천길'),
-        ('인천성모', '인천성모'),
         
         # 광주 지역
         ('전남대', '전남대'),

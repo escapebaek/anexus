@@ -66,6 +66,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'accounts.context_processors.account_status',
             ],
         },
     },
@@ -219,8 +220,23 @@ CKEDITOR_5_CONFIGS = {
 ############################################################################
 LOGOUT_REDIRECT_URL = '/'
 
-# for password change e-mail
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# 메일 발송 (비밀번호 찾기·가입 승인 알림) — Render 환경변수로 설정.
+# 예) Gmail: EMAIL_HOST_USER=계정@gmail.com, EMAIL_HOST_PASSWORD=앱 비밀번호(16자리)
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_TIMEOUT = 15
+EMAIL_CONFIGURED = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=f'ANExuS <{EMAIL_HOST_USER}>' if EMAIL_HOST_USER else 'ANExuS <noreply@anexus.cloud>')
+if EMAIL_CONFIGURED:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+elif DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    # 설정 전에는 아무것도 보내지 않는다 (예전처럼 재설정 링크가 서버 로그에 남지 않도록)
+    EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 
 # 세션 만료 시간 설정 (6시간)
 SESSION_COOKIE_AGE = 21600  # 6시간(21600초) 후에 세션 만료
@@ -229,8 +245,9 @@ SESSION_SAVE_EVERY_REQUEST = True  # 각 요청마다 세션의 만료 시간을
 # 브라우저 닫을 때 세션 삭제
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
-# 로그인 페이지 설정
-LOGIN_URL = '/login/'
+# 로그인 페이지 설정 (예전 '/login/' 은 없는 주소라 로그인 필요 페이지가 404 가 났다)
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'home'
 
 ############################################################################
 # Security Settings (프로덕션 보안 설정)

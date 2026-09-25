@@ -60,6 +60,13 @@
             <li class="nav-item">
               <span class="navbar-text">Welcome, Dr. {{ user.username }}</span>
             </li>
+            {% if pending_approval_count %}
+            <li class="nav-item">
+              <a href="{% url 'admin:accounts_customuser_changelist' %}?approval=pending" class="nav-approval-badge" title="가입 승인을 기다리는 회원">
+                <i class="fas fa-user-clock"></i> 가입 승인 <b>{{ pending_approval_count }}</b>
+              </a>
+            </li>
+            {% endif %}
             <li class="nav-item">
               <a href="{% url 'mypage' %}" class="btn btn-gradient">My Page</a>
             </li>
@@ -90,6 +97,12 @@
 
     <!-- Optimized Messages -->
     <div class="container-fluid mt-3">
+      {% if awaiting_approval and request.resolver_match.url_name != 'approval_pending' %}
+      <div class="nav-pending-note" role="status">
+        <i class="fas fa-user-clock"></i>
+        가입 승인을 기다리고 있습니다. 관리자가 승인하면 문제은행 등 회원 전용 기능을 쓸 수 있습니다.
+      </div>
+      {% endif %}
       {% if messages %} {% for message in messages %}
       <div
         class="alert alert-{{ message.tags|default:'secondary' }}"

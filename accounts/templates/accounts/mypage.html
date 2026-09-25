@@ -1,128 +1,74 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block custom_css %}<link href="{% static 'css/pages/accounts.css' %}" rel="stylesheet" />{% endblock %}
+
 {% block page_content %}
-<div class="mypage-section position-relative min-vh-100">
-  <div class="mypage-overlay"></div>
-  <div class="container py-5">
-    <div class="row justify-content-center">
-      <div class="col-md-8">
-        <div class="profile-card animate-fade-in">
+<div class="ac-page ac-page-wide">
+  <header class="ac-hero">
+    <div>
+      <p class="ac-kicker">마이페이지</p>
+      <h1 class="ac-title">{{ user.real_name|default:user.username }}</h1>
+      <p class="ac-sub">{{ user.username }}{% if user.training_hospital %} · {{ user.training_hospital }}{% endif %} · {{ user.date_joined|date:"Y.m.d" }} 가입</p>
+    </div>
+    <div class="ac-badges">
+      {% if user.is_specially_approved %}<span class="ac-badge is-special"><i class="fas fa-star"></i> 특별 승인</span>
+      {% elif is_member %}<span class="ac-badge is-ok"><i class="fas fa-check"></i> 승인 회원</span>
+      {% else %}<span class="ac-badge is-wait"><i class="fas fa-user-clock"></i> 승인 대기</span>{% endif %}
+      {% if user.is_staff %}<span class="ac-badge"><i class="fas fa-user-shield"></i> 관리자</span>{% endif %}
+    </div>
+  </header>
 
-          <!-- Header -->
-          <div class="card-header text-center">
-            <h1 class="profile-title">My Profile</h1>
-            <p class="profile-subtitle">
-              {{ user.real_name }}{% if user.real_name and user.username %} · {% endif %}{{ user.username }}
-            </p>
-            {% if user.is_specially_approved %}
-            <div class="header-special-badge">
-              <i class="fas fa-star me-1"></i>Specially Approved
-            </div>
-            {% endif %}
-          </div>
+  {% if needs_email %}
+  <div class="ac-alert is-warn">
+    <p><i class="fas fa-exclamation-triangle"></i> <b>실제 이메일이 등록되어 있지 않습니다.</b> 비밀번호를 잊었을 때 찾으려면 아래에서 이메일을 등록해 주세요.</p>
+  </div>
+  {% endif %}
 
-          <!-- Card Body -->
-          <div class="card-body">
-
-            <!-- Account Info -->
-            <div class="section-heading">계정 정보</div>
-
-            <form method="POST" action="{% url 'update_user_info' %}" class="profile-form">
-              {% csrf_token %}
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="real_name" class="form-label">실명 (Real Name)</label>
-                    <div class="input-group">
-                      <span class="input-group-text"><i class="fas fa-user"></i></span>
-                      <input type="text" class="form-control" id="real_name" name="real_name" value="{{ user.real_name }}">
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="email" class="form-label">Email</label>
-                    <div class="input-group">
-                      <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                      <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="training_hospital" class="form-label">Training Hospital</label>
-                    <div class="input-group">
-                      <span class="input-group-text"><i class="fas fa-hospital"></i></span>
-                      <select class="form-control" id="training_hospital" name="training_hospital">
-                        {% for choice in user.TRAINING_HOSPITAL_CHOICES %}
-                        <option value="{{ choice.0 }}" {% if choice.0 == user.training_hospital %}selected{% endif %}>
-                          {{ choice.1 }}
-                        </option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label class="form-label">계정 등급</label>
-                    <div class="input-group">
-                      <span class="input-group-text">
-                        <i class="fas fa-shield-alt {% if user.is_specially_approved %}text-special{% endif %}"></i>
-                      </span>
-                      <input type="text" class="form-control status-control {% if user.is_specially_approved %}is-special{% endif %}"
-                             value="{% if user.is_specially_approved %}★  특별 승인{% else %}일반 회원{% endif %}" readonly>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="text-center mt-3">
-                <button type="submit" class="btn btn-update">
-                  Update Information <i class="fas fa-check ms-2"></i>
-                </button>
-              </div>
-            </form>
-
-            <!-- Analytics Navigation -->
-            <div class="section-heading">학습 분석</div>
-            <div class="nav-cards">
-              <a href="{% url 'my_results' %}" class="nav-card">
-                <div class="nav-card-icon"><i class="fas fa-list-alt"></i></div>
-                <div class="nav-card-title">내 성적 기록</div>
-                <div class="nav-card-desc">시험별 응시 이력 확인</div>
-              </a>
-              <a href="{% url 'analytics_overview' %}" class="nav-card">
-                <div class="nav-card-icon"><i class="fas fa-chart-bar"></i></div>
-                <div class="nav-card-title">전체 분석</div>
-                <div class="nav-card-desc">카테고리·추세 분석</div>
-              </a>
-              <a href="{% url 'bookmarked_questions' %}" class="nav-card">
-                <div class="nav-card-icon"><i class="fas fa-bookmark"></i></div>
-                <div class="nav-card-title">북마크 문제</div>
-                <div class="nav-card-desc">저장한 문제 복습</div>
-              </a>
-            </div>
-
-            <!-- Change Password -->
-            <div class="password-section">
-              <div class="password-card">
-                <div class="password-card-left">
-                  <div class="password-card-icon"><i class="fas fa-lock"></i></div>
-                  <div class="password-card-text">
-                    <p class="pw-title">비밀번호 변경</p>
-                    <p class="pw-sub">정기적인 변경으로 계정을 안전하게 유지하세요.</p>
-                  </div>
-                </div>
-                <a href="{% url 'password_change' %}" class="btn btn-password">
-                  변경하기 <i class="fas fa-arrow-right ms-1"></i>
-                </a>
-              </div>
-            </div>
-
-          </div>
-        </div>
+  <div class="ac-grid">
+    <section class="ac-card ac-card-flat">
+      <div class="ac-card-body">
+        <h2 class="ac-section">회원 정보</h2>
+        <form method="post" action="{% url 'mypage' %}" novalidate>
+          {% csrf_token %}
+          {% include 'accounts/_field.html' with field=form.real_name icon='id-card' %}
+          {% include 'accounts/_field.html' with field=form.email icon='envelope' %}
+          {% include 'accounts/_field.html' with field=form.training_hospital icon='hospital' %}
+          <button type="submit" class="ac-btn ac-btn-primary">저장</button>
+        </form>
       </div>
+    </section>
+
+    <div class="ac-side">
+      <section class="ac-card ac-card-flat">
+        <div class="ac-card-body">
+          <h2 class="ac-section">학습</h2>
+          <nav class="ac-shortcuts">
+            <a href="{% url 'my_results' %}"><i class="fas fa-list"></i><span>응시 기록</span></a>
+            <a href="{% url 'analytics_overview' %}"><i class="fas fa-chart-line"></i><span>내 통계</span></a>
+            <a href="{% url 'review_wrong' %}"><i class="fas fa-redo"></i><span>오답노트</span></a>
+            <a href="{% url 'bookmarked_questions' %}"><i class="fas fa-bookmark"></i><span>북마크</span></a>
+          </nav>
+        </div>
+      </section>
+
+      <section class="ac-card ac-card-flat">
+        <div class="ac-card-body">
+          <h2 class="ac-section">보안</h2>
+          <a class="ac-row-link" href="{% url 'password_change' %}">
+            <i class="fas fa-lock"></i>
+            <span><b>비밀번호 변경</b><small>현재 비밀번호를 확인한 뒤 새로 정합니다</small></span>
+            <i class="fas fa-chevron-right"></i>
+          </a>
+          {% if user.is_staff %}
+          <a class="ac-row-link" href="{% url 'admin:accounts_customuser_changelist' %}?approval=pending">
+            <i class="fas fa-user-check"></i>
+            <span><b>가입 승인 관리</b><small>승인 대기 {{ pending_approval_count|default:0 }}명</small></span>
+            <i class="fas fa-chevron-right"></i>
+          </a>
+          {% endif %}
+        </div>
+      </section>
     </div>
   </div>
 </div>

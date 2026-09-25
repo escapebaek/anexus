@@ -1,0 +1,10 @@
+{# 입력칸 하나: 라벨 · 입력 · 도움말 · 오류 (field 필수, icon 선택) #}
+<div class="ac-field{% if field.errors %} has-error{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+  <div class="ac-input">
+    {% if icon %}<i class="fas fa-{{ icon }}" aria-hidden="true"></i>{% endif %}
+    {{ field }}
+  </div>
+  {% if field.errors %}<ul class="ac-errors">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% elif field.help_text and not hide_help %}<p class="ac-help">{{ field.help_text|safe }}</p>{% endif %}
+</div>
