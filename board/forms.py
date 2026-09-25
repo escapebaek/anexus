@@ -72,7 +72,13 @@ class BoardForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
+        kwargs.setdefault('label_suffix', '')
         super().__init__(*args, **kwargs)
+        # 모델 기본값 'default' 가 새 글 제목 칸에 미리 채워지지 않게
+        if not self.instance.pk and not self.is_bound:
+            for name in ('title', 'contents'):
+                if self.get_initial_for_field(self.fields[name], name) == 'default':
+                    self.initial[name] = ''
         
         # 관리자가 아닌 경우 공지사항 체크박스 숨기기
         if self.user and not (self.user.is_staff or self.user.is_superuser):

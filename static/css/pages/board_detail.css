@@ -361,3 +361,15 @@
 .post-content li[data-list="checked"], .post-content li[data-list="unchecked"] { list-style: none; margin-left: -1.2em; }
 .post-content li[data-list="checked"]::before { content: "☑ "; color: #2b5876; }
 .post-content li[data-list="unchecked"]::before { content: "☐ "; color: #6b7a8c; }
+
+/* ---------- 휴대폰: 좌우 여백을 줄이고 본문 폭을 넓게 ---------- */
+@media (max-width: 767.98px) {
+  .board-container { padding: 1rem 0 2rem; }
+  .board-wrapper { padding: 0 4px; }
+  .post-header { padding: 1.1rem 1rem; }
+  .post-title { font-size: 1.3rem; margin-bottom: 0.75rem; word-break: keep-all; overflow-wrap: anywhere; }
+  .post-meta { gap: 0.5rem; }
+  .post-meta-left { gap: 0.35rem 0.9rem; font-size: 0.85rem; }
+  .post-content { padding: 1.1rem 1rem 1.5rem; min-height: 0; }
+  .comments-wrapper { margin-top: 1rem; padding: 1rem 0.85rem; }
+}
