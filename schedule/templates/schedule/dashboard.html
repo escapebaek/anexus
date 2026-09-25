@@ -215,12 +215,19 @@
 
   function caseCells(c, extraTime) {
     const sub = [c.department, c.surgeon, c.duration ? c.duration + "분" : ""].filter(Boolean).join(" · ");
+    // 좁은 화면: 종료 예정은 수술명 아래 줄에 (오른쪽 칸을 차지하지 않게 해 수술명이 덜 잘림)
+    // 마취 방법 배지도 아래 줄로 옮겨 수술명이 칸 너비를 다 쓰게 함
+    const etaLine = compact && c.group === "ongoing";
+    const badge = anesBadge(c.anesthesia_type);
+    const meta = etaLine ? '<span class="eta eta-line"></span>' : (sub ? `<span class="op-sub">${esc(sub)}</span>` : "");
+    const small = compact ? (badge || meta ? `<small class="op-meta">${badge}${meta}</small>` : "")
+      : (sub ? `<small>${esc(sub)}</small>` : "");
     const patient = [c.patient_name, c.patient_info].filter(Boolean).join(" ");
     return `
       <td class="c-time"><span>${esc(c.time_slot) || "-"}</span>${extraTime || ""}</td>
       <td class="c-op"><div class="op-bar op-${c.group}"${c.group === "ongoing" ? ` data-eta="${c.id}"` : ""} title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
         ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
-        ${anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${esc(c.surgery_name) || "-"}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div>${c.group === "ongoing" ? '<span class="eta"></span>' : ""}</div></td>
+        ${compact ? "" : anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${esc(c.surgery_name) || "-"}</span>${small}</div>${c.group === "ongoing" && !etaLine ? '<span class="eta"></span>' : ""}</div></td>
       <td class="c-anes" data-anes="${c.id}" title="클릭해서 마취의 입력">${c.anesthesiologist ? esc(c.anesthesiologist) : '<span class="anes-empty">+ 입력</span>'}</td>
       ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
       <td class="c-memo"><button type="button" class="memo-btn${c.memo ? " has-memo" : ""}" data-memo="${c.id}"
@@ -266,7 +273,7 @@
     for (let i = 0; i < cols; i++) {
       const rooms = BOARD.rooms.slice(i * perCol, (i + 1) * perCol);
       if (!rooms.length) continue;
-      html += `<table class="orb-table">
+      html += `<table class="orb-table${compact ? " is-compact" : ""}">
         <colgroup><col class="w-room"><col class="w-time"><col><col class="w-anes">${compact ? "" : '<col class="w-pt">'}<col class="w-memo"></colgroup>
         <thead><tr><th>방</th><th>시간</th><th>수술명 <small>과 · 집도의</small></th><th>마취의</th>${compact ? "" : "<th>환자</th>"}<th></th></tr></thead>
         ${rooms.map(roomBody).join("")}
@@ -301,6 +308,13 @@
       bar.classList.toggle("has-eta", !!(t && t.end));
       bar.classList.toggle("is-over", !!(t && t.end && t.over > 0));
       bar.style.setProperty("--p", t && t.end ? (t.ratio * 100).toFixed(1) + "%" : "0%");
+      if (chip.classList.contains("eta-line")) {
+        chip.textContent = !t ? "시작 시각 없음"
+          : !t.end ? `${minutesText(t.elapsed)} 경과 · ${hm(t.start)} 시작`
+          : t.over > 0 ? `+${minutesText(t.over)} 초과 (${hm(t.end)})`
+          : `~${hm(t.end)} 종료 예정`;
+        return;
+      }
       if (!t) {
         chip.innerHTML = '<b>—</b><small>시작 시각 없음</small>';
         chip.title = "수술 메뉴에서 시작 시각을 입력하면 종료 예정 시각이 표시됩니다";

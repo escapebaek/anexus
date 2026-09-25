@@ -321,10 +321,45 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
 .eta small { font-size: 10px; font-weight: 500; opacity: 0.8; }
 .sub-row .eta b { font-size: 12px; }
 .sub-row .eta small { display: none; }
-@media (max-width: 600px) {
-  .eta small { display: none; }
-  .eta b { font-size: 12px; }
+/* 좁은 화면(휴대폰): 수술명 칸을 넓히고, 종료 예정은 수술명 아래 줄에 */
+.orb-table.is-compact col.w-room { width: 44px; }
+.orb-table.is-compact col.w-time { width: 50px; }
+.orb-table.is-compact col.w-anes { width: 58px; }
+.orb-table.is-compact col.w-memo { width: 32px; }
+.orb-table.is-compact td, .orb-table.is-compact tbody th { padding-left: 3px; padding-right: 3px; }
+.orb-table.is-compact .c-op { padding: 4px 3px !important; }
+.orb-table.is-compact .op-bar { padding: 0 7px; gap: 5px; }
+.orb-table.is-compact .c-time { font-size: 12px; }
+.orb-table.is-compact .c-anes { font-size: 12px; }
+.orb-table.is-compact .op-bar { height: auto; min-height: 34px; padding-top: 4px; padding-bottom: 4px; }
+.orb-table.is-compact .sub-row .op-bar { min-height: 28px; }
+.orb-table.is-compact .op-name {
+  white-space: normal;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.2;
 }
+.orb-table.is-compact .op-text { flex: 1 1 auto; }
+.op-meta { display: flex !important; align-items: center; gap: 4px; margin-top: 1px; min-width: 0; opacity: 1 !important; }
+.op-meta .op-sub { opacity: 0.75; }
+.op-meta .at { flex: 0 0 auto; font-size: 9px; padding: 0 4px; line-height: 14px; min-width: 0; }
+.op-meta .op-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.eta.eta-line {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700 !important;
+  opacity: 0.9 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.op-ongoing.is-over .eta-line { color: #ffd58a; opacity: 1 !important; }
 /* 종료 예정 시각을 넘긴 수술 */
 .op-ongoing.is-over .eta b { color: #ffd58a; }
 .op-ongoing.is-over { box-shadow: inset -3px 0 0 #f0b44c, 0 2px 8px rgba(43, 88, 118, 0.25); }
