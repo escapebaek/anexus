@@ -351,3 +351,13 @@
     padding: 0.5rem 0.8rem;
   }
 }
+
+/* ---------- 게시글 본문 (편집기에서 만든 서식) ---------- */
+.post-content img { max-width: 100%; height: auto; border-radius: 8px; }
+.post-content blockquote { border-left: 4px solid #4e4376; margin: 1em 0; padding: 0.4em 1em; color: #475569; background: #f5f7fa; border-radius: 0 8px 8px 0; }
+.post-content pre { background: #1f2937; color: #e5e7eb; padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 0.9em; }
+.post-content table { border-collapse: collapse; margin: 1em 0; }
+.post-content td, .post-content th { border: 1px solid #d3dbe6; padding: 6px 10px; }
+.post-content li[data-list="checked"], .post-content li[data-list="unchecked"] { list-style: none; margin-left: -1.2em; }
+.post-content li[data-list="checked"]::before { content: "☑ "; color: #2b5876; }
+.post-content li[data-list="unchecked"]::before { content: "☐ "; color: #6b7a8c; }

@@ -4,10 +4,97 @@
 
 {% block custom_css %}
   <link href="{% static 'css/pages/board_form.css' %}" rel="stylesheet" />
-  {{ form.media.css }}
+  <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
 {% endblock %}
 {% block extra_js %}
-{{ form.media.js }}
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script>
+  // 게시글 편집기 (Quill). 서버에는 숨은 textarea(#id_contents)로 HTML 을 보냄 - 서버에서 한 번 더 정리(sanitize)함.
+  (function () {
+    const textarea = document.getElementById("id_contents");
+    const holder = document.getElementById("postEditor");
+    const status = document.getElementById("editorStatus");
+    if (!window.Quill) {
+      // 편집기 스크립트를 못 불러온 경우: 그냥 텍스트 칸으로라도 쓸 수 있게
+      textarea.classList.remove("d-none");
+      textarea.rows = 16;
+      holder.hidden = true;
+      status.textContent = "편집기를 불러오지 못해 기본 입력칸으로 표시합니다.";
+      return;
+    }
+    // 정렬은 class 대신 style 로 저장해야 게시글 보기 화면에서도 그대로 보임
+    Quill.register(Quill.import("attributors/style/align"), true);
+
+    const UPLOAD_URL = "{% url 'ck_editor_5_upload_file' %}";
+    const csrf = () => document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    async function uploadImage(file) {
+      const data = new FormData();
+      data.append("upload", file);
+      status.textContent = "이미지 올리는 중…";
+      const res = await fetch(UPLOAD_URL, { method: "POST", body: data, headers: { "X-CSRFToken": csrf() }, credentials: "same-origin" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.url) throw new Error((body.error && body.error.message) || `업로드 실패 (${res.status})`);
+      status.textContent = "";
+      return body.url;
+    }
+    async function insertImages(range, files) {
+      let index = range ? range.index : quill.getLength();
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        try {
+          const url = await uploadImage(file);
+          quill.insertEmbed(index, "image", url, "user");
+          index += 1;
+          quill.setSelection(index, 0);
+        } catch (err) {
+          status.textContent = "";
+          alert("이미지를 올리지 못했습니다: " + err.message);
+        }
+      }
+    }
+
+    const quill = new Quill(holder, {
+      theme: "snow",
+      placeholder: "내용을 입력하세요…",
+      modules: {
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline", "strike"],
+            [{ color: [] }, { background: [] }],
+            [{ align: [] }],
+            [{ list: "ordered" }, { list: "bullet" }, { list: "check" }],
+            ["blockquote", "code-block"],
+            ["link", "image"],
+            ["clean"],
+          ],
+          handlers: {
+            image() {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = "image/*";
+              input.multiple = true;
+              input.onchange = () => insertImages(quill.getSelection(true), [...input.files]);
+              input.click();
+            },
+          },
+        },
+        // 끌어다 놓거나 붙여넣은 이미지 파일도 서버에 올린 뒤 넣음
+        uploader: { handler: (range, files) => insertImages(range, files) },
+      },
+    });
+    if (textarea.value.trim()) {
+      quill.clipboard.dangerouslyPasteHTML(textarea.value);  // 수정: 기존 내용 불러오기
+      quill.setSelection(quill.getLength(), 0);
+    }
+    textarea.closest("form").addEventListener("submit", () => {
+      // getSemanticHTML 은 모든 띄어쓰기를 &nbsp; 로 바꿔 줄바꿈이 안 되므로, 단어 사이 한 칸은 일반 공백으로
+      const html = quill.getLength() > 1 ? quill.getSemanticHTML() : "";
+      textarea.value = html.replace(/([^\s;>])&nbsp;(?=[^\s&<])/g, "$1 ");
+    });
+  })();
+</script>
 {% endblock %}
 
 {% block page_content %}
@@ -49,8 +136,11 @@
         {% endif %}
         
         <div class="form-field">
-          {{ form.contents.label_tag }}
+          <label for="postEditor">{{ form.contents.label }}</label>
+          <div id="postEditor" class="post-editor"></div>
           {{ form.contents }}
+          <div class="editor-status" id="editorStatus"></div>
+          {% if form.contents.errors %}<div class="text-danger small mt-1">{{ form.contents.errors|join:" " }}</div>{% endif %}
         </div>
         
         <div class="form-actions">
