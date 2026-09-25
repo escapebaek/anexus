@@ -33,7 +33,10 @@ class SupabaseStorage(Storage):
         return quote(name.replace("\\", "/"), safe="/")
 
     def _save(self, name, content):
-        # 파일의 바이너리 데이터를 읽음
+        # 파일 전체를 읽음. 업로드 검사(PIL 이미지 확인 등)가 이미 파일을 읽어 위치가 끝으로
+        # 가 있을 수 있으므로 처음으로 되감는다 (안 그러면 사진 뒷부분만 올라가 깨짐).
+        if hasattr(content, "seek"):
+            content.seek(0)
         file_data = content.read()
         url = f"{self.supabase_url}/storage/v1/object/{self.bucket}/{self._object_path(name)}"
         content_type = (getattr(content, "content_type", None)
