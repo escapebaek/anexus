@@ -39,7 +39,7 @@
             <i class="fas fa-book-medical"></i>
           </div>
           <h3 class="category-title">{{ category }}</h3>
-          {% if user.is_authenticated and user.is_approved %}
+          {% if user.is_authenticated and user.is_approved or user.is_authenticated and user.is_specially_approved %}
           <a
             href="{% url 'category_questions' category %}"
             class="btn btn-feature"
@@ -47,11 +47,16 @@
             Start Learning
             <i class="fas fa-chevron-right ms-2"></i>
           </a>
-          {% else %}
-          <button class="btn btn-feature disabled" disabled>
-            Access Restricted
-            <i class="fas fa-lock ms-2"></i>
+          {% elif user.is_authenticated %}
+          <button class="btn btn-feature disabled" disabled title="관리자 승인 후 이용할 수 있습니다">
+            <span>승인 대기 중</span>
+            <i class="fas fa-user-clock ms-1"></i>
           </button>
+          {% else %}
+          <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="btn btn-feature">
+            <span>로그인 후 이용</span>
+            <i class="fas fa-sign-in-alt ms-1"></i>
+          </a>
           {% endif %}
         </div>
       </div>

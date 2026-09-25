@@ -4281,3 +4281,35 @@ input[type="text"]:focus {
   font-size: 0.9rem;
   opacity: 0.8;
 }
+
+/* 상단 메뉴: 관리자에게 보이는 가입 승인 대기 알림 */
+.nav-approval-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 6px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: #fdf4e3;
+  color: #9a6a12;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.nav-approval-badge b { background: #c28a1e; color: #fff; border-radius: 99px; padding: 0 7px; font-size: 0.78rem; }
+.nav-approval-badge:hover { color: #7c550e; background: #fbecc9; }
+
+/* 승인 전 회원에게 보이는 안내 (.alert 가 아니라서 자동으로 사라지지 않는다) */
+.nav-pending-note {
+  max-width: 1240px;
+  margin: 0 auto 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fdf4e3;
+  color: #9a6a12;
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

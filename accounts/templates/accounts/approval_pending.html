@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block custom_css %}<link href="{% static 'css/pages/accounts.css' %}" rel="stylesheet" />{% endblock %}
+
+{% block page_content %}
+<div class="ac-page">
+  <section class="ac-card">
+    <header class="ac-card-head">
+      <p class="ac-kicker">가입 신청 완료</p>
+      <h1 class="ac-title">관리자 승인을 기다리고 있어요</h1>
+    </header>
+    <div class="ac-card-body">
+      <div class="ac-state"><i class="fas fa-user-clock"></i></div>
+      <p class="ac-text"><b>{{ user.real_name|default:user.username }}</b>님, 가입 신청이 접수되었습니다.
+        관리자가 확인한 뒤 승인하면 문제은행·저널·약물사전 등 회원 전용 기능을 쓸 수 있습니다.</p>
+      <p class="ac-text ac-muted">승인 전에도 게시판과 마이페이지는 이용할 수 있습니다. 승인되면 이 화면 대신 원래 화면이 열립니다.</p>
+      <div class="ac-actions">
+        <a class="ac-btn ac-btn-primary" href="{% url 'home' %}">홈으로</a>
+        <a class="ac-btn ac-btn-ghost" href="{% url 'mypage' %}">마이페이지</a>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,125 +1,33 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{# Styles moved to global SCSS bundle (components/accounts) #}
+{% block custom_css %}<link href="{% static 'css/pages/accounts.css' %}" rel="stylesheet" />{% endblock %}
 
 {% block page_content %}
-<div class="register-section position-relative d-flex align-items-center">
-  <div class="register-overlay"></div>
-  <div class="container my-5">
-    <div class="row justify-content-center">
-      <div class="col-md-6">
-        <div class="register-card animate-fade-in">
-          <div class="card-body p-5">
-            <div class="text-center mb-5">
-              <h2 class="register-title">Create Account</h2>
-              <div class="title-underline"></div>
-            </div>
-
-            <form method="POST">
-              {% csrf_token %}
-              
-              {% if form.non_field_errors %}
-              <div class="alert alert-danger mb-4">
-                {% for error in form.non_field_errors %}
-                  <div>{{ error }}</div>
-                {% endfor %}
-              </div>
-              {% endif %}
-              
-              <div class="form-group mb-4">
-                <input type="text" name="{{ form.username.name }}" class="form-control" placeholder="Username" required>
-                {% if form.username.help_text %}
-                <small class="form-text">
-                  Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-                </small>
-                {% endif %}
-                {% if form.username.errors %}
-                <div class="error-message">
-                  {% for error in form.username.errors %}
-                    {{ error }}
-                  {% endfor %}
-                </div>
-                {% endif %}
-              </div>
-
-              <div class="form-group mb-4">
-                <input type="email" name="{{ form.email.name }}" class="form-control" placeholder="Email address" required>
-                {% if form.email.errors %}
-                <div class="error-message">
-                  {% for error in form.email.errors %}
-                    {{ error }}
-                  {% endfor %}
-                </div>
-                {% endif %}
-              </div>
-
-              <div class="form-group mb-4">
-                <input type="text" name="{{ form.real_name.name }}" class="form-control" placeholder="실명 (Real name)" required>
-                {% if form.real_name.errors %}
-                <div class="error-message">
-                  {% for error in form.real_name.errors %}
-                    {{ error }}
-                  {% endfor %}
-                </div>
-                {% endif %}
-              </div>
-
-              <div class="form-group mb-4">
-                <select name="{{ form.training_hospital.name }}" class="form-control" required>
-                  <option value="" selected disabled>Select training hospital</option>
-                  {% for value, label in form.training_hospital.field.choices %}
-                  <option value="{{ value }}">{{ label }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <div class="form-group mb-4">
-                <input type="password" name="{{ form.password1.name }}" class="form-control" placeholder="Password" required>
-                {% if form.password1.errors %}
-                <div class="error-message">
-                  {% for error in form.password1.errors %}
-                    {{ error }}
-                  {% endfor %}
-                </div>
-                {% endif %}
-                <div class="password-requirements">
-                  <h6>Password Requirements:</h6>
-                  <ul>
-                    <li>At least 8 characters long</li>
-                    <li>Can't be entirely numeric</li>
-                    <li>Can't be too similar to personal info</li>
-                    <li>Can't be a commonly used password</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="form-group mb-5">
-                <input type="password" name="{{ form.password2.name }}" class="form-control" placeholder="Confirm password" required>
-                {% if form.password2.errors %}
-                <div class="error-message">
-                  {% for error in form.password2.errors %}
-                    {{ error }}
-                  {% endfor %}
-                </div>
-                {% endif %}
-              </div>
-
-              <button type="submit" class="btn btn-register w-100">
-                Create Account
-                <i class="fas fa-arrow-right ms-2"></i>
-              </button>
-            </form>
-
-            <div class="text-center mt-4">
-              <a href="{% url 'login' %}" class="login-link">
-                Already have an account? <span>Sign in</span>
-              </a>
-            </div>
-          </div>
-        </div>
+<div class="ac-page">
+  <section class="ac-card">
+    <header class="ac-card-head">
+      <p class="ac-kicker">ANExuS</p>
+      <h1 class="ac-title">회원가입</h1>
+      <p class="ac-sub">가입 후 관리자가 승인하면 문제은행 등 회원 전용 기능을 쓸 수 있습니다.</p>
+    </header>
+    <form method="post" class="ac-card-body" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="ac-alert is-error">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+      {% include 'accounts/_field.html' with field=form.username icon='user' %}
+      {% include 'accounts/_field.html' with field=form.email icon='envelope' %}
+      <div class="ac-row">
+        {% include 'accounts/_field.html' with field=form.real_name icon='id-card' %}
+        {% include 'accounts/_field.html' with field=form.training_hospital icon='hospital' %}
       </div>
-    </div>
-  </div>
+      {% include 'accounts/_field.html' with field=form.password1 icon='lock' hide_help=True %}
+      {% include 'accounts/_field.html' with field=form.password2 icon='lock' %}
+      <ul class="ac-rules">
+        <li>8자 이상</li><li>숫자로만 구성하지 않기</li><li>아이디·이름과 비슷하지 않게</li><li>흔한 비밀번호 피하기</li>
+      </ul>
+      <button type="submit" class="ac-btn ac-btn-primary ac-btn-block">가입 신청</button>
+      <div class="ac-links"><span>이미 계정이 있으면 <a href="{% url 'login' %}">로그인</a></span></div>
+    </form>
+  </section>
 </div>
 {% endblock %}

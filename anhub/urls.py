@@ -33,7 +33,6 @@ urlpatterns = [
     path('coag/', include('coag.urls')),
     path('board/', include('board.urls')),
     path('accounts/', include('accounts.urls')),
-    path('accounts/', include('django.contrib.auth.urls')),
     path('exam/', include('exam.urls')),
     path('drugdictionary/', include('drugdictionary.urls')),
     path('schedule/', include('schedule.urls')),
