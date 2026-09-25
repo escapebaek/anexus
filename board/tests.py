@@ -67,8 +67,10 @@ class BoardImprovementTests(TestCase):
         from django.core.files.uploadedfile import SimpleUploadedFile
         from django.test import override_settings
         buf = io.BytesIO()
-        Image.new('RGB', (4, 4), 'red').save(buf, 'PNG')
-        upload = SimpleUploadedFile('스크린샷 2026-09-25 오후.PNG', buf.getvalue(), content_type='image/png')
+        # 실제 사진처럼 충분히 큰 이미지 (작은 이미지는 검사 때 다 읽히지 않아 잘림 버그가 안 드러남)
+        Image.effect_noise((300, 200), 60).convert('RGB').save(buf, 'PNG')
+        raw = buf.getvalue()
+        upload = SimpleUploadedFile('스크린샷 2026-09-25 오후.PNG', raw, content_type='image/png')
         with override_settings(SUPABASE_URL='https://proj.supabase.co', SUPABASE_STORAGE_BUCKET='bucket', SUPABASE_KEY='k'), \
                 mock.patch('anhub.storage_backends.requests.post') as post:
             post.return_value.status_code = 200
@@ -79,6 +81,8 @@ class BoardImprovementTests(TestCase):
         sent_to = post.call_args[0][0]
         self.assertEqual(sent_to, url.replace('/object/public/', '/object/'))
         self.assertEqual(post.call_args[1]['headers']['Content-Type'], 'image/png')
+        # 이미지 검사 후에도 파일 전체가 그대로 올라가야 함 (뒷부분만 올라가 깨지던 문제)
+        self.assertEqual(post.call_args[1]['data'], raw)
 
     def test_comment_delete_requires_post(self):
         from django.urls import reverse
