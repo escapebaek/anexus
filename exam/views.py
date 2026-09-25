@@ -12,19 +12,25 @@ from django.db.models import Prefetch
 from django.core.paginator import Paginator
 from collections import defaultdict
 from datetime import datetime, timedelta
+from .grading import grade, MAX_QUESTIONS_PER_RESULT
 
-@login_required
-@user_is_approved
-def exam_landing_page(request):
-    return render(request, 'exam/landing_page.html')
+
+def visible_exams(user):
+    """특별 시험(is_special)은 특별 승인 사용자에게만 보인다."""
+    if getattr(user, 'is_specially_approved', False):
+        return Exam.objects.all()
+    return Exam.objects.filter(is_special=False)
+
+
+def visible_questions(user):
+    if getattr(user, 'is_specially_approved', False):
+        return Question.objects.all()
+    return Question.objects.filter(exam__is_special=False)
 
 @login_required
 @user_is_approved
 def exam_list(request):
-    if request.user.is_specially_approved:
-        exams = Exam.objects.all().order_by('display_order', 'date_created')
-    else:
-        exams = Exam.objects.filter(is_special=False).order_by('display_order', 'date_created')
+    exams = visible_exams(request.user).order_by('display_order', 'date_created')
     attempted_exam_ids = set(
         ExamResult.objects.filter(user=request.user, exam__isnull=False)
         .values_list('exam_id', flat=True)
@@ -77,162 +83,75 @@ def question_list(request, exam_id):
 @login_required
 @user_is_approved
 def question_detail_partial(request, question_id):
-    question = get_object_or_404(Question.objects.select_related('category', 'exam'), pk=question_id)
+    question = get_object_or_404(visible_questions(request.user).select_related('category', 'exam'), pk=question_id)
     is_bookmarked = Bookmark.objects.filter(user=request.user, question=question).exists()
     return render(request, 'exam/question_detail_partial.html', {
         'question': question,
         'is_bookmarked': is_bookmarked,
     })
 
+@require_POST
 @login_required
 @user_is_approved
 def save_exam_results(request):
-    if request.method == 'POST':
-        # JSON 파싱 예외 처리 추가 - 잘못된 JSON 요청 시 400 Bad Request 반환
+    """브라우저가 보낸 '문제 ID → 고른 선택지 번호'를 서버에서 채점해 저장."""
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON format'}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({'status': 'error', 'message': 'Invalid data'}, status=400)
+
+    question_ids = []
+    for value in data.get('question_ids') or []:
         try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format'}, status=400)
-        
-        exam_id = data.get('exam_id', None)
-        category_name = data.get('category_name', None)
-        num_correct = data.get('num_correct', 0)
-        num_incorrect = data.get('num_incorrect', 0)
-        num_unanswered = data.get('num_unanswered', 0)
-        num_noanswer = data.get('num_noanswer', 0)
-        detailed_results = data.get('detailed_results', [])
-        
-        questions_lookup = {}
-        all_questions = Question.objects.select_related('category').all()
-        
-        for q in all_questions:
-            question_text = str(q.question_text).strip()
-            keys_to_try = [
-                question_text,
-                question_text[:50],
-                question_text[:100],
-                question_text.replace('\n', ' ').replace('\r', ''),
-                question_text.replace('\n', ' ').replace('\r', '')[:50]
-            ]
-            question_info = {
-                'id': q.id,
-                'category_name': q.category.name if q.category else 'N/A'
-            }
-            for key in keys_to_try:
-                if key and key not in questions_lookup:
-                    questions_lookup[key] = question_info
-        
-        for detail in detailed_results:
-            question_text = str(detail.get('question', '')).strip()
-            question_info = None
-            matching_strategies = [
-                question_text,
-                question_text[:100],
-                question_text[:50],
-                question_text.replace('\n', ' ').replace('\r', '').strip(),
-                question_text.replace('\n', ' ').replace('\r', '').strip()[:50]
-            ]
-            for strategy in matching_strategies:
-                if strategy in questions_lookup:
-                    question_info = questions_lookup[strategy]
-                    break
-            if not question_info and len(question_text) > 20:
-                for key, info in questions_lookup.items():
-                    if question_text[:20] in key or key[:20] in question_text:
-                        question_info = info
-                        break
-            if question_info:
-                detail['question_id'] = question_info['id']
-                detail['category'] = question_info['category_name']
-            else:
-                detail['question_id'] = None
-                detail['category'] = 'N/A'
+            qid = int(value)
+        except (TypeError, ValueError):
+            continue
+        if qid not in question_ids:
+            question_ids.append(qid)
+    if not question_ids or len(question_ids) > MAX_QUESTIONS_PER_RESULT:
+        return JsonResponse({'status': 'error', 'message': '채점할 문제가 없습니다.'}, status=400)
+    answers = data.get('answers') if isinstance(data.get('answers'), dict) else {}
 
-        user = request.user
-        exam_instance = None
-        if exam_id is not None:
-            exam_instance = get_object_or_404(Exam, id=exam_id)
-            if exam_instance.is_special and not request.user.is_specially_approved:
-                return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
-
-        result = ExamResult.objects.create(
-            user=user,
-            exam=exam_instance,
-            category_name=category_name,
-            num_correct=num_correct,
-            num_incorrect=num_incorrect,
-            num_unanswered=num_unanswered,
-            num_noanswer=num_noanswer,
-            detailed_results=detailed_results,
-        )
-        return JsonResponse({'status': 'ok', 'result_id': result.id})
+    exam_instance = None
+    category_name = None
+    questions = visible_questions(request.user).filter(id__in=question_ids).select_related('category')
+    if data.get('exam_id'):
+        if not str(data.get('exam_id')).isdigit():
+            return JsonResponse({'status': 'error', 'message': 'Invalid exam'}, status=400)
+        exam_instance = get_object_or_404(visible_exams(request.user), id=int(data.get('exam_id')))
+        questions = questions.filter(exam=exam_instance)
     else:
-        return JsonResponse({'status': 'error'}, status=400)
+        category_name = str(data.get('category_name') or '북마크된 문제')[:100]
+
+    by_id = {q.id: q for q in questions}
+    ordered = [by_id[qid] for qid in question_ids if qid in by_id]
+    if not ordered:
+        return JsonResponse({'status': 'error', 'message': '채점할 문제가 없습니다.'}, status=400)
+
+    counts, details = grade(ordered, answers)
+    result = ExamResult.objects.create(
+        user=request.user,
+        exam=exam_instance,
+        category_name=category_name,
+        num_correct=counts['correct'],
+        num_incorrect=counts['incorrect'],
+        num_unanswered=counts['unanswered'],
+        num_noanswer=counts['noanswer'],
+        detailed_results=details,
+    )
+    return JsonResponse({'status': 'ok', 'result_id': result.id})
 
 @login_required
 @user_is_approved
 def exam_results(request):
-    result_id = request.GET.get('result_id')
-    result = get_object_or_404(ExamResult, id=result_id, user=request.user)
+    result = get_object_or_404(ExamResult, id=request.GET.get('result_id'), user=request.user)
     bookmarked_questions = set(
         Bookmark.objects.filter(user=request.user).values_list('question_id', flat=True)
     )
-    questions_lookup = {}
-    all_questions = Question.objects.select_related('category').all()
-    
-    for q in all_questions:
-        question_text = str(q.question_text).strip()
-        keys_to_try = [
-            question_text,
-            question_text[:50],
-            question_text[:100],
-            question_text.replace('\n', ' ').replace('\r', ''),
-            question_text.replace('\n', ' ').replace('\r', '')[:50]
-        ]
-        question_info = {
-            'id': q.id,
-            'category_name': q.category.name if q.category else 'N/A'
-        }
-        for key in keys_to_try:
-            if key and key not in questions_lookup:
-                questions_lookup[key] = question_info
-
-    updated_results = []
     for detail in result.detailed_results:
-        question_text = str(detail.get('question', '')).strip()
-        question_info = None
-        if question_text in questions_lookup:
-            question_info = questions_lookup[question_text]
-        if not question_info:
-            for length in [100, 50]:
-                truncated = question_text[:length]
-                if truncated in questions_lookup:
-                    question_info = questions_lookup[truncated]
-                    break
-        if not question_info:
-            cleaned_text = question_text.replace('\n', ' ').replace('\r', '').strip()
-            if cleaned_text in questions_lookup:
-                question_info = questions_lookup[cleaned_text]
-            elif cleaned_text[:50] in questions_lookup:
-                question_info = questions_lookup[cleaned_text[:50]]
-        if not question_info:
-            for key, info in questions_lookup.items():
-                if len(question_text) > 20 and question_text[:20] in key:
-                    question_info = info
-                    break
-        if not question_info:
-            question_info = {'id': None, 'category_name': 'N/A'}
-        
-        updated_detail = detail.copy()
-        updated_detail['question_id'] = question_info['id']
-        updated_detail['is_bookmarked'] = question_info['id'] in bookmarked_questions if question_info['id'] else False
-        if detail.get('category') and detail.get('category') != 'N/A':
-            updated_detail['category'] = detail.get('category')
-        else:
-            updated_detail['category'] = question_info['category_name']
-        updated_results.append(updated_detail)
-
-    result.detailed_results = updated_results
+        detail['is_bookmarked'] = detail.get('question_id') in bookmarked_questions
     return render(request, 'exam/exam_results.html', {'result': result})
 
 @login_required
@@ -244,31 +163,27 @@ def category_list(request):
 @login_required
 @user_is_approved
 def category_questions(request, category_name):
-    decoded_category_name = unquote(category_name)
-    try:
-        category = get_object_or_404(Category, name=decoded_category_name)
-        questions = Question.objects.filter(
-            category=category
-        ).prefetch_related(
-            Prefetch(
-                'bookmark_set',
-                queryset=Bookmark.objects.filter(user=request.user),
-                to_attr='user_bookmarks'
-            )
-        ).order_by('order')
-        for question in questions:
-            question.is_bookmarked = bool(getattr(question, 'user_bookmarks', []))
-        return render(request, 'exam/quiz_unified.html', {
-            'category_name': category.name,
-            'questions': questions
-        })
-    except Category.DoesNotExist:
-        raise Http404(f"Category not found: {decoded_category_name}")
-    
+    category = get_object_or_404(Category, name=unquote(category_name))
+    questions = visible_questions(request.user).filter(
+        category=category
+    ).select_related('category', 'exam').prefetch_related(
+        Prefetch(
+            'bookmark_set',
+            queryset=Bookmark.objects.filter(user=request.user),
+            to_attr='user_bookmarks'
+        )
+    ).order_by('order')
+    for question in questions:
+        question.is_bookmarked = bool(question.user_bookmarks)
+    return render(request, 'exam/quiz_unified.html', {
+        'category_name': category.name,
+        'questions': questions
+    })
+
 @login_required
 @user_is_approved
 def bookmarked_questions(request):
-    bookmarked_queryset = Question.objects.filter(
+    bookmarked_queryset = visible_questions(request.user).filter(
         bookmark__user=request.user
     ).select_related('exam', 'category').order_by('exam__title', 'order', 'id')
     selected_exam_ids = [int(x) for x in request.GET.getlist('exam') if x.isdigit()]
@@ -279,11 +194,11 @@ def bookmarked_questions(request):
         filtered_bookmarks = filtered_bookmarks.filter(exam_id__in=selected_exam_ids)
     if selected_category_ids:
         filtered_bookmarks = filtered_bookmarks.filter(category_id__in=selected_category_ids)
-    available_exam_filters = Exam.objects.filter(
+    available_exam_filters = visible_exams(request.user).filter(
         questions__bookmark__user=request.user
     ).order_by('title').distinct()
     available_category_filters = Category.objects.filter(
-        question__bookmark__user=request.user
+        question__in=visible_questions(request.user).filter(bookmark__user=request.user)
     ).order_by('name').distinct()
     selected_exam_objects = Exam.objects.filter(id__in=selected_exam_ids).order_by('title') if selected_exam_ids else []
     selected_category_objects = Category.objects.filter(id__in=selected_category_ids).order_by('name') if selected_category_ids else []
@@ -308,7 +223,7 @@ def bookmarked_questions(request):
 @user_is_approved
 def toggle_bookmark(request, question_id):
     try:
-        question = get_object_or_404(Question, id=question_id)
+        question = get_object_or_404(visible_questions(request.user), id=question_id)
         bookmark = Bookmark.objects.filter(
             user=request.user,
             question=question

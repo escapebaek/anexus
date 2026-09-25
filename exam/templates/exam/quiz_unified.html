@@ -133,7 +133,7 @@
         {% for question in questions %}
         <div class="col-12">
           <div id="q_{{ question.id }}" class="question-card animate-fade-in"
-               data-correct-option="{{ question.correct_option }}"
+               data-question-id="{{ question.id }}"
                data-qindex="{{ forloop.counter }}">
 
             <!-- Permanent bookmark (star) stays absolute top-right -->
@@ -190,33 +190,13 @@
 
               <!-- Answer options (card style) -->
               <div class="options-list">
-                <label class="option-card" for="option1_{{ question.id }}">
-                  <input type="radio" id="option1_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option1 }}" class="option-radio" />
-                  <span class="option-letter">A</span>
-                  <span class="option-text">{{ question.option1 }}</span>
+                {% for num, letter, text in question.option_list %}
+                <label class="option-card" for="option{{ num }}_{{ question.id }}">
+                  <input type="radio" id="option{{ num }}_{{ question.id }}" name="question_{{ question.id }}" value="{{ num }}" class="option-radio" />
+                  <span class="option-letter">{{ letter }}</span>
+                  <span class="option-text">{{ text }}</span>
                 </label>
-                <label class="option-card" for="option2_{{ question.id }}">
-                  <input type="radio" id="option2_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option2 }}" class="option-radio" />
-                  <span class="option-letter">B</span>
-                  <span class="option-text">{{ question.option2 }}</span>
-                </label>
-                <label class="option-card" for="option3_{{ question.id }}">
-                  <input type="radio" id="option3_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option3 }}" class="option-radio" />
-                  <span class="option-letter">C</span>
-                  <span class="option-text">{{ question.option3 }}</span>
-                </label>
-                <label class="option-card" for="option4_{{ question.id }}">
-                  <input type="radio" id="option4_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option4 }}" class="option-radio" />
-                  <span class="option-letter">D</span>
-                  <span class="option-text">{{ question.option4 }}</span>
-                </label>
-                {% if question.option5 %}
-                <label class="option-card" for="option5_{{ question.id }}">
-                  <input type="radio" id="option5_{{ question.id }}" name="question_{{ question.id }}" value="{{ question.option5 }}" class="option-radio" />
-                  <span class="option-letter">E</span>
-                  <span class="option-text">{{ question.option5 }}</span>
-                </label>
-                {% endif %}
+                {% endfor %}
               </div>
 
               <!-- Action buttons -->
@@ -505,25 +485,19 @@
 
     document.getElementById('loadingOverlay').style.display = 'flex';
 
-    const blocks = document.querySelectorAll('.question-card');
-    let numCorrect = 0, numIncorrect = 0, numUnanswered = 0, numNoanswer = 0, details = [];
-
-    blocks.forEach(function (block) {
-      const questionText = block.querySelector('.question-text').textContent.trim();
-      const correctOption = block.dataset.correctOption;
+    // 채점은 서버에서 한다: 문제 ID와 고른 선택지 번호만 보낸다
+    const questionIds = [], answers = {};
+    document.querySelectorAll('.question-card').forEach(function (block) {
+      const qid = block.dataset.questionId;
+      questionIds.push(qid);
       const selected = block.querySelector('input[type="radio"]:checked');
-      let resultType;
-      if (!correctOption || correctOption.trim() === '' || correctOption === 'default') { numNoanswer++; resultType = 'noanswer'; }
-      else if (!selected) { numUnanswered++; resultType = 'unanswered'; }
-      else if (selected.value.trim().charAt(0).toUpperCase() === correctOption.trim().charAt(0).toUpperCase()) { numCorrect++; resultType = 'correct'; }
-      else { numIncorrect++; resultType = 'incorrect'; }
-      details.push({ question: questionText, selected_answer: selected ? selected.value : '', correct_answer: correctOption || '', result: resultType });
+      if (selected) answers[qid] = parseInt(selected.value, 10);
     });
 
     const resultData = {
-      {% if exam %}exam_id: "{{ exam.id }}"{% elif category_name %}category_name: "{{ category_name }}"{% else %}category_name: "북마크된 문제"{% endif %},
-      num_correct: numCorrect, num_incorrect: numIncorrect, num_unanswered: numUnanswered, num_noanswer: numNoanswer,
-      detailed_results: details
+      {% if exam %}exam_id: {{ exam.id }}{% elif category_name %}category_name: "{{ category_name|escapejs }}"{% else %}category_name: "북마크된 문제"{% endif %},
+      question_ids: questionIds,
+      answers: answers
     };
 
     const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
