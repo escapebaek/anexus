@@ -72,3 +72,21 @@
 .form-field .ql-snow.ql-toolbar button:hover .ql-fill,
 .form-field .ql-snow.ql-toolbar button.ql-active .ql-fill { fill: #2b5876; }
 .editor-status { font-size: 12px; color: #6b7a8c; min-height: 18px; margin-top: 4px; }
+
+/* ---------- 휴대폰: 좌우 여백을 줄이고, 버튼 글자가 세로로 쪼개지지 않게 ---------- */
+.form-field textarea { width: 100%; }
+.form-actions .btn { white-space: nowrap; }
+@media (max-width: 767.98px) {
+  .board-container { padding: 1rem 0 2rem; }
+  .board-wrapper { padding: 0 4px; }
+  .form-header { padding: 1rem 1rem; }
+  .form-header .form-title { font-size: 1.25rem; }
+  .form-body { padding: 1rem; }
+  .form-field input[type="text"] { font-size: 1rem; }
+  .notice-field { padding: 10px 12px; }
+  .notice-field .form-check { display: flex; align-items: flex-start; gap: 8px; padding-left: 0; }
+  .notice-field .form-check-input { float: none; margin: 3px 0 0; flex: 0 0 auto; }
+  .form-actions { margin-top: 1.25rem; padding-top: 1rem; }
+  .form-actions .btn { flex: 1 1 0; padding: 0.65rem 0.75rem; font-size: 0.95rem; }
+  .form-actions .btn-lg { flex: 2 1 0; }
+}

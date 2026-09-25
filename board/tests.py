@@ -182,3 +182,14 @@ class BoardAccessTests(TestCase):
         from django.utils import timezone
         res = self.client.get('/')
         self.assertContains(res, f'2024-{timezone.now().year} ANExuS')
+
+
+class BoardFormDefaultsTests(TestCase):
+    def test_new_post_form_is_not_prefilled_with_model_default(self):
+        from django.urls import reverse
+        user = get_user_model().objects.create_user('w', password='x', is_approved=True)
+        self.client.force_login(user)
+        res = self.client.get(reverse('board_create'))
+        self.assertEqual(res.status_code, 200)
+        self.assertNotContains(res, 'value="default"')
+        self.assertContains(res, '<label for="id_title">제목</label>', html=True)
