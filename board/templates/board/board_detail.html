@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load board_extras %}
 
 
 {% block custom_css %}
@@ -61,7 +62,7 @@
 
       <!-- 게시글 내용 -->
       <div class="post-content">
-        {{ board.contents|safe }}
+        {{ board.contents|clean_html }}
       </div>
     </div>
 
@@ -86,8 +87,10 @@
               <button type="button" class="meta-action reply-toggle" data-target="reply-form-{{ comment.id }}">답글 달기</button>
               {% if comment.author == user or user.is_superuser %}
               <a href="{% url 'comment_edit' comment.id %}" class="meta-action">수정</a>
-              <a href="{% url 'comment_delete' comment.id %}" class="meta-action danger"
-                 onclick="return confirm('정말로 삭제하시겠습니까?')">삭제</a>
+              <form action="{% url 'comment_delete' comment.id %}" method="post" class="d-inline"
+                    onsubmit="return confirm('정말로 삭제하시겠습니까?')">
+                {% csrf_token %}<button type="submit" class="meta-action danger">삭제</button>
+              </form>
               {% endif %}
             </div>
 
@@ -106,8 +109,10 @@
                     <span class="comment-time">{{ reply.created_date|date:'Y.m.d H:i' }}</span>
                     {% if reply.author == user or user.is_superuser %}
                     <a href="{% url 'comment_edit' reply.id %}" class="meta-action">수정</a>
-                    <a href="{% url 'comment_delete' reply.id %}" class="meta-action danger"
-                       onclick="return confirm('정말로 삭제하시겠습니까?')">삭제</a>
+                    <form action="{% url 'comment_delete' reply.id %}" method="post" class="d-inline"
+                          onsubmit="return confirm('정말로 삭제하시겠습니까?')">
+                      {% csrf_token %}<button type="submit" class="meta-action danger">삭제</button>
+                    </form>
                     {% endif %}
                   </div>
                 </div>

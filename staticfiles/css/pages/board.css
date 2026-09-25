@@ -32,3 +32,35 @@
 .notice-title:hover {
   color: #2b5876 !important;
 }
+
+/* ---------- 검색 ---------- */
+.board-header { flex-wrap: wrap; gap: 12px; }
+.board-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.board-search { position: relative; display: flex; align-items: center; }
+.board-search input {
+  width: 230px;
+  max-width: 60vw;
+  padding: 9px 64px 9px 14px;
+  border: 1px solid #d3dbe6;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  outline: none;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.board-search input:focus { border-color: #2b5876; box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.12); }
+.board-search input::-webkit-search-cancel-button { display: none; }
+.board-search button, .board-search-clear {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: #6b7a8c;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.board-search button { right: 6px; }
+.board-search-clear { right: 32px; font-size: 0.8rem; }
+.board-search button:hover, .board-search-clear:hover { color: #2b5876; }
+.board-search-result { margin: -4px 4px 12px; color: #6b7a8c; font-size: 0.9rem; }

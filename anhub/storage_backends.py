@@ -1,5 +1,9 @@
+import mimetypes
 import os
 import re
+import uuid
+from urllib.parse import quote
+
 import requests
 import jwt
 import boto3
@@ -24,26 +28,32 @@ class SupabaseStorage(Storage):
         token = jwt.encode(payload, self.supabase_secret, algorithm="HS256")
         return token
 
+    def _object_path(self, name):
+        # 경로 구분자(/)는 두고 나머지(한글·공백 등)는 URL 인코딩
+        return quote(name.replace("\\", "/"), safe="/")
+
     def _save(self, name, content):
         # 파일의 바이너리 데이터를 읽음
         file_data = content.read()
-        url = f"{self.supabase_url}/storage/v1/object/{self.bucket}/{name}"
+        url = f"{self.supabase_url}/storage/v1/object/{self.bucket}/{self._object_path(name)}"
+        content_type = (getattr(content, "content_type", None)
+                        or mimetypes.guess_type(name)[0] or "application/octet-stream")
         headers = {
             "apikey": self.supabase_key,
             "Authorization": f"Bearer {self.supabase_key}",
-            "Content-Type": content.content_type
+            "Content-Type": content_type,
         }
-        response = requests.post(url, headers=headers, data=file_data)
+        response = requests.post(url, headers=headers, data=file_data, timeout=60)
         if response.status_code != 200:
             raise Exception(f"Failed to upload file to Supabase: {response.text}")
         return name
 
     def url(self, name):
-        return f"{self.supabase_url}/storage/v1/object/public/{self.bucket}/{name}"
-    
+        return f"{self.supabase_url}/storage/v1/object/public/{self.bucket}/{self._object_path(name)}"
+
     def exists(self, name):
-        url = f"{self.supabase_url}/storage/v1/object/public/{self.bucket}/{name}"
-        response = requests.head(url)
+        url = f"{self.supabase_url}/storage/v1/object/public/{self.bucket}/{self._object_path(name)}"
+        response = requests.head(url, timeout=15)
         return response.status_code == 200
     
     def size(self, name):
@@ -53,6 +63,17 @@ class SupabaseStorage(Storage):
             'Authorization': f"Bearer {settings.SUPABASE_KEY}"
         })
         return int(response.headers.get('Content-Length', 0))
+
+
+class EditorImageStorage(SupabaseStorage):
+    """게시판 편집기 이미지용: 원래 파일명 대신 board/YYYY/MM/<무작위>.<확장자> 로 저장.
+    (한글·공백·특수문자 파일명이나 같은 이름 충돌로 업로드가 실패하는 것을 막음)"""
+
+    def get_available_name(self, name, max_length=None):
+        ext = os.path.splitext(name)[1].lower()
+        if not re.fullmatch(r"\.[a-z0-9]{1,5}", ext):
+            ext = ""
+        return f"board/{datetime.now():%Y/%m}/{uuid.uuid4().hex}{ext}"
 
 
 class PaperStorage(S3Boto3Storage):
