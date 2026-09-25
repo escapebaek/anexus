@@ -30,6 +30,9 @@ class SurgerySchedule(models.Model):
     hold = models.BooleanField(default=False)
     # 현황판에서 직접 정한 방 안 순서 (0 = 지정 안 함 -> 시간 순으로 뒤에). 스케줄 업데이트 시 초기화.
     position = models.PositiveIntegerField(default=0)
+    # 현황판에서 '진행중'으로 바꾼 시각 (+ duration = 종료 예정) / '완료'로 바꾼 시각. 업데이트 시 유지.
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.date} - {self.room} - {self.surgery_name} ({self.status})"

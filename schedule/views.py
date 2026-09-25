@@ -11,7 +11,7 @@ import subprocess
 from io import BytesIO
 from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice
 from . import table_parser
-from .ai_client import extract_schedules
+from .ai_client import extract_schedules, find_duration_column
 from django.contrib import messages
 from django.db import connection
 from django.urls import reverse
@@ -123,6 +123,7 @@ def build_board(schedules, memos=None):
                 "anesthesiologist": s.anesthesiologist,
                 "anesthesia_type": s.anesthesia_type,
                 "duration": s.duration,
+                "started_at": timezone.localtime(s.started_at).isoformat() if s.started_at else None,
                 "patient_name": s.patient_name,
                 "patient_info": s.patient_info,
                 "status": s.status,
@@ -204,19 +205,37 @@ def move_case_to_room(schedule, room):
     schedule.save(update_fields=["room", "position"])
 
 
+def _now():
+    return timezone.now()
+
+
 def apply_manual_status(schedule, target):
     """현황판에서 수술 상태를 수동으로 변경하고, 같은 방의 다른 수술을 맞춰 조정.
     - 완료: 이 수술을 완료로 하고, 방에 진행 중인 수술이 없으면 바로 다음 예정 수술을
       진행중으로 (다음 수술이 Hold 면 자동 시작하지 않음)
     - 진행중: 같은 방에서 진행 중이던 다른 수술은 예정으로 되돌림
     - 예정: 이 수술만 예정으로
-    수동으로 바꾼 수술은 status_locked 로 표시해 이후 업데이트 파일이 덮어쓰지 않게 함."""
+    수동으로 바꾼 수술은 status_locked 로 표시해 이후 업데이트 파일이 덮어쓰지 않게 함.
+    진행중이 되는 순간을 started_at 으로 기록 (종료 예정 = started_at + duration), 완료 시각은 finished_at."""
     room_cases = _room_schedules(schedule.user, schedule.room)
     changed = []
+    now = _now()
 
     def set_status(case, value):
+        was = status_group(case.status)
         if case.status != value or not case.status_locked:
             case.status, case.status_locked = value, True
+            changed.append(case)
+        group = status_group(value)
+        if group == was and not (group == "ongoing" and case.started_at is None):
+            return
+        if group == "ongoing":
+            case.started_at, case.finished_at = now, None
+        elif group == "finished":
+            case.finished_at = now
+        else:
+            case.started_at = case.finished_at = None
+        if case not in changed:
             changed.append(case)
 
     if target == "ongoing":
@@ -237,8 +256,27 @@ def apply_manual_status(schedule, target):
         set_status(schedule, MANUAL_STATUS["pending"])
 
     for case in changed:
-        case.save(update_fields=["status", "status_locked"])
+        case.save(update_fields=["status", "status_locked", "started_at", "finished_at"])
     return changed
+
+
+MAX_DURATION_MINUTES = 24 * 60
+
+
+def parse_start_time(value, now=None):
+    """현황판에서 입력한 시작 시각 'HH:MM' -> 오늘 그 시각 (현지 시간). 지금보다 늦으면
+    자정 전에 시작한 수술로 보고 전날. 빈 값은 None, 형식이 틀리면 ValueError."""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    match = re.fullmatch(r"(\d{1,2}):(\d{2})", text)
+    if not match or int(match.group(1)) > 23 or int(match.group(2)) > 59:
+        raise ValueError("시작 시각은 13:05 처럼 24시간 형식으로 입력하세요.")
+    now = timezone.localtime(now or _now())
+    started = now.replace(hour=int(match.group(1)), minute=int(match.group(2)), second=0, microsecond=0)
+    if started > now + timedelta(minutes=1):
+        started -= timedelta(days=1)
+    return started
 
 
 @login_required
@@ -261,7 +299,7 @@ def schedule_dashboard(request):
                 if records is not None:
                     # 표 형식 파일: AI 없이 바로 반영
                     count = apply_records(records, request.user, action)
-                    messages.success(request, _table_message(uploaded_file.name, count, report))
+                    messages.success(request, _table_message(uploaded_file.name, count, report, records))
                     return redirect("schedule_dashboard")
                 # 자유 형식 파일(또는 AI 선택): AI 분석은 오래 걸릴 수 있어 백그라운드 작업으로 처리
                 job = ScheduleUploadJob.objects.create(
@@ -299,12 +337,14 @@ def _decode_text(raw):
     raise ValueError("파일의 텍스트 인코딩을 해석할 수 없습니다.")
 
 
-def _table_message(filename, count, report):
+def _table_message(filename, count, report, records=()):
     used = ", ".join(report.get("used") or [])
     unused = ", ".join(report.get("unused") or [])
     message = f"'{filename}' 에서 {count}건을 표 형식으로 읽어 반영했습니다. 읽은 열: {used}."
     if unused:
         message += f" 사용하지 않은 열: {unused}."
+    if records and not any(r.get("duration") for r in records):
+        message += " 예상 수술 시간 열이 없어, 종료 예정 시각을 보려면 수술 메뉴에서 예상 시간을 입력하세요."
     return message
 
 
@@ -323,7 +363,8 @@ def read_upload(uploaded_file, use_table=True):
             workbook = openpyxl.load_workbook(BytesIO(raw), data_only=True)
         except Exception as exc:
             raise ValueError("엑셀 파일을 읽을 수 없습니다. .xls(구형 엑셀)라면 .xlsx 로 다시 저장해서 올려주세요.") from exc
-        records = table_parser.parse_workbook(workbook, uploaded_file.name, today, report) if use_table else None
+        records = table_parser.parse_workbook(workbook, uploaded_file.name, today, report,
+                                              find_duration_column) if use_table else None
         if records:
             return records, "", report
         lines = []
@@ -336,7 +377,8 @@ def read_upload(uploaded_file, use_table=True):
         return None, "\n".join(lines), report
 
     text = _decode_text(raw)
-    records = table_parser.parse_delimited_text(text, uploaded_file.name, today, report) if use_table else None
+    records = table_parser.parse_delimited_text(text, uploaded_file.name, today, report,
+                                                find_duration_column) if use_table else None
     return (records, "", report) if records else (None, text, report)
 
 
@@ -586,7 +628,7 @@ def update_schedules_from_records(records, user, existing_schedules):
             SurgerySchedule.objects.create(user=user, **data)
             continue
         # 파일에 없으면 현황판에서 직접 입력한 값 유지
-        for manual_field in ("anesthesiologist", "anesthesia_type"):
+        for manual_field in ("anesthesiologist", "anesthesia_type", "duration"):
             if not data[manual_field]:
                 data[manual_field] = getattr(schedule, manual_field)
         if schedule.status_locked:
@@ -621,7 +663,8 @@ def update_schedules_from_records(records, user, existing_schedules):
 @user_is_specially_approved
 @require_POST
 def update_schedule(request, schedule_id):
-    """현황판에서 수술 한 건을 수정: 마취의 입력, 당직/Hold 표시, 상태(진행중/완료/예정) 변경.
+    """현황판에서 수술 한 건을 수정: 마취의 입력, 당직/Hold 표시, 상태(진행중/완료/예정) 변경,
+    예상 시간(분)·시작 시각(HH:MM) 수정.
     응답으로 그 방의 최신 상태(build_board 의 room 항목)를 돌려줌."""
     schedule = SurgerySchedule.objects.filter(id=schedule_id, user=request.user).first()
     if schedule is None:
@@ -636,6 +679,18 @@ def update_schedule(request, schedule_id):
         return JsonResponse({"status": "error", "message": "Invalid status"}, status=400)
     if "move" in data and data["move"] not in ("up", "down"):
         return JsonResponse({"status": "error", "message": "Invalid move"}, status=400)
+    if "duration" in data:
+        try:
+            duration = int(data.get("duration") or 0)
+        except (TypeError, ValueError):
+            duration = -1
+        if not 0 <= duration <= MAX_DURATION_MINUTES:
+            return JsonResponse({"status": "error", "message": "예상 시간은 0~1440분으로 입력하세요."}, status=400)
+    if "started_at" in data:
+        try:
+            started_at = parse_start_time(data.get("started_at"))
+        except ValueError as exc:
+            return JsonResponse({"status": "error", "message": str(exc)}, status=400)
     new_room = None
     if "room" in data:
         new_room = re.sub(r"\s+", " ", str(data.get("room") or "")).strip()[:FIELD_MAX_LENGTHS["room"]]
@@ -655,6 +710,12 @@ def update_schedule(request, schedule_id):
             if flag in data:
                 setattr(schedule, flag, bool(data[flag]))
                 fields.append(flag)
+        if "duration" in data:
+            schedule.duration = duration
+            fields.append("duration")
+        if "started_at" in data:
+            schedule.started_at = started_at
+            fields.append("started_at")
         if fields:
             schedule.save(update_fields=fields)
         if "status" in data:

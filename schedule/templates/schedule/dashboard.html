@@ -81,7 +81,7 @@
         <h4 class="side-head"><i class="fas fa-file-upload"></i> 일정 업로드</h4>
         <p class="side-hint">
           <b>표 형식 엑셀/CSV</b>는 열 이름이 병원마다 달라도(수술실·Room·OR, 환자성명·Pt, 집도의사·Surgeon 등) AI 없이 바로 읽고,
-          업로드 후 <b>어떤 열을 읽었는지</b> 알려드립니다. 표로 읽을 수 없는 메모 형식은 AI가 분석합니다.
+          업로드 후 <b>어떤 열을 읽었는지</b> 알려드립니다. <b>예상 수술 시간</b> 열은 이름이 낯설면 AI가 찾아 종료 예정 시각에 씁니다. 표로 읽을 수 없는 메모 형식은 AI가 분석합니다.
           <b>업데이트</b>는 방·순서가 바뀌어도 같은 환자의 메모·마취의·당직/Hold 표시를 유지합니다.
         </p>
         {% if error_message %}
@@ -128,6 +128,12 @@
   <button type="button" class="rm-opt" data-status="ongoing"><i class="fas fa-play-circle"></i> 수술 진행중</button>
   <button type="button" class="rm-opt" data-status="finished"><i class="fas fa-check-circle"></i> 수술 완료</button>
   <button type="button" class="rm-opt" data-status="pending"><i class="far fa-clock"></i> 예정</button>
+  <div class="rm-group">시간</div>
+  <form class="rm-times" id="timeForm" autocomplete="off">
+    <label class="rm-time" id="startField"><span>시작</span><input type="text" id="startInput" inputmode="numeric" maxlength="5" placeholder="09:30" title="24시간 형식 (예: 13:05)" /></label>
+    <label class="rm-time"><span>예상</span><input type="number" id="durationInput" min="0" max="1440" step="5" inputmode="numeric" placeholder="0" /><em>분</em></label>
+    <button type="submit" class="rm-mini" title="시작 시각·예상 시간 저장"><i class="fas fa-check"></i> 저장</button>
+  </form>
   <div class="rm-group">마취 방법</div>
   <div class="rm-anes" id="roomMenuAnes"></div>
   <div class="rm-group">위치</div>
@@ -209,12 +215,19 @@
 
   function caseCells(c, extraTime) {
     const sub = [c.department, c.surgeon, c.duration ? c.duration + "분" : ""].filter(Boolean).join(" · ");
+    // 좁은 화면: 종료 예정은 수술명 아래 줄에 (오른쪽 칸을 차지하지 않게 해 수술명이 덜 잘림)
+    // 마취 방법 배지도 아래 줄로 옮겨 수술명이 칸 너비를 다 쓰게 함
+    const etaLine = compact && c.group === "ongoing";
+    const badge = anesBadge(c.anesthesia_type);
+    const meta = etaLine ? '<span class="eta eta-line"></span>' : (sub ? `<span class="op-sub">${esc(sub)}</span>` : "");
+    const small = compact ? (badge || meta ? `<small class="op-meta">${badge}${meta}</small>` : "")
+      : (sub ? `<small>${esc(sub)}</small>` : "");
     const patient = [c.patient_name, c.patient_info].filter(Boolean).join(" ");
     return `
       <td class="c-time"><span>${esc(c.time_slot) || "-"}</span>${extraTime || ""}</td>
-      <td class="c-op"><div class="op-bar op-${c.group}" title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
+      <td class="c-op"><div class="op-bar op-${c.group}"${c.group === "ongoing" ? ` data-eta="${c.id}"` : ""} title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
         ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
-        ${anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${esc(c.surgery_name) || "-"}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div></div></td>
+        ${compact ? "" : anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${esc(c.surgery_name) || "-"}</span>${small}</div>${c.group === "ongoing" && !etaLine ? '<span class="eta"></span>' : ""}</div></td>
       <td class="c-anes" data-anes="${c.id}" title="클릭해서 마취의 입력">${c.anesthesiologist ? esc(c.anesthesiologist) : '<span class="anes-empty">+ 입력</span>'}</td>
       ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
       <td class="c-memo"><button type="button" class="memo-btn${c.memo ? " has-memo" : ""}" data-memo="${c.id}"
@@ -260,7 +273,7 @@
     for (let i = 0; i < cols; i++) {
       const rooms = BOARD.rooms.slice(i * perCol, (i + 1) * perCol);
       if (!rooms.length) continue;
-      html += `<table class="orb-table">
+      html += `<table class="orb-table${compact ? " is-compact" : ""}">
         <colgroup><col class="w-room"><col class="w-time"><col><col class="w-anes">${compact ? "" : '<col class="w-pt">'}<col class="w-memo"></colgroup>
         <thead><tr><th>방</th><th>시간</th><th>수술명 <small>과 · 집도의</small></th><th>마취의</th>${compact ? "" : "<th>환자</th>"}<th></th></tr></thead>
         ${rooms.map(roomBody).join("")}
@@ -268,6 +281,54 @@
     }
     board.innerHTML = html;
     board.style.setProperty("--cols", cols);
+    updateEtas();
+  }
+
+  // ----- 진행 중 수술: 시작 시각 + 예상 시간 = 종료 예정 -----
+  const hm = (d) => new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
+  const minutesText = (m) => m >= 60 ? `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ""}` : `${m}분`;
+  // 좁은 화면에서는 칸이 작아 '1시간+' 처럼 짧게 (정확한 값은 툴팁)
+  const minutesShort = (m) => compact && m >= 60 ? `${Math.floor(m / 60)}시간+` : minutesText(m);
+
+  function caseTiming(c, now = Date.now()) {
+    if (c.group !== "ongoing" || !c.started_at) return null;
+    const start = new Date(c.started_at);
+    const elapsed = Math.max(0, Math.floor((now - start) / 60000));
+    if (!c.duration) return { start, elapsed };
+    const end = new Date(start.getTime() + c.duration * 60000);
+    return { start, elapsed, end, over: elapsed - c.duration, ratio: Math.min(1, elapsed / c.duration) };
+  }
+
+  function updateEtas() {
+    const now = Date.now();
+    document.querySelectorAll("[data-eta]").forEach(bar => {
+      const c = findCase(bar.dataset.eta), chip = bar.querySelector(".eta");
+      if (!c || !chip) return;
+      const t = caseTiming(c, now);
+      bar.classList.toggle("has-eta", !!(t && t.end));
+      bar.classList.toggle("is-over", !!(t && t.end && t.over > 0));
+      bar.style.setProperty("--p", t && t.end ? (t.ratio * 100).toFixed(1) + "%" : "0%");
+      if (chip.classList.contains("eta-line")) {
+        chip.textContent = !t ? "시작 시각 없음"
+          : !t.end ? `${minutesText(t.elapsed)} 경과 · ${hm(t.start)} 시작`
+          : t.over > 0 ? `+${minutesText(t.over)} 초과 (${hm(t.end)})`
+          : `~${hm(t.end)} 종료 예정`;
+        return;
+      }
+      if (!t) {
+        chip.innerHTML = '<b>—</b><small>시작 시각 없음</small>';
+        chip.title = "수술 메뉴에서 시작 시각을 입력하면 종료 예정 시각이 표시됩니다";
+      } else if (!t.end) {
+        chip.innerHTML = `<b>${minutesShort(t.elapsed)}</b><small>${hm(t.start)} 시작</small>`;
+        chip.title = `${hm(t.start)} 시작 · ${minutesText(t.elapsed)} 경과\n예상 시간이 없습니다 (수술 메뉴에서 입력)`;
+      } else if (t.over > 0) {
+        chip.innerHTML = `<b>+${minutesShort(t.over)}</b><small>${hm(t.end)} 예정</small>`;
+        chip.title = `${hm(t.start)} 시작 · 예상 ${minutesText(c.duration)}\n종료 예정 ${hm(t.end)} · ${minutesText(t.over)} 초과`;
+      } else {
+        chip.innerHTML = `<b>~${hm(t.end)}</b><small>종료 예정</small>`;
+        chip.title = `${hm(t.start)} 시작 · 예상 ${minutesText(c.duration)}\n종료 예정 ${hm(t.end)} (${minutesText(c.duration - t.elapsed)} 남음)`;
+      }
+    });
   }
 
   function recalcCounts() {
@@ -342,6 +403,10 @@
     document.getElementById("roomMenuAnes").innerHTML = ANES_TYPES.map(([code, label]) =>
       `<button type="button" class="rm-at${c.anesthesia_type === code ? " is-on" : ""}" data-anes-type="${code}" title="${esc(label)}"><span class="at at-${code}">${code}</span></button>`).join("") +
       (c.anesthesia_type ? '<button type="button" class="rm-at rm-at-clear" data-anes-type="" title="마취 방법 지우기">지움</button>' : "");
+    const startInput = document.getElementById("startInput");
+    startInput.value = c.started_at ? hm(new Date(c.started_at)) : "";
+    document.getElementById("startField").hidden = c.group !== "ongoing";
+    document.getElementById("durationInput").value = c.duration || "";
     const index = r.cases.findIndex(x => String(x.id) === String(caseId));
     menu.querySelector('[data-move="up"]').disabled = index <= 0;
     menu.querySelector('[data-move="down"]').disabled = index >= r.cases.length - 1;
@@ -434,6 +499,21 @@
     updateCase(id, { room });
   });
 
+  document.getElementById("timeForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const c = findCase(menuCaseId);
+    if (!c) return;
+    const patch = {};
+    const duration = parseInt(document.getElementById("durationInput").value || "0", 10);
+    if (!Number.isNaN(duration) && duration !== (c.duration || 0)) patch.duration = duration;
+    let start = document.getElementById("startInput").value.trim().replace(/[.;]/, ":");
+    if (/^\d{3,4}$/.test(start)) start = start.slice(0, -2) + ":" + start.slice(-2);   // 930 -> 9:30
+    if (/^\d:/.test(start)) start = "0" + start;
+    if (c.group === "ongoing" && start !== (c.started_at ? hm(new Date(c.started_at)) : "")) patch.started_at = start;
+    closeRoomMenu();
+    if (Object.keys(patch).length) updateCase(c.id, patch);
+  });
+
   document.getElementById("holdList").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-release]");
     if (btn) updateCase(btn.dataset.release, { hold: false });
@@ -515,6 +595,7 @@
   renderSide();
   tickClock();
   setInterval(tickClock, 1000);
+  setInterval(updateEtas, 20000);
 
   // ===================== 메모 =====================
   let currentScheduleId = null;

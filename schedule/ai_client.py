@@ -10,6 +10,7 @@ model or an exhausted free quota doesn't fail the upload.
   files; bigger tables are normally handled by table_parser without AI.
 - gemini: see gemini_client.py.
 """
+import hashlib
 import json
 import logging
 import re
@@ -190,3 +191,94 @@ def extract_schedules(source_text, filename=""):
             errors.append(str(exc))
     raise ScheduleExtractionError(
         (" / ".join(errors) or "AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.") + _missing_key_hint())
+
+
+# ---------- 작은 질문: 예상 수술 시간 열 찾기 ----------
+# 표 형식 업로드에서 열 이름 규칙으로 예상 시간 열을 못 찾았을 때만, 남은 열 이름과 시간처럼 생긴
+# 예시 값만 보내 묻는다 (환자 정보는 보내지 않음). 업로드 요청 안에서 기다리므로 짧게 끝낸다.
+COLUMN_QUESTION_BUDGET_SECONDS = 12
+COLUMN_HINT_CACHE_SECONDS = 60 * 60 * 24 * 30
+
+COLUMN_QUESTION = (
+    "You help read hospital operating-room schedule tables. Given the columns a program could not "
+    "identify (header text plus a few sample values; '(글자)' means a non-numeric text value), decide "
+    "which single column holds the EXPECTED/PLANNED length of each surgery (e.g. 90, '1:30', '2시간'), "
+    "or, if there is none, which column holds the PLANNED END time of each surgery (e.g. '11:30'). "
+    "Do not pick start times, dates, ages, room numbers, sequence numbers or registration numbers. "
+    'Respond with ONLY JSON: {"index": <column index or null>, "kind": "duration" | "end_time" | null}.'
+)
+
+
+def _ask_gemini_json(system, prompt, timeout):
+    response = requests.post(
+        gemini_client.GEMINI_ENDPOINT.format(model=settings.GEMINI_MODEL),
+        params={"key": settings.GEMINI_API_KEY},
+        json={
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"responseMimeType": "application/json", "temperature": 0},
+        },
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+
+def _ask_openai_compatible_json(name, system, prompt, timeout):
+    conf = OPENAI_COMPATIBLE[name]
+    models = _models(name)
+    if not models:
+        raise ValueError("no model")
+    response = requests.post(
+        f"{conf['base_url']}/chat/completions",
+        headers={"Authorization": f"Bearer {getattr(settings, conf['key_setting'])}", "Content-Type": "application/json"},
+        json={"model": models[0], "temperature": 0, "response_format": {"type": "json_object"},
+              "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def ask_json(system, prompt, budget=COLUMN_QUESTION_BUDGET_SECONDS):
+    """짧은 질문 하나를 설정된 AI 에 차례로 묻고 JSON 객체를 돌려줌. 모두 실패하면 None."""
+    deadline = time.monotonic() + budget
+    for name in configured_providers():
+        remaining = deadline - time.monotonic()
+        if remaining < 2:
+            break
+        try:
+            if name == "gemini":
+                text = _ask_gemini_json(system, prompt, remaining)
+            else:
+                text = _ask_openai_compatible_json(name, system, prompt, remaining)
+            text = (text or "").strip()
+            fenced = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
+            parsed = json.loads(fenced.group(1) if fenced else text)
+            if isinstance(parsed, dict):
+                return parsed
+        except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as exc:
+            logger.warning("AI column question via %s failed: %s", name, exc)
+    return None
+
+
+def find_duration_column(candidates):
+    """candidates: [{"index", "header", "samples"}] -> (index, "duration" | "end_time") or None.
+    같은 머리글 구성의 답은 기억해 두어, 같은 병원 양식을 다시 올릴 때는 AI 를 부르지 않음."""
+    from django.core.cache import cache
+
+    key = "schedule:duration-col:" + json.dumps([c["header"] for c in candidates], ensure_ascii=False)
+    key = key if len(key) < 200 else "schedule:duration-col:" + hashlib.sha1(key.encode()).hexdigest()
+    cached = cache.get(key)
+    if cached is not None:
+        return tuple(cached) if cached else None
+    if not configured_providers():
+        return None
+    lines = [f'{c["index"]}: "{c["header"]}" 예시 {c["samples"]}' for c in candidates]
+    answer = ask_json(COLUMN_QUESTION, "Columns:\n" + "\n".join(lines))
+    if answer is None:
+        return None  # 실패는 기억하지 않음 (다음 업로드 때 다시 시도)
+    index, kind = answer.get("index"), answer.get("kind")
+    result = (index, kind) if isinstance(index, int) and kind in ("duration", "end_time") else ()
+    cache.set(key, list(result), COLUMN_HINT_CACHE_SECONDS)
+    return result or None

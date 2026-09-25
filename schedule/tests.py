@@ -9,11 +9,25 @@ import json
 from .models import SurgerySchedule, PatientMemo
 from .views import build_board, status_group, update_schedules_from_records
 
+from unittest import mock as _mock
+
+# 표 업로드 중 '예상 시간 열 찾기' AI 호출은 기본으로 끔 (서버 환경에 실제 키가 있어도 테스트가 밖으로 나가지 않게)
+_no_ai_columns = _mock.patch('schedule.views.find_duration_column', return_value=None)
+
+
+def setUpModule():
+    _no_ai_columns.start()
+
+
+def tearDownModule():
+    _no_ai_columns.stop()
+
 
 def make(user, room, time_slot, status='예정', name='환자', surgery='Op', info='12345678 (M/40)', **extra):
+    extra.setdefault('duration', 60)
     return SurgerySchedule.objects.create(
         user=user, date=date(2026, 8, 27), room=room, time_slot=time_slot, surgery_name=surgery,
-        department='GS', surgeon='김의사', duration=60, patient_name=name, patient_info=info,
+        department='GS', surgeon='김의사', patient_name=name, patient_info=info,
         status=status, **extra,
     )
 
@@ -738,3 +752,174 @@ class ManualRoomOrderTests(TestCase):
         for payload in ({'room': '  '}, {'move': 'sideways'}):
             res = self.client.post(reverse('schedule_update', args=[self.a.id]), json.dumps(payload), content_type='application/json')
             self.assertEqual(res.status_code, 400)
+
+
+class ExpectedEndTests(TestCase):
+    """진행 중 수술의 종료 예정 = 진행중으로 바꾼 시각 + 예상 시간."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+        self.a = make(self.user, '101', '08:00', name='A', duration=120)
+        self.b = make(self.user, '101', '10:00', name='B', duration=90)
+
+    def post(self, case, **data):
+        return self.client.post(reverse('schedule_update', args=[case.id]), json.dumps(data), content_type='application/json')
+
+    def get(self, case):
+        return SurgerySchedule.objects.get(id=case.id)
+
+    def test_start_finish_and_auto_start_record_times(self):
+        from datetime import datetime, timezone as dt_tz
+        t1 = datetime(2026, 8, 27, 0, 5, tzinfo=dt_tz.utc)     # 09:05 KST
+        with _mock.patch('schedule.views._now', return_value=t1):
+            room = self.post(self.a, status='ongoing').json()['room']
+        self.assertEqual(self.get(self.a).started_at, t1)
+        self.assertEqual(room['cases'][0]['started_at'], '2026-08-27T09:05:00+09:00')
+        t2 = datetime(2026, 8, 27, 2, 0, tzinfo=dt_tz.utc)
+        with _mock.patch('schedule.views._now', return_value=t2):
+            self.post(self.a, status='finished')
+        a, b = self.get(self.a), self.get(self.b)
+        self.assertEqual((a.started_at, a.finished_at), (t1, t2))
+        self.assertEqual((b.status, b.started_at), ('진행중', t2))    # 다음 수술 자동 시작 시각
+        self.post(self.b, status='pending')
+        self.assertIsNone(self.get(self.b).started_at)
+
+    def test_restarting_other_case_clears_previous_start(self):
+        self.post(self.a, status='ongoing')
+        self.post(self.b, status='ongoing')
+        self.assertIsNone(self.get(self.a).started_at)
+        self.assertIsNotNone(self.get(self.b).started_at)
+
+    def test_edit_duration_and_start_time(self):
+        from datetime import datetime, timezone as dt_tz
+        self.post(self.a, status='ongoing')
+        now = datetime(2026, 8, 27, 1, 0, tzinfo=dt_tz.utc)    # 10:00 KST
+        with _mock.patch('schedule.views._now', return_value=now):
+            res = self.post(self.a, duration=150, started_at='08:40')
+        self.assertEqual(res.status_code, 200)
+        a = self.get(self.a)
+        self.assertEqual((a.duration, a.started_at), (150, datetime(2026, 8, 26, 23, 40, tzinfo=dt_tz.utc)))
+        # 지금보다 늦은 시각 -> 자정 전에 시작한 수술 (전날)
+        with _mock.patch('schedule.views._now', return_value=now):
+            self.post(self.a, started_at='23:30')
+        self.assertEqual(self.get(self.a).started_at, datetime(2026, 8, 26, 14, 30, tzinfo=dt_tz.utc))
+        for bad in ({'duration': -5}, {'duration': 5000}, {'duration': 'abc'}, {'started_at': '25:00'}, {'started_at': '9시'}):
+            with self.subTest(bad):
+                self.assertEqual(self.post(self.a, **bad).status_code, 400)
+        self.assertEqual(self.get(self.a).duration, 150)
+
+    def test_update_keeps_start_time_and_manual_duration(self):
+        self.post(self.a, status='ongoing')
+        self.post(self.b, duration=45)
+        started = self.get(self.a).started_at
+        records = [rec('101', '08:00', 'A', 'Op', '12345678 (M/40)', duration=100),
+                   rec('101', '10:00', 'B', 'Op', '12345678 (M/40)', duration=0)]
+        update_schedules_from_records(records, self.user, list(SurgerySchedule.objects.filter(user=self.user)))
+        a, b = self.get(self.a), self.get(self.b)
+        self.assertEqual((a.started_at, a.duration), (started, 100))   # 파일에 값이 있으면 파일 기준
+        self.assertEqual(b.duration, 45)                                 # 파일이 비었으면 직접 입력한 값 유지
+
+    def test_dashboard_has_eta_hooks(self):
+        self.post(self.a, status='ongoing')
+        res = self.client.get(reverse('schedule_dashboard'))
+        self.assertContains(res, 'id="timeForm"')
+        self.assertContains(res, '"started_at": "20')
+
+
+class DurationColumnTests(TestCase):
+    """예상 시간 열: 규칙 → 종료 시각으로 계산 → (그래도 없으면) AI 에 열만 물어봄."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_clock_parsing(self):
+        from .table_parser import clock_minutes, duration_from_times
+        for text, minutes in [('09:30', 570), ('8A', 480), ('1:30P', 810), ('2 PM', 840), ('오후 2시', 840),
+                              ('9시 30분', 570), ('12A', 0), ('3', None), ('MD', None), ('25:00', None)]:
+            with self.subTest(text):
+                self.assertEqual(clock_minutes(text), minutes)
+        self.assertEqual(duration_from_times('23:00', '01:30'), 150)
+        self.assertEqual(duration_from_times('MD', '11:00'), 0)
+
+    def test_end_time_column_gives_duration(self):
+        from .table_parser import parse_table_rows
+        report = {}
+        recs = parse_table_rows([['방', '시작시간', '종료예정', '수술명', '환자명'],
+                                 ['1', '08:30', '10:00', 'TKRA', 'A'], ['1', '1P', '3:15P', 'THRA', 'B']], report=report)
+        self.assertEqual([r['duration'] for r in recs], [90, 135])
+        self.assertIn('종료예정→종료시각', report['used'])
+
+    def test_ai_found_column_is_used_and_checked(self):
+        from .table_parser import parse_table_rows
+        rows = [['방', '시간', '수술명', '환자명', 'OP예정', '비고2'],
+                ['1', '08:00', 'TKRA', '홍길동', '90', '김'], ['1', '10:00', 'THRA', '김철수', '2시간', '이']]
+        seen = []
+
+        def resolver(candidates):
+            seen.extend(candidates)
+            return (4, 'duration')
+        report = {}
+        recs = parse_table_rows(rows, report=report, resolve_duration=resolver)
+        self.assertEqual([r['duration'] for r in recs], [90, 120])
+        self.assertIn('OP예정→소요시간(AI)', report['used'])
+        # AI 에는 모르는 열의 이름과 시간처럼 생긴 값만 (환자 이름 등 글자는 가림)
+        self.assertEqual(seen, [{'index': 4, 'header': 'OP예정', 'samples': ['90', '2시간']},
+                                {'index': 5, 'header': '비고2', 'samples': ['(글자)', '(글자)']}])
+        # 엉뚱한 열을 고르면 값 검증에서 걸러 예상 시간 없음
+        recs = parse_table_rows(rows, resolve_duration=lambda c: (5, 'duration'))
+        self.assertEqual([r['duration'] for r in recs], [0, 0])
+        # AI 오류는 업로드를 막지 않음
+        recs = parse_table_rows(rows, resolve_duration=_mock.Mock(side_effect=RuntimeError('down')))
+        self.assertEqual(len(recs), 2)
+
+    def test_rule_found_column_skips_ai(self):
+        from .table_parser import parse_table_rows
+        resolver = _mock.Mock()
+        parse_table_rows([['방', '수술명', '환자명', '소요시간'], ['1', 'Op', 'A', '60']], resolve_duration=resolver)
+        resolver.assert_not_called()
+
+    @_mock.patch('schedule.ai_client.configured_providers', return_value=['groq'])
+    def test_find_duration_column_asks_once_per_layout(self, _providers):
+        from .ai_client import find_duration_column
+        cands = [{'index': 4, 'header': 'OP예정', 'samples': ['90']}]
+        with _mock.patch('schedule.ai_client.ask_json', return_value={'index': 4, 'kind': 'duration'}) as ask:
+            self.assertEqual(find_duration_column(cands), (4, 'duration'))
+            self.assertEqual(find_duration_column(cands), (4, 'duration'))
+        ask.assert_called_once()
+        self.assertIn('OP예정', ask.call_args[0][1])
+        with _mock.patch('schedule.ai_client.ask_json', return_value={'index': None, 'kind': None}):
+            self.assertIsNone(find_duration_column([{'index': 1, 'header': 'X', 'samples': []}]))
+        with _mock.patch('schedule.ai_client.ask_json', return_value=None) as ask:   # 실패는 기억하지 않음
+            find_duration_column([{'index': 2, 'header': 'Y', 'samples': []}])
+            find_duration_column([{'index': 2, 'header': 'Y', 'samples': []}])
+        self.assertEqual(ask.call_count, 2)
+
+    def test_no_ai_keys_means_no_call(self):
+        from .ai_client import find_duration_column
+        with _mock.patch('schedule.ai_client.configured_providers', return_value=[]), \
+                _mock.patch('schedule.ai_client.ask_json') as ask:
+            self.assertIsNone(find_duration_column([{'index': 1, 'header': 'X', 'samples': []}]))
+        ask.assert_not_called()
+
+    def test_upload_uses_ai_column_and_says_so(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from . import ai_client
+        user = get_user_model().objects.create_user('doc', password='x')
+        user.is_specially_approved = True
+        user.save()
+        self.client.force_login(user)
+        csv_bytes = '방,시간,수술명,환자명,OP예정\n1,08:00,TKRA,홍길동,90\n'.encode()
+        with _mock.patch('schedule.views.find_duration_column', wraps=ai_client.find_duration_column), \
+                _mock.patch('schedule.ai_client.configured_providers', return_value=['groq']), \
+                _mock.patch('schedule.ai_client.ask_json', return_value={'index': 4, 'kind': 'duration'}):
+            res = self.client.post(reverse('schedule_dashboard'), {'file': SimpleUploadedFile('s.csv', csv_bytes)}, follow=True)
+        self.assertEqual(SurgerySchedule.objects.get(user=user).duration, 90)
+        self.assertIn('OP예정→소요시간(AI)', str(list(res.context['messages'])[0]))
+        # 예상 시간을 전혀 못 찾으면 직접 입력 안내
+        res = self.client.post(reverse('schedule_dashboard'),
+                               {'file': SimpleUploadedFile('s.csv', '방,시간,수술명,환자명\n1,08:00,TKRA,홍길동\n'.encode())}, follow=True)
+        self.assertIn('수술 메뉴에서 예상 시간을 입력', str(list(res.context['messages'])[0]))
