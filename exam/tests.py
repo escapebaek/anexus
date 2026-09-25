@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .grading import answer_index
+from .grading import answer_index, split_option_label
 from .models import Bookmark, Category, Exam, ExamResult, Question
 
 
@@ -26,6 +26,20 @@ class AnswerIndexTests(TestCase):
         }
         for text, expected in cases.items():
             self.assertEqual(answer_index(text), expected, text)
+
+    def test_option_label_is_split_only_when_it_matches_the_position(self):
+        cases = [
+            (('㉮ 도파민', 1), ('㉮', '도파민')),
+            (('가. substance P', 1), ('가', 'substance P')),
+            (('㉯', 2), ('㉯', '')),
+            (('1. 보기', 1), ('1', '보기')),
+            (('가. Marsh', 2), ('B', '가. Marsh')),     # 자리에 맞지 않는 기호는 그대로 둔다
+            (('1 L', 1), ('A', '1 L')),                 # 숫자·영문자는 '.' ')' 가 있을 때만 기호
+            (('A – UA', 1), ('A', 'A – UA')),
+            (('Etomidate', 3), ('C', 'Etomidate')),
+        ]
+        for args, expected in cases:
+            self.assertEqual(split_option_label(*args), expected, args)
 
 
 class ExamViewTests(TestCase):
@@ -92,6 +106,35 @@ class ExamViewTests(TestCase):
         self.assertNotIn(f'id="option5_{q.id}"', html)
         self.assertNotIn('data-correct-option', html)
 
+    def test_quiz_page_layout(self):
+        html = self.client.get(reverse('question_list', args=[self.exam.id])).content.decode()
+        # 선택지 기호는 한 번만: '가. 보기1' → 기호 '가' + 내용 '보기1'
+        self.assertIn('<span class="qz-option-label">가</span>', html)
+        self.assertIn('<span class="qz-option-text">보기1</span>', html)
+        # 연습 모드 즉시 채점용 정답 번호, 정답이 없는 문제는 비워 둔다
+        self.assertIn(f'id="q_{self.q1.id}" class="qz-card"', html)
+        self.assertRegex(html, rf'data-question-id="{self.q1.id}"[^>]*data-answer="3"')
+        self.assertRegex(html, rf'data-question-id="{self.q3.id}"[^>]*data-answer=""')
+        # 제출 버튼·번호판은 항상 있다 (타이머를 켜지 않아도 제출 가능)
+        self.assertIn('id="qzSubmit"', html)
+        self.assertEqual(html.count('<button type="button" data-target="'), 4)
+        self.assertIn('data-default-mode="exam"', html)
+
+    def test_bookmark_and_category_pages_use_practice_mode(self):
+        Bookmark.objects.create(user=self.user, question=self.q1)
+        html = self.client.get(reverse('bookmarked_questions')).content.decode()
+        self.assertIn('data-default-mode="practice"', html)
+        self.assertIn('class="qz-filter"', html)
+        self.assertEqual(html.count('class="qz-card"'), 1)
+        html = self.client.get(reverse('category_questions', args=[self.cat.name])).content.decode()
+        self.assertIn('data-default-mode="practice"', html)
+        self.assertIn('qz-chip-exam', html)   # 여러 회차가 섞이므로 회차 이름을 보여준다
+
+    def test_empty_bookmarks_page(self):
+        html = self.client.get(reverse('bookmarked_questions')).content.decode()
+        self.assertIn('아직 북마크한 문제가 없습니다', html)
+        self.assertNotIn('id="qzSubmit"', html)
+
     # --- 특별 시험 권한 ---
     def test_special_questions_hidden_from_normal_users(self):
         html = self.client.get(reverse('category_questions', args=[self.cat.name])).content.decode()
@@ -144,3 +187,17 @@ class BackfillMigrationTests(TestCase):
         self.assertNotIn('question_id', details[2])
         self.assertEqual(details[3]['question_id'], 12345)
         self.assertNotEqual(same_a.id, same_b.id)
+
+    def test_second_pass_ignores_spacing_changes(self):
+        user = get_user_model().objects.create_user('v', 'v@x.com', 'pw')
+        exam = Exam.objects.create(title='C')
+        q = make_question(exam, 1, '가', text='문 1. 일측폐환기를 이용한 폐절제술에서\r\n적절한 수액관리 전략으로 옳은 것은?')
+        result = ExamResult.objects.create(
+            user=user, exam=exam, num_correct=0, num_incorrect=0, num_unanswered=0,
+            detailed_results=[{'question': '문1. 일측폐환기를 이용한 폐절제술에서 적절한 수액관리 전략으로 옳은 것은?', 'result': 'correct'},
+                              {'question': '짧음', 'result': 'correct'}])
+        migration = importlib.import_module('exam.migrations.0014_backfill_result_question_ids_ignore_spaces')
+        migration.backfill(global_apps, None)
+        details = ExamResult.objects.get(id=result.id).detailed_results
+        self.assertEqual(details[0]['question_id'], q.id)
+        self.assertNotIn('question_id', details[1])   # 너무 짧은 지문은 엉뚱한 문제와 맞추지 않는다

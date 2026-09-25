@@ -1,0 +1,444 @@
+/* =========================================================
+   문제 풀이 화면 (exam/quiz_unified.html)
+   사이트 공통 색(남색 #2b5876 → 보라 #4e4376)에 맞춘 촘촘한 레이아웃
+   ========================================================= */
+.qz-page {
+  --qz-navy: #2b5876;
+  --qz-purple: #4e4376;
+  --qz-grad: linear-gradient(135deg, #2b5876, #4e4376);
+  --qz-ink: #22313f;
+  --qz-muted: #6b7a8c;
+  --qz-line: #dfe5ee;
+  --qz-soft: #f3f6fa;
+  --qz-card: #ffffff;
+  --qz-right: #2e7d67;
+  --qz-right-bg: #e7f4ef;
+  --qz-wrong: #b8474a;
+  --qz-wrong-bg: #fbecec;
+  --qz-flag: #c28a1e;
+  --qz-top: 70px;
+  --qz-bar-h: 56px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 20px 16px 64px;
+  color: var(--qz-ink);
+}
+
+/* ---------- 머리말 ---------- */
+.qz-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 24px;
+  background: var(--qz-grad);
+  color: #fff;
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 20px rgba(43, 88, 118, 0.18);
+}
+.qz-kicker { margin: 0 0 2px; font-size: 0.78rem; letter-spacing: 0.04em; opacity: 0.75; }
+.qz-title { margin: 0; font-size: 1.45rem; font-weight: 700; line-height: 1.25; color: #fff; }
+.qz-sub { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.8; }
+.qz-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+
+.qz-seg {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  padding: 3px;
+}
+.qz-seg button {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.qz-seg button i { font-size: 0.72rem; margin-right: 3px; }
+.qz-seg button.is-on { background: #fff; color: var(--qz-navy); }
+.qz-seg button:focus { outline: none; }
+.qz-seg button:focus-visible, .qz-timer-setup .qz-btn:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+
+.qz-timer-setup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  padding: 3px 3px 3px 10px;
+  font-size: 0.82rem;
+}
+.qz-timer-setup input {
+  width: 52px;
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 6px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--qz-navy);
+}
+.qz-timer-setup .qz-btn { color: #fff; border-color: rgba(255, 255, 255, 0.4); padding: 5px 10px; }
+.qz-timer-setup.is-running { opacity: 0.55; }
+
+/* ---------- 버튼 ---------- */
+.qz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.qz-btn:disabled { opacity: 0.4; cursor: default; }
+.qz-btn-primary { background: var(--qz-grad); color: #fff; }
+.qz-btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.qz-btn-ghost { background: transparent; color: var(--qz-navy); border-color: var(--qz-line); }
+.qz-btn-ghost:hover:not(:disabled) { background: var(--qz-soft); }
+.qz-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: #b3bdc9;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.qz-icon-btn:hover { background: var(--qz-soft); color: var(--qz-muted); }
+.qz-link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--qz-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.qz-link-btn:hover, .qz-link-btn.is-on { color: var(--qz-navy); background: var(--qz-soft); }
+
+/* ---------- 북마크 필터 (접이식) ---------- */
+.qz-filter { margin-bottom: 14px; background: var(--qz-card); border: 1px solid var(--qz-line); border-radius: 12px; }
+.qz-filter > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--qz-navy);
+  cursor: pointer;
+  list-style: none;
+}
+.qz-filter > summary::-webkit-details-marker { display: none; }
+.qz-filter > summary::after { content: "\f078"; font-family: "Font Awesome 5 Free"; font-weight: 900; font-size: 0.7rem; margin-left: auto; color: var(--qz-muted); transition: transform 0.2s; }
+.qz-filter[open] > summary::after { transform: rotate(180deg); }
+.qz-filter-count { font-size: 0.78rem; color: var(--qz-muted); font-weight: 500; }
+.qz-filter .filter-panel { margin: 0 !important; border-radius: 0 0 12px 12px; box-shadow: none; }
+
+/* ---------- 고정 막대 ---------- */
+.qz-bar {
+  position: sticky;
+  top: var(--qz-top);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--qz-line);
+  border-radius: 12px;
+  padding: 8px 10px 8px 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(34, 49, 63, 0.06);
+}
+.qz-progress { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.qz-progress-text { font-size: 0.85rem; color: var(--qz-muted); white-space: nowrap; }
+.qz-progress-text b { color: var(--qz-ink); font-size: 0.95rem; }
+.qz-progress-track { flex: 1; height: 6px; background: var(--qz-soft); border-radius: 99px; overflow: hidden; }
+.qz-progress-fill { height: 100%; width: 0; background: var(--qz-grad); border-radius: 99px; transition: width 0.25s; }
+.qz-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--qz-navy);
+  padding-left: 4px;
+}
+.qz-timer[hidden] { display: none; }
+.qz-timer.is-low { color: var(--qz-wrong); }
+.qz-timer .qz-icon-btn { width: 28px; height: 28px; color: var(--qz-muted); }
+
+/* ---------- 본문 + 번호판 ---------- */
+.qz-layout { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 18px; align-items: start; }
+.qz-main { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------- 문제 카드 ---------- */
+.qz-card {
+  background: var(--qz-card);
+  border: 1px solid var(--qz-line);
+  border-radius: 14px;
+  padding: 16px 20px 14px;
+  scroll-margin-top: calc(var(--qz-top) + var(--qz-bar-h) + 24px);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.qz-page:not(.is-single) .qz-card.is-current { border-color: #b9c6d8; box-shadow: 0 4px 16px rgba(43, 88, 118, 0.08); }
+.qz-page.is-single .qz-card { display: none; }
+.qz-page.is-single .qz-card.is-current { display: block; }
+
+.qz-card-head { display: flex; align-items: center; gap: 6px 8px; margin-bottom: 10px; min-width: 0; }
+.qz-card-head .qz-num, .qz-card-tools { flex: none; }
+.qz-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: var(--qz-grad);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.qz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--qz-navy);
+  background: var(--qz-soft);
+  border-radius: 99px;
+  padding: 3px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qz-chip i { font-size: 0.68rem; opacity: 0.7; }
+.qz-chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.qz-chip-exam { color: var(--qz-purple); }
+.qz-card-tools { margin-left: auto; display: inline-flex; gap: 2px; }
+.qz-flag.is-on { color: var(--qz-flag); background: #fbf3e2; }
+.qz-star.is-on { color: #e2b33c; }
+
+.qz-question {
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.65;
+  color: var(--qz-ink);
+  margin-bottom: 12px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.qz-question img { max-width: 100%; height: auto; }
+.qz-media { margin: 0 0 12px; text-align: center; }
+.qz-media img, .qz-panel img { max-width: 100%; max-height: 60vh; height: auto; border-radius: 8px; border: 1px solid var(--qz-line); }
+.qz-video { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; }
+.qz-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 8px; }
+.qz-panel.qz-video[hidden] { display: none; }
+
+/* 선택지 */
+.qz-options { display: flex; flex-direction: column; gap: 6px; }
+.qz-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--qz-line);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  transition: background 0.12s, border-color 0.12s;
+}
+.qz-option:hover { background: #f8fafc; border-color: #c8d3e1; }
+.qz-option input { position: absolute; opacity: 0; pointer-events: none; }
+.qz-option input:focus-visible + .qz-option-label { outline: 2px solid var(--qz-navy); outline-offset: 2px; }
+.qz-option-label {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--qz-soft);
+  color: var(--qz-navy);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.qz-option-text { flex: 1; min-width: 0; padding-top: 1px; overflow-wrap: anywhere; }
+.qz-option.is-selected { border-color: var(--qz-navy); background: #eef3f9; }
+.qz-option.is-selected .qz-option-label { background: var(--qz-grad); color: #fff; }
+.qz-option.is-correct { border-color: var(--qz-right); background: var(--qz-right-bg); }
+.qz-option.is-correct .qz-option-label { background: var(--qz-right); color: #fff; }
+.qz-option.is-wrong { border-color: var(--qz-wrong); background: var(--qz-wrong-bg); }
+.qz-option.is-wrong .qz-option-label { background: var(--qz-wrong); color: #fff; }
+
+.qz-feedback {
+  margin-top: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 8px;
+}
+.qz-feedback.is-right { color: var(--qz-right); background: var(--qz-right-bg); }
+.qz-feedback.is-wrong { color: var(--qz-wrong); background: var(--qz-wrong-bg); }
+.qz-feedback.is-unknown { color: var(--qz-muted); background: var(--qz-soft); }
+
+/* 정답·해설 */
+.qz-reveal-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.qz-page.is-exam-mode .qz-reveal-actions,
+.qz-page.is-exam-mode .qz-panel { display: none !important; }
+.qz-panel {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--qz-soft);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.qz-panel[hidden] { display: none; }
+.qz-panel-title { font-weight: 700; color: var(--qz-navy); margin-right: 6px; }
+.qz-panel-explanation { text-align: left; }
+.qz-panel-explanation > :first-child { margin-top: 0; }
+.qz-panel-explanation > :last-child { margin-bottom: 0; }
+
+/* 이전/다음 (한 문제씩 보기에서만) */
+.qz-step { display: none; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--qz-line); }
+.qz-page.is-single .qz-step { display: flex; }
+.qz-step-pos { font-size: 0.82rem; color: var(--qz-muted); font-variant-numeric: tabular-nums; }
+
+/* ---------- 번호판 ---------- */
+.qz-nav {
+  position: sticky;
+  top: calc(var(--qz-top) + var(--qz-bar-h) + 28px);
+  background: var(--qz-card);
+  border: 1px solid var(--qz-line);
+  border-radius: 14px;
+  padding: 12px;
+  max-height: calc(100vh - var(--qz-top) - var(--qz-bar-h) - 48px);
+  overflow-y: auto;
+}
+.qz-nav-head { display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: var(--qz-ink); margin-bottom: 10px; }
+.qz-nav-close { display: none; }
+.qz-nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.qz-nav-grid button {
+  position: relative;
+  height: 32px;
+  border-radius: 7px;
+  border: 1px solid var(--qz-line);
+  background: #fff;
+  color: var(--qz-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.qz-nav-grid button:hover { border-color: #b9c6d8; color: var(--qz-ink); }
+.qz-nav-grid button.is-answered { background: #e3eaf3; border-color: #e3eaf3; color: var(--qz-navy); }
+.qz-nav-grid button.is-right { background: var(--qz-right-bg); border-color: var(--qz-right-bg); color: var(--qz-right); }
+.qz-nav-grid button.is-wrong { background: var(--qz-wrong-bg); border-color: var(--qz-wrong-bg); color: var(--qz-wrong); }
+.qz-nav-grid button.is-flagged::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--qz-flag);
+}
+.qz-nav-grid button.is-current { outline: 2px solid var(--qz-navy); outline-offset: 1px; color: var(--qz-ink); }
+.qz-nav-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 10px; font-size: 0.74rem; color: var(--qz-muted); }
+.qz-nav-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.qz-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; }
+.qz-dot.is-answered { background: #c9d6e6; }
+.qz-dot.is-flagged { background: var(--qz-flag); border-radius: 50%; }
+.qz-dot.is-wrong { background: #e8b7b8; }
+.qz-page.is-exam-mode .qz-practice-only { display: none; }
+.qz-nav-keys { margin: 8px 0 0; font-size: 0.72rem; color: var(--qz-muted); line-height: 1.7; }
+.qz-nav-keys kbd {
+  font-family: inherit;
+  font-size: 0.7rem;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--qz-line);
+  background: var(--qz-soft);
+  color: var(--qz-ink);
+  box-shadow: none;
+}
+.qz-nav-toggle { display: none; }
+
+/* ---------- 채점 중 ---------- */
+.qz-loading { position: fixed; inset: 0; z-index: 1050; display: flex; align-items: center; justify-content: center; background: rgba(34, 49, 63, 0.45); }
+.qz-loading[hidden] { display: none; }
+.qz-loading-box { background: #fff; border-radius: 14px; padding: 24px 32px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); }
+.qz-loading-box p { margin: 12px 0 0; color: var(--qz-muted); font-weight: 600; }
+.qz-spinner { width: 40px; height: 40px; margin: 0 auto; border-radius: 50%; border: 4px solid #e6ebf2; border-top-color: var(--qz-navy); animation: spin 1s linear infinite; }
+
+/* ---------- 태블릿·휴대폰: 번호판은 막대의 '번호' 버튼으로 펼친다 ---------- */
+@media (max-width: 1099px) {
+  .qz-layout { grid-template-columns: minmax(0, 1fr); }
+  .qz-nav-toggle { display: inline-flex; }
+  .qz-nav {
+    display: none;
+    position: fixed;
+    z-index: 30;
+    top: calc(var(--qz-top) + var(--qz-bar-h) + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(420px, calc(100vw - 24px));
+    max-height: calc(100vh - var(--qz-top) - var(--qz-bar-h) - 24px);
+    box-shadow: 0 16px 40px rgba(34, 49, 63, 0.22);
+  }
+  .qz-page.is-nav-open .qz-nav { display: block; }
+  .qz-nav-close { display: inline-flex; }
+  .qz-nav-grid { grid-template-columns: repeat(8, 1fr); }
+  .qz-nav-keys { display: none; }
+}
+
+@media (max-width: 640px) {
+  .qz-page { padding: 12px 10px 48px; }
+  .qz-head { padding: 14px 16px; border-radius: 14px; }
+  .qz-title { font-size: 1.2rem; }
+  .qz-head { gap: 10px; }
+  .qz-settings { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .qz-seg { display: flex; }
+  .qz-seg button { flex: 1; padding: 6px 4px; }
+  .qz-long { display: none; }
+  .qz-timer-setup { grid-column: 1 / -1; justify-self: start; }
+  .qz-bar { gap: 6px; padding: 6px 6px 6px 10px; border-radius: 10px; }
+  .qz-progress-track { display: none; }
+  .qz-bar .qz-btn { padding: 7px 10px; }
+  .qz-bar .qz-btn span { display: none; }
+  .qz-card { padding: 14px 14px 12px; border-radius: 12px; }
+  .qz-question { font-size: 0.97rem; line-height: 1.6; }
+  .qz-option { padding: 8px 10px; font-size: 0.92rem; gap: 8px; }
+  .qz-nav-grid { grid-template-columns: repeat(6, 1fr); }
+  .qz-nav-grid button { height: 36px; }
+}

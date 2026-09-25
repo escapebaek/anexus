@@ -16,6 +16,24 @@ def is_blank_option(text):
     return (text or "").replace("​", "").strip().lower() in EMPTY_OPTION_VALUES
 
 
+def split_option_label(text, number):
+    """선택지 앞에 붙은 기호를 떼어낸다: ('㉮ 도파민', 1) → ('㉮', '도파민').
+    그 자리에 와야 할 기호('가'/'㉮'/'1'/'①'/'A' 중 number 번째)일 때만 떼고,
+    아니면 A~E 를 기호로 쓰고 내용은 그대로 둔다."""
+    raw = (text or "").replace("\u200b", "").strip()
+    for labels in OPTION_LABELS:
+        label = labels[number - 1]
+        if raw[:1].upper() != label:
+            continue
+        rest = raw[1:]
+        if not rest:
+            return raw[:1], ""
+        # '1 L', 'A – UA' 처럼 숫자·영문자로 시작하는 내용은 뒤에 '.' 나 ')' 가 있을 때만 기호로 본다
+        if rest[0] in ".)" or (rest[0].isspace() and not label.isascii()):
+            return raw[:1], rest.lstrip(".) \t").strip()
+    return OPTION_LETTERS[number - 1], raw
+
+
 def answer_index(correct_option):
     """정답 문자열 → 선택지 번호(1~5). 정답이 없거나 '미정'이면 None (채점 제외)."""
     text = (correct_option or "").replace("​", "").replace("﻿", "").strip()
