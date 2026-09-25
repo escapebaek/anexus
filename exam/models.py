@@ -56,6 +56,12 @@ class Question(models.Model):
 
     def __str__(self):
         return self.question_text
+
+    def option_list(self):
+        """화면에 보여줄 선택지 [(번호, 기호, 내용)] — 비어 있거나 'default' 인 칸은 뺀다."""
+        from .grading import OPTION_LETTERS, is_blank_option
+        return [(i, OPTION_LETTERS[i - 1], getattr(self, f"option{i}"))
+                for i in range(1, 6) if not is_blank_option(getattr(self, f"option{i}"))]
     
     def get_youtube_embed_id(self):
         """유튜브 URL에서 동영상 ID를 추출하는 메서드"""
