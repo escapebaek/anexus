@@ -47,6 +47,7 @@
   {% if job %}
   <div class="orb-job orb-job-{{ job.status }}" id="jobBanner" data-job-id="{{ job.id }}" data-state="{{ job.status }}">
     <i class="fas {% if job.status == 'running' %}fa-spinner fa-spin{% elif job.status == 'done' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+    <button type="button" class="orb-job-close" id="jobClose" title="닫기"><i class="fas fa-times"></i></button>
     <span id="jobText">{% if job.status == 'running' %}'{{ job.filename }}' 을(를) AI가 분석 중입니다… 1~3분 걸릴 수 있어요. 이 화면을 그대로 두세요.{% if job.message %} <small>(표로 읽지 않은 이유: {{ job.message }})</small>{% endif %}{% else %}{{ job.message }}{% endif %}</span>
   </div>
   {% endif %}
@@ -648,8 +649,33 @@
     if (noticeText.value !== noticeSaved) { saveNotice(); e.preventDefault(); e.returnValue = ""; }
   });
 
+  // ----- 알림 자동 숨김: 성공 알림은 잠시 보여준 뒤 사라지고, 오류는 × 로 닫을 때까지 유지 -----
+  const NOTICE_SECONDS = 6;
+  function fadeOut(el) {
+    if (!el || el.classList.contains("is-fading")) return;
+    el.classList.add("is-fading");
+    setTimeout(() => el.remove(), 600);
+  }
+  function dropJobParam() {
+    // 새로고침해도 같은 결과 알림이 다시 뜨지 않도록 주소의 ?job= 제거
+    const url = new URL(location.href);
+    if (url.searchParams.has("job")) {
+      url.searchParams.delete("job");
+      history.replaceState(null, "", url.pathname + (url.search || "") + url.hash);
+    }
+  }
+  document.querySelectorAll(".alert-success, .alert-info").forEach(el => {
+    el.classList.add("auto-fade");
+    setTimeout(() => fadeOut(el), NOTICE_SECONDS * 1000);
+  });
+
   // ----- 백그라운드 AI 분석 작업 진행 확인 -----
   const jobBanner = document.getElementById("jobBanner");
+  if (jobBanner) {
+    document.getElementById("jobClose").addEventListener("click", () => { dropJobParam(); fadeOut(jobBanner); });
+    if (jobBanner.dataset.state !== "running") dropJobParam();
+    if (jobBanner.dataset.state === "done") setTimeout(() => fadeOut(jobBanner), NOTICE_SECONDS * 1000);
+  }
   if (jobBanner && jobBanner.dataset.state === "running") {
     const JOB_URL = "{% url 'schedule_upload_job' 0 %}".replace("/0/", `/${jobBanner.dataset.jobId}/`);
     const poll = async () => {
@@ -659,6 +685,8 @@
         if (data.job && data.job.state !== "running") {
           if (data.job.state === "done") { location.reload(); return; }
           jobBanner.className = "orb-job orb-job-error";
+          jobBanner.dataset.state = "error";
+          dropJobParam();
           jobBanner.querySelector("i").className = "fas fa-exclamation-triangle";
           document.getElementById("jobText").textContent = data.job.message;
           return;

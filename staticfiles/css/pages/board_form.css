@@ -45,3 +45,30 @@
     padding: 12px;
   }
 }
+
+/* ---------- 게시글 편집기 (Quill) ---------- */
+.post-editor { min-height: 360px; font-size: 15px; background: #fff; }
+.post-editor .ql-editor { min-height: 360px; line-height: 1.7; }
+.post-editor .ql-editor img { max-width: 100%; height: auto; }
+.form-field .ql-toolbar.ql-snow {
+  border-radius: 12px 12px 0 0;
+  border-color: #d3dbe6;
+  background: #f5f7fa;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.form-field .ql-container.ql-snow { border-radius: 0 0 12px 12px; border-color: #d3dbe6; }
+.form-field .ql-snow .ql-picker.ql-header .ql-picker-label::before,
+.form-field .ql-snow .ql-picker.ql-header .ql-picker-item::before { content: "본문"; }
+.form-field .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="1"]::before,
+.form-field .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="1"]::before { content: "제목 1"; }
+.form-field .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="2"]::before,
+.form-field .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"]::before { content: "제목 2"; }
+.form-field .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="3"]::before,
+.form-field .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"]::before { content: "제목 3"; }
+.form-field .ql-snow.ql-toolbar button:hover .ql-stroke,
+.form-field .ql-snow.ql-toolbar button.ql-active .ql-stroke { stroke: #2b5876; }
+.form-field .ql-snow.ql-toolbar button:hover .ql-fill,
+.form-field .ql-snow.ql-toolbar button.ql-active .ql-fill { fill: #2b5876; }
+.editor-status { font-size: 12px; color: #6b7a8c; min-height: 18px; margin-top: 4px; }

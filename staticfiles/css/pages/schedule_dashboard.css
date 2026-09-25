@@ -577,6 +577,23 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
 .force-ai { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 11.5px; color: var(--orb-muted); cursor: pointer; }
 .force-ai input { margin: 0; }
 .orb-job small { opacity: 0.75; }
+.orb-job { position: relative; padding-right: 40px; transition: opacity 0.5s ease, transform 0.5s ease; }
+.orb-job-close {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+.orb-job-close:hover { opacity: 1; }
+.orb-job-running .orb-job-close { display: none; }
+.orb-job.is-fading, .alert.is-fading { opacity: 0; transform: translateY(-6px); }
+.alert.auto-fade { transition: opacity 0.5s ease, transform 0.5s ease; }
 .btn-upload {
   flex: 1;
   display: inline-flex;
