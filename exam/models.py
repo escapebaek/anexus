@@ -58,10 +58,20 @@ class Question(models.Model):
         return self.question_text
 
     def option_list(self):
-        """화면에 보여줄 선택지 [(번호, 기호, 내용)] — 비어 있거나 'default' 인 칸은 뺀다."""
-        from .grading import OPTION_LETTERS, is_blank_option
-        return [(i, OPTION_LETTERS[i - 1], getattr(self, f"option{i}"))
-                for i in range(1, 6) if not is_blank_option(getattr(self, f"option{i}"))]
+        """화면에 보여줄 선택지 [(번호, 기호, 내용)] — 비어 있거나 'default' 인 칸은 빼고,
+        내용 앞의 '㉮ '·'가. ' 같은 기호는 떼어 기호 자리에 한 번만 보여준다."""
+        from .grading import is_blank_option, split_option_label
+        options = []
+        for i in range(1, 6):
+            text = getattr(self, f"option{i}")
+            if not is_blank_option(text):
+                options.append((i, *split_option_label(text, i)))
+        return options
+
+    def answer_number(self):
+        """정답 선택지 번호(1~5). 정답이 없거나 '미정'이면 None — 연습 모드 즉시 채점용."""
+        from .grading import answer_index
+        return answer_index(self.correct_option)
     
     def get_youtube_embed_id(self):
         """유튜브 URL에서 동영상 ID를 추출하는 메서드"""
