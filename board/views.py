@@ -1,19 +1,17 @@
 # board/views.py
 
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Board, Comment
 from .forms import BoardForm, CommentForm
 from django.core.paginator import Paginator
 from django.db.models import F, Count, Q
 from django.views.decorators.http import require_POST
-from accounts.decorators import user_is_specially_approved
+from accounts.decorators import user_is_approved
 
 VIEWED_SESSION_KEY = 'board_viewed'  # 조회수: 같은 사람이 새로고침할 때마다 오르지 않게
 
-@login_required
-@user_is_specially_approved
+@user_is_approved
 def board_index(request):
     # 공지사항과 일반 글을 분리해서 가져오기
     # 작성자·댓글 수를 한 번에 가져옴 (글마다 추가 쿼리가 나가지 않게)
@@ -36,8 +34,7 @@ def board_index(request):
     }
     return render(request, 'board/board_index.html', context)
 
-@login_required
-@user_is_specially_approved
+@user_is_approved
 def board_detail(request, pk):
     board = get_object_or_404(Board.objects.select_related('author'), pk=pk)
     if request.method == 'GET':
@@ -76,8 +73,7 @@ def board_detail(request, pk):
     }
     return render(request, 'board/board_detail.html', context)
 
-@login_required
-@user_is_specially_approved
+@user_is_approved
 def comment_edit(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     if request.user != comment.author and not request.user.is_superuser:
@@ -93,8 +89,7 @@ def comment_edit(request, comment_id):
 
     return render(request, 'board/comment_edit.html', {'form': form})
 
-@login_required
-@user_is_specially_approved
+@user_is_approved
 @require_POST
 def comment_delete(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
@@ -102,8 +97,7 @@ def comment_delete(request, comment_id):
         comment.delete()
     return redirect('board_detail', pk=comment.board.pk)
 
-@login_required
-@user_is_specially_approved
+@user_is_approved
 def board_edit(request, pk):
     board = get_object_or_404(Board, pk=pk)
     
@@ -126,8 +120,7 @@ def board_edit(request, pk):
     
     return render(request, 'board/board_form.html', {'form': form})
 
-@login_required
-@user_is_specially_approved
+@user_is_approved
 def board_delete(request, pk):
     board = get_object_or_404(Board, pk=pk)
     
@@ -143,8 +136,7 @@ def board_delete(request, pk):
 
     return render(request, 'board/board_confirm_delete.html', {'board': board})
 
-@login_required
-@user_is_specially_approved
+@user_is_approved
 def board_create(request):
     if request.method == "POST":
         form = BoardForm(request.POST, user=request.user)

@@ -253,7 +253,8 @@ def result_analytics(request, result_id):
 @login_required
 @user_is_approved
 def category_list(request):
-    categories = Category.objects.all()
+    # 볼 수 있는 문제가 하나도 없는 카테고리(특별 시험에만 있는 카테고리 등)는 목록에서 뺀다
+    categories = Category.objects.filter(question__in=visible_questions(request.user)).distinct().order_by('name')
     return render(request, 'exam/category_list.html', {'categories': categories})
 
 @login_required
@@ -296,7 +297,7 @@ def bookmarked_questions(request):
     available_category_filters = Category.objects.filter(
         question__in=visible_questions(request.user).filter(bookmark__user=request.user)
     ).order_by('name').distinct()
-    selected_exam_objects = Exam.objects.filter(id__in=selected_exam_ids).order_by('title') if selected_exam_ids else []
+    selected_exam_objects = visible_exams(request.user).filter(id__in=selected_exam_ids).order_by('title') if selected_exam_ids else []
     selected_category_objects = Category.objects.filter(id__in=selected_category_ids).order_by('name') if selected_category_ids else []
     filtered_bookmarks_list = list(filtered_bookmarks)
     filtered_count = len(filtered_bookmarks_list)

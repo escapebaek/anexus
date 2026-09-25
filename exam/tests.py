@@ -228,6 +228,47 @@ class ExamViewTests(TestCase):
 
 
 
+class ExamVisibilityTests(TestCase):
+    """승인 회원은 일반 시험만, 특별 승인 회원은 특별 시험까지 모두."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.member = User.objects.create_user('m', 'm@x.com', 'pw', is_approved=True)
+        self.special_member = User.objects.create_user('s', 's@x.com', 'pw', is_approved=True, is_specially_approved=True)
+        self.shared_cat = Category.objects.create(name='공통')
+        self.special_cat = Category.objects.create(name='특별전용')
+        self.ite = Exam.objects.create(title='2023 ITE')
+        self.board = Exam.objects.create(title='2024 전문의 시험', is_special=True)
+        self.q_ite = make_question(self.ite, 1, '가', self.shared_cat)
+        self.q_board = make_question(self.board, 1, '가', self.shared_cat, text='전문의 공통 문제')
+        self.q_board_only = make_question(self.board, 2, '가', self.special_cat, text='전문의 전용 문제')
+
+    def test_member_sees_only_regular_exams(self):
+        self.client.force_login(self.member)
+        titles = [e.title for e in self.client.get(reverse('exam_list')).context['exams']]
+        self.assertEqual(titles, ['2023 ITE'])
+        self.assertRedirects(self.client.get(reverse('exam_detail', args=[self.board.id])), reverse('exam_list'))
+        self.assertRedirects(self.client.get(reverse('question_list', args=[self.board.id])), reverse('exam_list'))
+        # 카테고리: 특별 시험에만 있는 카테고리는 목록에서 빠지고, 공통 카테고리에서는 일반 문제만
+        names = [c.name for c in self.client.get(reverse('category_list')).context['categories']]
+        self.assertEqual(names, ['공통'])
+        html = self.client.get(reverse('category_questions', args=['공통'])).content.decode()
+        self.assertNotIn('전문의 공통 문제', html)
+        # 북마크 필터 칩에 특별 시험 제목이 새지 않는다
+        page = self.client.get(reverse('bookmarked_questions') + f'?exam={self.board.id}')
+        self.assertEqual(list(page.context['selected_exam_objects']), [])
+
+    def test_special_member_sees_everything(self):
+        self.client.force_login(self.special_member)
+        titles = [e.title for e in self.client.get(reverse('exam_list')).context['exams']]
+        self.assertEqual(titles, ['2023 ITE', '2024 전문의 시험'])
+        self.assertEqual(self.client.get(reverse('question_list', args=[self.board.id])).status_code, 200)
+        names = [c.name for c in self.client.get(reverse('category_list')).context['categories']]
+        self.assertEqual(names, ['공통', '특별전용'])
+        html = self.client.get(reverse('category_questions', args=['공통'])).content.decode()
+        self.assertIn('전문의 공통 문제', html)
+
+
 class StatsTests(TestCase):
     def setUp(self):
         User = get_user_model()
