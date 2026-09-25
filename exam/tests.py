@@ -227,6 +227,104 @@ class ExamViewTests(TestCase):
         self.assertEqual(self.client.get(reverse('category_questions', args=['없는카테고리'])).status_code, 404)
 
 
+
+class StatsTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user('u', 'u@x.com', 'pw')
+        self.cat = Category.objects.create(name='약리')
+        self.cat2 = Category.objects.create(name='생리')
+        self.exam = Exam.objects.create(title='A회차')
+        self.exam_b = Exam.objects.create(title='B회차')
+        self.special = Exam.objects.create(title='특별', is_special=True)
+        self.q = [make_question(self.exam, i, '가', self.cat if i % 2 else self.cat2) for i in range(1, 5)]
+        self.qb = make_question(self.exam_b, 1, '가', self.cat)
+        self.secret = make_question(self.special, 1, '가', self.cat)
+        self.client.force_login(self.user)
+
+    def take(self, exam, questions, right):
+        """right: 맞힌 문제 목록. 나머지는 틀린 답(2번)을 고른다."""
+        payload = {'question_ids': [q.id for q in questions],
+                   'answers': {str(q.id): (1 if q in right else 2) for q in questions}}
+        if exam:
+            payload['exam_id'] = exam.id
+        else:
+            payload['category_name'] = '연습'
+        return self.client.post(reverse('save_exam_results'), json.dumps(payload), content_type='application/json').json()['result_id']
+
+    def test_empty(self):
+        page = self.client.get(reverse('analytics_overview'))
+        self.assertEqual(page.status_code, 200)
+        self.assertFalse(page.context['has_data'])
+        self.assertContains(page, '시험 보러 가기')
+
+    def test_overall_stats(self):
+        self.take(self.exam, self.q, right=self.q[:2])      # 50%
+        self.take(self.exam, self.q, right=self.q[:3])      # 75%
+        self.take(self.exam_b, [self.qb], right=[])          # 0%
+        page = self.client.get(reverse('analytics_overview'))
+        c = page.context
+        self.assertEqual((c['attempts'], c['latest_pct'], c['best_pct'], c['avg_pct']), (3, 0.0, 75.0, 41.7))
+        self.assertEqual(c['answered'], 9)
+        rows = {r['exam'].title: (r['attempts'], r['latest_pct'], r['best_pct']) for r in c['exam_rows']}
+        self.assertEqual(rows, {'A회차': (2, 75.0, 75.0), 'B회차': (1, 0.0, 0.0)})
+        cats = {x['name']: (x['correct'], x['graded']) for x in c['categories']}
+        self.assertEqual(cats, {'약리': (3, 5), '생리': (2, 4)})
+        self.assertEqual([x['name'] for x in c['categories']], ['생리', '약리'])   # 낮은 순
+        self.assertContains(page, reverse('category_questions', args=['약리']))
+        self.assertNotIn('trend', c)
+
+    def test_exam_scope(self):
+        self.take(self.exam, self.q, right=self.q[:2])
+        self.take(self.exam, self.q, right=self.q)
+        self.take(self.exam_b, [self.qb], right=[])
+        page = self.client.get(reverse('analytics_overview') + f'?exam={self.exam.id}')
+        c = page.context
+        self.assertEqual(c['exam'], self.exam)
+        self.assertEqual(c['attempts'], 2)
+        self.assertEqual([t['pct'] for t in c['trend']], [50.0, 100.0])
+        self.assertEqual(json.loads(c['trend_json'])[1]['y'], 100.0)
+        self.assertContains(page, 'id="stTrend"')
+        self.assertEqual(c['wrong_total'], 0)                # 두 번째에 다 맞혔으므로 오답 없음
+        # 푼 적 없는 회차·특별 시험은 범위로 고를 수 없다
+        self.assertRedirects(self.client.get(reverse('analytics_overview') + f'?exam={self.special.id}'), reverse('analytics_overview'))
+
+    def test_wrong_notebook_tracks_last_result(self):
+        self.take(self.exam, self.q, right=[])               # 4문제 모두 틀림
+        self.take(None, self.q[:2], right=[self.q[0]])       # 다시 풀어 1번만 맞힘
+        c = self.client.get(reverse('analytics_overview')).context
+        self.assertEqual(c['wrong_total'], 3)
+        self.assertEqual(c['wrong_top'][0].id, self.q[1].id)  # 두 번 틀린 문제가 먼저
+        self.assertEqual(c['wrong_top'][0].history['wrong'], 2)
+        page = self.client.get(reverse('review_wrong'))
+        self.assertEqual([q.id for q in page.context['questions']], [self.q[1].id, self.q[2].id, self.q[3].id])
+        self.assertContains(page, 'data-quiz-key="review_all"')
+        self.assertContains(page, '오답노트 · 전체')
+        page = self.client.get(reverse('review_wrong') + f'?exam={self.exam_b.id}')
+        self.assertRedirects(page, reverse('analytics_overview') + f'?exam={self.exam_b.id}', fetch_redirect_response=False)
+
+    def test_wrong_notebook_hides_special_and_other_users(self):
+        other = get_user_model().objects.create_user('o', 'o@x.com', 'pw')
+        ExamResult.objects.create(user=other, exam=self.exam, num_correct=0, num_incorrect=1, num_unanswered=0,
+                                  detailed_results=[{'question_id': self.q[0].id, 'result': 'incorrect'}])
+        ExamResult.objects.create(user=self.user, exam=None, category_name='x', num_correct=0, num_incorrect=1, num_unanswered=0,
+                                  detailed_results=[{'question_id': self.secret.id, 'result': 'incorrect', 'category': '약리'}])
+        self.assertEqual(self.client.get(reverse('analytics_overview')).context['wrong_total'], 0)
+
+    def test_old_urls_redirect(self):
+        self.assertRedirects(self.client.get(f'/exam/analytics/exam/{self.exam.id}/'),
+                             reverse('analytics_overview') + f'?exam={self.exam.id}', fetch_redirect_response=False)
+        self.assertRedirects(self.client.get('/exam/analytics/exams/'), reverse('analytics_overview'))
+
+    def test_category_link_only_for_linkable_names(self):
+        Category.objects.create(name='A&B/C')
+        ExamResult.objects.create(user=self.user, exam=None, category_name='x', num_correct=1, num_incorrect=0, num_unanswered=0,
+                                  detailed_results=[{'question_id': self.q[0].id, 'result': 'correct', 'category': 'A&B/C'}])
+        page = self.client.get(reverse('analytics_overview'))
+        self.assertEqual(page.status_code, 200)
+        self.assertFalse(page.context['categories'][0]['can_practice'])
+
+
 class BackfillMigrationTests(TestCase):
     def test_old_results_get_question_ids(self):
         user = get_user_model().objects.create_user('u', 'u@x.com', 'pw')
