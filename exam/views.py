@@ -1,4 +1,4 @@
-﻿from django.shortcuts import render, get_object_or_404, reverse, redirect
+from django.shortcuts import render, get_object_or_404, reverse, redirect
 from .models import Exam, Question, ExamResult, Category
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
@@ -80,16 +80,6 @@ def question_list(request, exam_id):
         'page_obj': page_obj,
     })
 
-@login_required
-@user_is_approved
-def question_detail_partial(request, question_id):
-    question = get_object_or_404(visible_questions(request.user).select_related('category', 'exam'), pk=question_id)
-    is_bookmarked = Bookmark.objects.filter(user=request.user, question=question).exists()
-    return render(request, 'exam/question_detail_partial.html', {
-        'question': question,
-        'is_bookmarked': is_bookmarked,
-    })
-
 @require_POST
 @login_required
 @user_is_approved
@@ -143,16 +133,118 @@ def save_exam_results(request):
     )
     return JsonResponse({'status': 'ok', 'result_id': result.id})
 
+def result_title(result):
+    return result.exam.title if result.exam else (result.category_name or '기타')
+
+
+def result_counts(result):
+    """(맞음, 전체, 점수%) — 점수는 맞은 문제 / 전체 문제."""
+    total = (result.num_correct or 0) + (result.num_incorrect or 0) + (result.num_unanswered or 0) + (result.num_noanswer or 0)
+    pct = round((result.num_correct or 0) / total * 100, 1) if total else 0
+    return result.num_correct or 0, total, pct
+
+
+def _selected_number(detail, question):
+    """고른 선택지 번호. 예전 기록엔 번호가 없어 고른 선택지 글자로 찾는다."""
+    if detail.get('selected'):
+        return detail['selected']
+    chosen = (detail.get('selected_answer') or '').strip()
+    if not chosen or question is None:
+        return None
+    for i in range(1, 6):
+        if (getattr(question, f'option{i}') or '').strip() == chosen:
+            return i
+    return None
+
+
 @login_required
 @user_is_approved
 def exam_results(request):
-    result = get_object_or_404(ExamResult, id=request.GET.get('result_id'), user=request.user)
-    bookmarked_questions = set(
-        Bookmark.objects.filter(user=request.user).values_list('question_id', flat=True)
-    )
-    for detail in result.detailed_results:
-        detail['is_bookmarked'] = detail.get('question_id') in bookmarked_questions
-    return render(request, 'exam/exam_results.html', {'result': result})
+    """채점 결과: 점수 요약 + 틀린 문제부터 보는 문제 목록(펼치면 선택지·해설) + 카테고리별 정답률."""
+    result = get_object_or_404(ExamResult.objects.select_related('exam'), id=request.GET.get('result_id'), user=request.user)
+    details = [d for d in (result.detailed_results or []) if isinstance(d, dict)]
+    question_ids = [d.get('question_id') for d in details if d.get('question_id')]
+    questions = {q.id: q for q in visible_questions(request.user).filter(id__in=question_ids).select_related('category', 'exam')}
+    bookmarked = set(Bookmark.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True))
+
+    items = []
+    by_category = defaultdict(lambda: {'correct': 0, 'graded': 0})
+    for number, detail in enumerate(details, 1):
+        question = questions.get(detail.get('question_id'))
+        outcome = detail.get('result') or 'noanswer'
+        selected = _selected_number(detail, question)
+        answer = question.answer_number() if question else None
+        options = []
+        if question:
+            for num, label, text in question.option_list():
+                options.append({'num': num, 'label': label, 'text': text,
+                                'is_selected': num == selected, 'is_answer': num == answer})
+        items.append({
+            'number': number,
+            'result': outcome,
+            'question': question,
+            'text': detail.get('question') or '',
+            'category': detail.get('category') if detail.get('category') not in (None, '', 'N/A') else (question.category.name if question and question.category else ''),
+            'selected_answer': detail.get('selected_answer') or '',
+            'correct_answer': detail.get('correct_answer') or '',
+            'options': options,
+            'is_bookmarked': question is not None and question.id in bookmarked,
+        })
+        if outcome != 'noanswer':
+            row = by_category[items[-1]['category'] or '미분류']
+            row['graded'] += 1
+            row['correct'] += outcome == 'correct'
+
+    categories = sorted(
+        ({'name': name, 'correct': row['correct'], 'graded': row['graded'],
+          'pct': round(row['correct'] / row['graded'] * 100) if row['graded'] else 0}
+         for name, row in by_category.items()),
+        key=lambda c: (c['pct'], -c['graded'], c['name']))
+    correct, total, pct = result_counts(result)
+    wrong_count = (result.num_incorrect or 0) + (result.num_unanswered or 0)
+    return render(request, 'exam/exam_results.html', {
+        'result': result,
+        'title': result_title(result),
+        'items': items,
+        'categories': categories,
+        'correct': correct,
+        'total': total,
+        'pct': pct,
+        'wrong_count': wrong_count,
+        'retry_possible': any(i['question'] for i in items),
+    })
+
+
+@login_required
+@user_is_approved
+def retry_result(request, result_id):
+    """응시 기록의 문제를 다시 푼다. 기본은 틀리거나 안 푼 문제만, ?only=all 이면 전체."""
+    result = get_object_or_404(ExamResult.objects.select_related('exam'), id=result_id, user=request.user)
+    only_all = request.GET.get('only') == 'all'
+    wanted = [d.get('question_id') for d in (result.detailed_results or [])
+              if isinstance(d, dict) and d.get('question_id')
+              and (only_all or d.get('result') in ('incorrect', 'unanswered'))]
+    if not wanted:
+        return redirect(f"{reverse('exam_results')}?result_id={result.id}")
+    by_id = {q.id: q for q in visible_questions(request.user).filter(id__in=wanted).select_related('category', 'exam')}
+    bookmarked = set(Bookmark.objects.filter(user=request.user, question_id__in=by_id).values_list('question_id', flat=True))
+    questions = []
+    for qid in dict.fromkeys(wanted):
+        if qid in by_id:
+            by_id[qid].is_bookmarked = qid in bookmarked
+            questions.append(by_id[qid])
+    label = '다시 풀기' if only_all else '틀린 문제 다시 풀기'
+    return render(request, 'exam/quiz_unified.html', {
+        'category_name': f'{label} · {result_title(result)}'[:100],
+        'retry_of': result,
+        'questions': questions,
+    })
+
+
+def result_analytics(request, result_id):
+    """예전 '응시 분석' 주소 — 채점 화면에 모두 합쳐졌다."""
+    return redirect(f"{reverse('exam_results')}?result_id={result_id}")
+
 
 @login_required
 @user_is_approved
@@ -461,15 +553,17 @@ def my_results(request):
     )
     display = []
     for r in results:
-        total = (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
-        pct = round((r.num_correct / total) * 100, 1) if total else 0
+        correct, total, pct = result_counts(r)
         display.append({
             'id': r.id,
-            'title': r.exam.title if r.exam else (r.category_name or 'N/A'),
+            'title': result_title(r),
             'is_exam': bool(r.exam_id),
             'exam_id': r.exam_id,
             'date_taken': r.date_taken,
-            'score_text': f"{r.num_correct} / {total} ({pct}%)",
+            'correct': correct,
+            'total': total,
+            'score_percent': pct,
+            'wrong': (r.num_incorrect or 0) + (r.num_unanswered or 0),
         })
     return render(request, 'exam/my_results.html', {'results': display})
 
@@ -742,57 +836,6 @@ def analytics_overview(request):
         'study_recommendation': study_recommendation,
         'performance_grade': performance_grade,
         'total_questions': total_questions,
-    })
-
-@login_required
-@user_is_approved
-def result_analytics(request, result_id:int):
-    """Enhanced analytics for a single result attempt"""
-    r = get_object_or_404(ExamResult, pk=result_id, user=request.user)
-    total = (r.num_correct or 0) + (r.num_incorrect or 0) + (r.num_unanswered or 0) + (r.num_noanswer or 0)
-    pct_total = round(((r.num_correct or 0) / total) * 100, 1) if total else 0
-
-    cat = defaultdict(lambda: {'correct': 0, 'incorrect': 0, 'unanswered': 0, 'noanswer': 0})
-    for d in r.detailed_results or []:
-        c = d.get('category') or 'N/A'
-        res = d.get('result')
-        if res == 'correct':
-            cat[c]['correct'] += 1
-        elif res == 'incorrect':
-            cat[c]['incorrect'] += 1
-        elif res == 'unanswered':
-            cat[c]['unanswered'] += 1
-        elif res == 'noanswer':
-            cat[c]['noanswer'] += 1
-
-    # Identify weak categories in this attempt
-    weak_in_attempt = identify_weak_categories(cat, threshold=70)
-    strong_in_attempt = identify_strong_categories(cat, threshold=60)
-
-    labels, correct, incorrect, unanswered, noanswer, acc = [], [], [], [], [], []
-    for k, s in sorted(cat.items()):
-        labels.append(k)
-        correct.append(s['correct'])
-        incorrect.append(s['incorrect'])
-        unanswered.append(s['unanswered'])
-        noanswer.append(s['noanswer'])
-        denom = (s['correct'] + s['incorrect'])
-        pct = (s['correct'] / denom * 100) if denom else 0
-        acc.append(round(pct, 1))
-
-    return render(request, 'exam/result_analytics.html', {
-        'result': r,
-        'exam': r.exam,
-        'total': total,
-        'pct_total': pct_total,
-        'labels': labels,
-        'correct_data': correct,
-        'incorrect_data': incorrect,
-        'unanswered_data': unanswered,
-        'noanswer_data': noanswer,
-        'accuracy_pct': acc,
-        'weak_categories': weak_in_attempt,
-        'strong_categories': strong_in_attempt,
     })
 
 @require_POST

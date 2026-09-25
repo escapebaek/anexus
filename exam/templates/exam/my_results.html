@@ -2,80 +2,52 @@
 {% load static %}
 
 {% block custom_css %}
-  <link href="{% static 'css/pages/exam_my_results.css' %}" rel="stylesheet" />
+  <link href="{% static 'css/pages/exam_result.css' %}" rel="stylesheet" />
 {% endblock %}
 
 {% block page_content %}
-<div class="container mt-5">
-  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-    <h1 style="font-weight: 800; color: #2c3e50;">My Results</h1>
-    <div>
-      <a href="{% url 'analytics_overview' %}" class="btn btn-info text-white me-2">
-        <i class="fas fa-chart-pie"></i> Overall Analytics
-      </a>
-      <a href="{% url 'question_home' %}" class="btn btn-primary">
-        <i class="fas fa-arrow-left"></i> Back to Home
-      </a>
+<div class="rs-page">
+  <header class="rs-head rs-head-compact">
+    <div class="rs-head-text">
+      <p class="rs-kicker">문제은행</p>
+      <h1 class="rs-title">응시 기록</h1>
+      <p class="rs-sub">{{ results|length }}회 응시</p>
     </div>
-  </div>
+  </header>
+
+  <nav class="rs-actions" aria-label="메뉴">
+    <a class="rs-btn" href="{% url 'analytics_overview' %}"><i class="fas fa-chart-pie"></i> 전체 통계</a>
+    <a class="rs-btn rs-btn-quiet" href="{% url 'question_home' %}"><i class="fas fa-arrow-left"></i> 문제은행 홈</a>
+  </nav>
 
   {% if results %}
-  <div class="card table-card">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Date</th>
-            <th style="min-width: 200px;">Score</th>
-            <th class="text-end">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in results %}
-          <tr>
-            <td><strong>{{ r.title }}</strong></td>
-            <td>{{ r.date_taken|date:"Y-m-d P" }}</td>
-            <td>
-              <div class="score-bar" title="{{ r.score_text }}">
-                {% with pct=r.score_percent %}
-                <div class="score-bar-fill 
-                            {% if pct >= 80 %}bg-success{% elif pct >= 60 %}bg-info{% elif pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
-                     style="width: {{ pct }}%;">
-                  {{ r.score_text }}
-                </div>
-                {% endwith %}
-              </div>
-            </td>
-            <td class="text-end">
-              <a href="{% url 'exam_results' %}?result_id={{ r.id }}" class="btn btn-sm btn-outline-primary" title="View Details">
-                <i class="fas fa-eye"></i><span class="d-none d-lg-inline ms-1">Details</span>
-              </a>
-              <a href="{% url 'result_analytics' r.id %}" class="btn btn-sm btn-outline-success" title="Attempt Analytics">
-                <i class="fas fa-chart-bar"></i><span class="d-none d-lg-inline ms-1">Analytics</span>
-              </a>
-              {% if r.is_exam and r.exam_id %}
-              <a href="{% url 'exam_analytics' r.exam_id %}" class="btn btn-sm btn-outline-secondary" title="Exam History">
-                <i class="fas fa-chart-line"></i><span class="d-none d-lg-inline ms-1">History</span>
-              </a>
-              {% endif %}
-              <form method="post" action="{% url 'delete_result' r.id %}" style="display:inline" onsubmit="return confirm('Are you sure?');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <ul class="hist-list">
+    {% for r in results %}
+    <li class="hist-item">
+      <a class="hist-main" href="{% url 'exam_results' %}?result_id={{ r.id }}">
+        <span class="hist-title">{{ r.title }}</span>
+        <span class="hist-date">{{ r.date_taken|date:"Y.m.d H:i" }}</span>
+        <span class="hist-score">
+          <span class="hist-score-text"><b>{{ r.correct }}</b> / {{ r.total }} · {{ r.score_percent }}%</span>
+          <span class="hist-track"><span class="hist-fill" style="width: {{ r.score_percent }}%"></span></span>
+        </span>
+      </a>
+      <span class="hist-tools">
+        {% if r.wrong %}<a class="rs-btn rs-btn-quiet" href="{% url 'retry_result' r.id %}" title="틀린 문제 다시 풀기"><i class="fas fa-redo"></i><span class="hist-tool-label"> 오답 {{ r.wrong }}</span></a>{% endif %}
+        {% if r.is_exam and r.exam_id %}<a class="rs-btn rs-btn-quiet" href="{% url 'exam_analytics' r.exam_id %}" title="이 회차 통계"><i class="fas fa-chart-line"></i></a>{% endif %}
+        <form method="post" action="{% url 'delete_result' r.id %}" onsubmit="return confirm('이 응시 기록을 삭제할까요?');">
+          {% csrf_token %}
+          <button type="submit" class="rs-btn rs-btn-quiet rs-btn-danger" title="삭제"><i class="fas fa-trash-alt"></i></button>
+        </form>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
   {% else %}
-  <div class="text-center py-5 text-muted">
-    <i class="fas fa-history fa-3x mb-3"></i>
-    <div>No results yet. Take an exam to get started.</div>
+  <div class="rs-empty-state">
+    <i class="fas fa-history"></i>
+    <p>아직 응시 기록이 없습니다. 문제를 풀고 제출하면 여기에 쌓입니다.</p>
+    <a class="rs-btn rs-btn-primary" href="{% url 'exam_list' %}">시험 보러 가기</a>
   </div>
   {% endif %}
 </div>
