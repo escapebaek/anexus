@@ -14,13 +14,13 @@
 </div>
 
 <div class="qz-page"
-     data-quiz-key="{% if exam %}exam_{{ exam.id }}{% elif category_name %}category_{{ category_name|slugify }}{% else %}bookmarked{% endif %}"
+     data-quiz-key="{% if retry_of %}retry_{{ retry_of.id }}{% elif exam %}exam_{{ exam.id }}{% elif category_name %}category_{{ category_name|slugify }}{% else %}bookmarked{% endif %}"
      data-default-mode="{% if exam %}exam{% else %}practice{% endif %}">
 
   <!-- 머리말 + 풀이 설정 -->
   <header class="qz-head">
     <div class="qz-head-text">
-      <p class="qz-kicker">{% if exam %}시험 회차{% elif category_name %}카테고리{% else %}북마크{% endif %}</p>
+      <p class="qz-kicker">{% if retry_of %}다시 풀기{% elif exam %}시험 회차{% elif category_name %}카테고리{% else %}북마크{% endif %}</p>
       <h1 class="qz-title">{% if exam %}{{ exam.title }}{% elif category_name %}{{ category_name }}{% else %}북마크된 문제{% endif %}</h1>
       <p class="qz-sub">{{ questions|length }}문제</p>
     </div>

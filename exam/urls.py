@@ -8,7 +8,7 @@ urlpatterns = [
     path('<int:exam_id>/questions/', views.question_list, name='question_list'),
     path('save_exam_results/', save_exam_results, name='save_exam_results'),
     path('exam_results/', exam_results, name='exam_results'),
-    path('question/<int:question_id>/partial/', views.question_detail_partial, name='question_detail_partial'),
+    path('result/<int:result_id>/retry/', views.retry_result, name='retry_result'),
     
     # results history and analytics
     path('my_results/', views.my_results, name='my_results'),

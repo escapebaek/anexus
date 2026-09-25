@@ -92,12 +92,73 @@ class ExamViewTests(TestCase):
         self.assertEqual(self.save({'exam_id': self.exam.id, 'question_ids': []}).status_code, 400)
         self.assertEqual(self.save({'exam_id': 'abc', 'question_ids': [self.q1.id]}).status_code, 400)
 
-    def test_results_page_shows_bookmark_state(self):
+    def test_results_page(self):
         Bookmark.objects.create(user=self.user, question=self.q1)
-        res = self.save({'exam_id': self.exam.id, 'question_ids': [self.q1.id], 'answers': {}})
+        res = self.save({'exam_id': self.exam.id,
+                         'question_ids': [self.q1.id, self.q2.id, self.q3.id, self.q4.id],
+                         'answers': {str(self.q1.id): 3, str(self.q2.id): 1}})
         page = self.client.get(reverse('exam_results') + f'?result_id={res.json()["result_id"]}')
         self.assertEqual(page.status_code, 200)
-        self.assertTrue(page.context['result'].detailed_results[0]['is_bookmarked'])
+        items = page.context['items']
+        self.assertEqual([i['result'] for i in items], ['correct', 'incorrect', 'noanswer', 'unanswered'])
+        self.assertTrue(items[0]['is_bookmarked'])
+        # 펼친 내용: 내가 고른 선택지(1번)와 정답(2번)이 표시된다
+        wrong = {o['num']: o for o in items[1]['options']}
+        self.assertTrue(wrong[1]['is_selected'] and not wrong[1]['is_answer'])
+        self.assertTrue(wrong[2]['is_answer'])
+        self.assertEqual((page.context['correct'], page.context['total'], page.context['pct']), (1, 4, 25.0))
+        self.assertEqual(page.context['wrong_count'], 2)
+        # 카테고리 정답률은 '정답 미정' 문제를 빼고 계산 (약리: 맞음 1 / 채점 2, 미분류: 0 / 1)
+        cats = {c['name']: (c['correct'], c['graded']) for c in page.context['categories']}
+        self.assertEqual(cats, {'약리': (1, 2), '미분류': (0, 1)})
+        self.assertContains(page, reverse('retry_result', args=[res.json()['result_id']]))
+
+    def test_results_page_handles_old_records(self):
+        # 예전 기록: 선택지 번호 없이 선택지 글자만, 문제 ID 가 없는 문항도 있다
+        result = ExamResult.objects.create(
+            user=self.user, exam=self.exam, num_correct=0, num_incorrect=2, num_unanswered=0,
+            detailed_results=[{'question_id': self.q2.id, 'question': 'x', 'selected_answer': '가. 보기1', 'correct_answer': '㉯', 'result': 'incorrect', 'category': 'N/A'},
+                              {'question': '사라진 문제', 'selected_answer': 'a', 'correct_answer': 'b', 'result': 'incorrect'}])
+        page = self.client.get(reverse('exam_results') + f'?result_id={result.id}')
+        self.assertEqual(page.status_code, 200)
+        items = page.context['items']
+        self.assertTrue({o['num']: o for o in items[0]['options']}[1]['is_selected'])
+        self.assertEqual(items[0]['category'], '약리')
+        self.assertIsNone(items[1]['question'])
+        self.assertContains(page, '자세한 내용을 표시할 수 없습니다')
+
+    def test_other_users_result_is_404(self):
+        other = get_user_model().objects.create_user('o', 'o@x.com', 'pw')
+        result = ExamResult.objects.create(user=other, exam=self.exam, num_correct=0, num_incorrect=0, num_unanswered=0, detailed_results=[])
+        self.assertEqual(self.client.get(reverse('exam_results') + f'?result_id={result.id}').status_code, 404)
+        self.assertEqual(self.client.get(reverse('retry_result', args=[result.id])).status_code, 404)
+
+    def test_retry_wrong_questions(self):
+        res = self.save({'exam_id': self.exam.id,
+                         'question_ids': [self.q1.id, self.q2.id, self.q3.id, self.q4.id],
+                         'answers': {str(self.q1.id): 3, str(self.q2.id): 1}})
+        rid = res.json()['result_id']
+        page = self.client.get(reverse('retry_result', args=[rid]))
+        self.assertEqual([q.id for q in page.context['questions']], [self.q2.id, self.q4.id])   # 틀림 + 안 풂
+        self.assertContains(page, f'data-quiz-key="retry_{rid}"')
+        self.assertContains(page, '틀린 문제 다시 풀기 · 일반시험')
+        page = self.client.get(reverse('retry_result', args=[rid]) + '?only=all')
+        self.assertEqual(len(page.context['questions']), 4)
+        # 다 맞힌 기록이면 채점 화면으로 돌려보낸다
+        perfect = self.save({'exam_id': self.exam.id, 'question_ids': [self.q1.id], 'answers': {str(self.q1.id): 3}}).json()['result_id']
+        self.assertRedirects(self.client.get(reverse('retry_result', args=[perfect])), reverse('exam_results') + f'?result_id={perfect}')
+
+    def test_old_attempt_analytics_url_redirects(self):
+        res = self.save({'exam_id': self.exam.id, 'question_ids': [self.q1.id], 'answers': {}})
+        rid = res.json()['result_id']
+        self.assertRedirects(self.client.get(f'/exam/analytics/result/{rid}/'), reverse('exam_results') + f'?result_id={rid}')
+
+    def test_my_results_shows_score_percent(self):
+        self.save({'exam_id': self.exam.id, 'question_ids': [self.q1.id, self.q2.id], 'answers': {str(self.q1.id): 3}})
+        page = self.client.get(reverse('my_results'))
+        row = page.context['results'][0]
+        self.assertEqual((row['correct'], row['total'], row['score_percent'], row['wrong']), (1, 2, 50.0, 1))
+        self.assertContains(page, 'width: 50.0%')
 
     def test_quiz_page_sends_option_numbers_and_hides_blank_options(self):
         q = make_question(self.exam, 5, '가', option5='default')
@@ -145,7 +206,12 @@ class ExamViewTests(TestCase):
         html = self.client.get(reverse('bookmarked_questions')).content.decode()
         self.assertNotIn('특별 문제 지문', html)
 
-        self.assertEqual(self.client.get(reverse('question_detail_partial', args=[self.secret.id])).status_code, 404)
+        # 예전에 특별 시험을 풀었던 기록이 있어도, 다시 풀기에서는 특별 시험 문제가 빠진다
+        old = ExamResult.objects.create(user=self.user, exam=None, category_name='x', num_correct=0, num_incorrect=2, num_unanswered=0,
+                                        detailed_results=[{'question_id': self.secret.id, 'result': 'incorrect'},
+                                                          {'question_id': self.q1.id, 'result': 'incorrect'}])
+        page = self.client.get(reverse('retry_result', args=[old.id]))
+        self.assertEqual([q.id for q in page.context['questions']], [self.q1.id])
         self.assertEqual(self.client.post(reverse('toggle_bookmark', args=[self.q1.id])).json()['is_bookmarked'], True)
         self.assertNotEqual(self.client.post(reverse('toggle_bookmark', args=[self.secret.id])).status_code, 200)
         self.assertEqual(self.save({'exam_id': self.special.id, 'question_ids': [self.secret.id]}).status_code, 404)
@@ -155,7 +221,7 @@ class ExamViewTests(TestCase):
         self.client.force_login(self.special_user)
         html = self.client.get(reverse('category_questions', args=[self.cat.name])).content.decode()
         self.assertIn('특별 문제 지문', html)
-        self.assertEqual(self.client.get(reverse('question_detail_partial', args=[self.secret.id])).status_code, 200)
+        self.assertContains(self.client.get(reverse('bookmarked_questions')), 'qz-page')
 
     def test_unknown_category_is_404(self):
         self.assertEqual(self.client.get(reverse('category_questions', args=['없는카테고리'])).status_code, 404)
