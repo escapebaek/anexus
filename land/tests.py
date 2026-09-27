@@ -14,14 +14,15 @@ class HomeTests(TestCase):
         titles = [s['title'] for s in res.context['sections']]
         self.assertEqual(titles, ['ANExuS', 'Calculators & Simulators', 'Resources'])
         cards = [c for s in res.context['sections'] for c in s['cards']]
-        self.assertEqual(len(cards), 18)
+        self.assertEqual(len(cards), 17)
+        self.assertNotIn('Trends in Anesthesia', [c['title'] for c in cards])   # 추후 개발 후 다시 추가
         # 내부 기능은 첫 섹션에만, 외부 링크는 external 로 표시
         self.assertFalse(any(c['external'] for c in res.context['sections'][0]['cards']))
         self.assertTrue(all(c['external'] for s in res.context['sections'][1:] for c in s['cards']))
 
     def test_anonymous_cards_go_to_login(self):
         res = self.client.get(reverse('home'))
-        self.assertContains(res, '로그인 후 이용', count=18)
+        self.assertContains(res, '로그인 후 이용', count=17)
         self.assertContains(res, 'href="%s?next=/board/"' % reverse('login'))
         self.assertContains(res, '?next=https%3A//www.nysora.com/')
         self.assertNotContains(res, 'href="https://www.nysora.com/"')
@@ -29,7 +30,7 @@ class HomeTests(TestCase):
     def test_pending_member_sees_locked_cards(self):
         self.client.force_login(self.make_user(is_approved=False))
         res = self.client.get(reverse('home'))
-        self.assertContains(res, 'is-locked', count=18)
+        self.assertContains(res, 'is-locked', count=17)
         self.assertNotContains(res, 'href="/board/"')
 
     def test_member_gets_links_and_new_tabs_are_safe(self):
@@ -85,3 +86,45 @@ class SurgerySummaryTests(TestCase):
         special = get_user_model().objects.create_user('s2', 's2@example.com', 'x', is_specially_approved=True)
         self.client.force_login(special)
         self.assertNotContains(self.client.get(reverse('home')), 'class="lp-or"')   # 등록된 일정 없음
+
+
+class VisitCounterTests(TestCase):
+    UA = {'HTTP_USER_AGENT': 'Mozilla/5.0 (iPhone)'}
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def total(self):
+        from land.models import DailyVisit
+        return sum(DailyVisit.objects.values_list('count', flat=True))
+
+    def test_counts_once_per_browser_visit(self):
+        res = self.client.get(reverse('home'), **self.UA)
+        self.assertEqual(self.total(), 1)
+        self.assertIn('anx_visit', res.cookies)
+        self.client.get(reverse('home'), **self.UA)          # 쿠키가 살아 있으면 같은 방문
+        self.client.get(reverse('login'), **self.UA)
+        self.assertEqual(self.total(), 1)
+        self.client.cookies.pop('anx_visit')                  # 30분 지나 쿠키가 사라지면 새 방문
+        self.client.get(reverse('home'), **self.UA)
+        self.assertEqual(self.total(), 2)
+
+    def test_bots_and_non_pages_are_not_counted(self):
+        from django.test import Client
+        Client().get(reverse('home'), HTTP_USER_AGENT='Googlebot/2.1')
+        Client().get(reverse('home'))                         # 브라우저 정보 없음
+        Client().get('/health/', **self.UA)
+        Client().post(reverse('login'), {}, **self.UA)
+        self.assertEqual(self.total(), 0)
+
+    def test_landing_shows_totals(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from land.models import DailyVisit
+        DailyVisit.objects.create(date=timezone.localdate() - timedelta(days=1), count=40)
+        res = self.client.get(reverse('home'), **self.UA)     # 이 방문이 오늘 1회
+        self.assertEqual(res.context['visits'], {'total': 40, 'today': 0})   # 표시는 방문을 세기 전 값
+        res = self.client.get(reverse('home'), **self.UA)
+        self.assertContains(res, 'TOTAL VISITS')
+        self.assertContains(res, 'data-count="41"')
