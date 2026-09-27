@@ -204,3 +204,14 @@
     width: min(420px, 90vw);
   }
 }
+
+/* 항목별 AI 요약 (### 연구 목적 ...) */
+.summary-sidebar-body .summary-heading {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #2b5876;
+  margin: 1.1rem 0 0.35rem;
+  padding-left: 8px;
+  border-left: 3px solid #4e4376;
+}
+.summary-sidebar-body .summary-heading:first-child { margin-top: 0; }

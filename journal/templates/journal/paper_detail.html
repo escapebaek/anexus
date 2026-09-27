@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static journal_extras %}
 
 {% block title %}{{ paper.title }} | ANExuS{% endblock %}
 
@@ -53,7 +53,7 @@
       </div>
       <div class="summary-sidebar-body">
         {% if paper.ai_summary %}
-          {{ paper.ai_summary|linebreaks }}
+          {{ paper.ai_summary|summary_html }}
         {% else %}
           <p class="summary-empty">The AI summary is not available yet.</p>
         {% endif %}

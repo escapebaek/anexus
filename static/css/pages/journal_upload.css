@@ -1,0 +1,87 @@
+/* 논문 올리기 (관리자) — 사이트 색: #2b5876 → #4e4376 */
+.ju-page { max-width: 980px; margin: 1.5rem auto 3rem; padding: 0 12px; }
+.ju-page [hidden] { display: none !important; }
+.ju-head { margin-bottom: 1rem; }
+.ju-kicker { margin: 0; font-size: 0.82rem; font-weight: 700; color: #6b7a8c; }
+.ju-kicker a { color: #2b5876; text-decoration: none; }
+.ju-head h1 {
+  margin: 2px 0 4px; font-size: 1.7rem; font-weight: 800;
+  background: linear-gradient(135deg, #2b5876, #4e4376); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.ju-sub { margin: 0; color: #6b7a8c; font-size: 0.92rem; }
+
+.ju-card {
+  background: #fff; border: 1px solid rgba(43, 88, 118, 0.12); border-radius: 14px;
+  box-shadow: 0 4px 18px rgba(43, 88, 118, 0.07); padding: 16px 18px; margin-bottom: 14px;
+}
+.ju-card h2 { display: flex; align-items: center; gap: 8px; font-size: 1.02rem; font-weight: 800; color: #2b5876; margin: 0 0 12px; }
+.ju-card h2 small { font-weight: 600; color: #6b7a8c; font-size: 0.85rem; }
+.ju-step {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, #2b5876, #4e4376); color: #fff; font-size: 0.75rem;
+}
+.ju-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px; }
+.ju-new-issue { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #d3dbe6; }
+.ju-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; font-weight: 700; color: #4a5a6c; margin: 0; }
+.ju-field select, .ju-field input {
+  border: 1px solid #d3dbe6; border-radius: 9px; padding: 8px 10px; font-size: 0.95rem; font-weight: 500;
+  color: #2c3e50; background: #fff; outline: none;
+}
+.ju-field select:focus, .ju-field input:focus { border-color: #2b5876; box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.12); }
+
+.ju-drop {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  padding: 26px 16px; border: 2px dashed #b8c6d8; border-radius: 12px; background: #f6f8fb;
+  color: #4a5a6c; cursor: pointer; transition: background 0.15s, border-color 0.15s; margin: 0;
+}
+.ju-drop i { font-size: 2rem; color: #4e4376; opacity: 0.8; }
+.ju-drop b { color: #2b5876; }
+.ju-drop span { font-size: 0.8rem; color: #6b7a8c; }
+.ju-drop:hover, .ju-drop.is-over { background: #eef2f8; border-color: #2b5876; }
+
+.ju-files { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ju-files li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.84rem; padding: 6px 10px; border-radius: 8px; background: #f6f8fb; }
+.ju-fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ju-fstate { flex: 0 0 auto; font-weight: 700; color: #6b7a8c; }
+.ju-files .is-uploading .ju-fstate { color: #2b5876; }
+.ju-files .is-done .ju-fstate { color: #2f7a55; }
+.ju-files .is-dup .ju-fstate { color: #8a6d1e; }
+.ju-files .is-error { background: #fdf0f0; }
+.ju-files .is-error .ju-fstate { color: #b42318; white-space: normal; text-align: right; }
+
+.ju-status-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.ju-status-head h2 { margin: 0; }
+.ju-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ju-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 9px; font-size: 0.82rem; font-weight: 700;
+  border: 1px solid #c9d4e2; background: #fff; color: #2b5876; cursor: pointer; text-decoration: none;
+}
+.ju-btn:hover { background: #eef2f8; color: #2b5876; text-decoration: none; }
+.ju-btn-primary { background: linear-gradient(135deg, #2b5876, #4e4376); color: #fff; border-color: transparent; }
+.ju-btn-primary:hover { color: #fff; opacity: 0.92; background: linear-gradient(135deg, #2b5876, #4e4376); }
+.ju-note { margin: 8px 0 10px; font-size: 0.84rem; color: #6b7a8c; }
+
+.ju-papers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ju-papers li { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e3e8ef; border-radius: 11px; }
+.ju-pmain { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ju-ptitle { font-weight: 700; color: #1f3a52; text-decoration: none; line-height: 1.35; }
+.ju-ptitle:hover { text-decoration: underline; }
+.ju-pauthors { font-size: 0.8rem; color: #6b7a8c; }
+.ju-psum { font-size: 0.84rem; color: #4a5a6c; }
+.ju-perr { font-size: 0.8rem; color: #b42318; }
+.ju-chip { flex: 0 0 auto; font-size: 0.78rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: #eef2f8; color: #2b5876; white-space: nowrap; }
+.st-running .ju-chip { background: #2b5876; color: #fff; }
+.st-done .ju-chip { background: #e7f4ee; color: #2f7a55; }
+.st-error .ju-chip { background: #fdecec; color: #b42318; }
+.st-no_summary .ju-chip { background: #fdf3e1; color: #8a5a12; }
+.ju-edit { flex: 0 0 auto; color: #8a97a8; padding: 3px 4px; }
+.ju-edit:hover { color: #2b5876; }
+.ju-empty { color: #6b7a8c; justify-content: center; }
+@media (max-width: 576px) {
+  .ju-card { padding: 14px 12px; }
+  .ju-card h2 { flex-wrap: wrap; }
+  .ju-card h2 small { flex-basis: 100%; padding-left: 30px; }
+  .ju-papers li { flex-wrap: wrap; }
+  .ju-pmain { flex-basis: 100%; }
+}
