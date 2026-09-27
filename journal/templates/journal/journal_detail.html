@@ -33,7 +33,7 @@
       <div class="paper-title">{{ paper.title }}</div>
       {% if paper.authors %}<div class="paper-authors">{{ paper.authors }}</div>{% endif %}
       <div class="paper-summary-preview">
-        {% if paper.short_summary %}{{ paper.short_summary }}{% else %}<em>AI summary coming soon.</em>{% endif %}
+        {% if paper.short_summary %}{{ paper.short_summary }}{% elif paper.is_processing %}<em><i class="fas fa-spinner fa-spin"></i> AI 요약을 만드는 중입니다…</em>{% else %}<em>AI summary coming soon.</em>{% endif %}
       </div>
     </div>
   </a>

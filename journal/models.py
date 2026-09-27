@@ -76,6 +76,21 @@ class Paper(models.Model):
     order = models.PositiveIntegerField(default=0, verbose_name='Order')
     created_date = models.DateTimeField(default=timezone.now)
 
+    # 자동 처리 (논문 올리기 화면): PDF 업로드 → 제목·저자(Crossref) → AI 요약. journal/processing.py
+    STATUS_CHOICES = [
+        ('', '완료/수동'),
+        ('pending', '대기'),
+        ('running', '처리 중'),
+        ('error', '오류'),
+    ]
+    doi = models.CharField(max_length=255, blank=True, verbose_name='DOI')
+    source_sha1 = models.CharField(max_length=40, blank=True, db_index=True, editable=False,
+                                   help_text='올린 PDF 의 지문 - 같은 파일을 두 번 올리지 않도록')
+    processing_status = models.CharField(max_length=10, blank=True, default='', choices=STATUS_CHOICES,
+                                         verbose_name='자동 처리 상태')
+    processing_message = models.TextField(blank=True, verbose_name='자동 처리 메시지')
+    processing_updated = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ['order', '-created_date']
         verbose_name = 'Paper'
@@ -86,3 +101,7 @@ class Paper(models.Model):
 
     def get_absolute_url(self):
         return reverse('journal:paper_detail', args=[self.pk])
+
+    @property
+    def is_processing(self):
+        return self.processing_status in ('pending', 'running')

@@ -33,6 +33,7 @@ class IssueAdmin(admin.ModelAdmin):
 
 @admin.register(Paper)
 class PaperAdmin(admin.ModelAdmin):
-    list_display = ('title', 'issue', 'authors', 'created_date')
-    list_filter = ('issue__journal',)
-    search_fields = ('title', 'authors')
+    list_display = ('title', 'issue', 'authors', 'processing_status', 'created_date')
+    list_filter = ('issue__journal', 'processing_status')
+    search_fields = ('title', 'authors', 'doi')
+    readonly_fields = ('processing_message', 'processing_updated')
