@@ -47,3 +47,41 @@ class HomeTests(TestCase):
     def test_specially_approved_member_is_member(self):
         self.client.force_login(self.make_user(is_approved=False, is_specially_approved=True))
         self.assertContains(self.client.get(reverse('home')), 'href="/board/"')
+
+
+class SurgerySummaryTests(TestCase):
+    """현황판을 쓰는 회원에게는 랜딩에 진행 중 수술을 보여준다."""
+
+    def make_case(self, user, room, status, **extra):
+        from datetime import date
+        from schedule.models import SurgerySchedule
+        return SurgerySchedule.objects.create(
+            user=user, date=date(2026, 9, 27), room=room, time_slot='08:00', surgery_name=f'Op {room}',
+            department='GS', surgeon='김', duration=extra.pop('duration', 60), patient_name='환자',
+            patient_info='1', status=status, **extra)
+
+    def test_shows_ongoing_cases_and_counts(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        user = get_user_model().objects.create_user('sp', 'sp@example.com', 'x', is_approved=True, is_specially_approved=True)
+        self.make_case(user, '102', '진행중', started_at=timezone.now() - timedelta(minutes=90))   # 60분 예정 → 초과
+        self.make_case(user, '101', '진행중', started_at=timezone.now())
+        self.make_case(user, '103', '예정')
+        self.make_case(user, '104', '완료')
+        self.client.force_login(user)
+        res = self.client.get(reverse('home'))
+        s = res.context['surgeries']
+        self.assertEqual(s['counts'], {'ongoing': 2, 'pending': 1, 'finished': 1})
+        self.assertEqual([c['room'] for c in s['ongoing']], ['101', '102'])
+        self.assertEqual([c['overdue'] for c in s['ongoing']], [False, True])
+        self.assertContains(res, 'class="lp-or"')
+        self.assertContains(res, '예정 초과')
+
+    def test_hidden_for_others_and_without_schedule(self):
+        member = get_user_model().objects.create_user('m', 'm@example.com', 'x', is_approved=True)
+        self.make_case(member, '101', '진행중')
+        self.client.force_login(member)
+        self.assertNotContains(self.client.get(reverse('home')), 'class="lp-or"')   # 현황판 권한 없음
+        special = get_user_model().objects.create_user('s2', 's2@example.com', 'x', is_specially_approved=True)
+        self.client.force_login(special)
+        self.assertNotContains(self.client.get(reverse('home')), 'class="lp-or"')   # 등록된 일정 없음

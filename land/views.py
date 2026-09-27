@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.decorators import is_member
 
@@ -7,6 +10,34 @@ from accounts.decorators import is_member
 def _card(title, text, url, icon):
     # 외부 사이트는 새 탭으로 연다
     return {'title': title, 'text': text, 'url': url, 'icon': icon, 'external': url.startswith('http')}
+
+
+def surgery_summary(user):
+    """수술 현황판 요약 (현황판을 쓰는 특별 승인 회원만): 진행 중 수술 목록과 상태별 수.
+    현황판(build_board)과 같은 기준으로 센다."""
+    if not (user.is_authenticated and user.is_specially_approved):
+        return None
+    from schedule.models import SurgerySchedule
+    from schedule.views import _room_sort_key, status_group
+
+    counts = {'ongoing': 0, 'pending': 0, 'finished': 0}
+    ongoing = []
+    for case in SurgerySchedule.objects.filter(user=user).only(
+            'room', 'surgery_name', 'status', 'duration', 'started_at', 'hold'):
+        group = status_group(case.status)
+        counts[group] += 1
+        if group == 'ongoing':
+            end = case.started_at + timedelta(minutes=case.duration) if case.started_at and case.duration else None
+            ongoing.append({
+                'room': case.room,
+                'surgery_name': case.surgery_name,
+                'expected_end': timezone.localtime(end) if end else None,
+                'overdue': bool(end and end < timezone.now()),
+            })
+    if not sum(counts.values()):
+        return None
+    ongoing.sort(key=lambda c: _room_sort_key(c['room']))
+    return {'counts': counts, 'ongoing': ongoing}
 
 
 def home(request):
@@ -54,4 +85,8 @@ def home(request):
             ],
         },
     ]
-    return render(request, 'land/home.html', {'sections': sections, 'is_member': is_member(request.user)})
+    return render(request, 'land/home.html', {
+        'sections': sections,
+        'is_member': is_member(request.user),
+        'surgeries': surgery_summary(request.user),
+    })

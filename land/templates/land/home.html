@@ -13,7 +13,7 @@
     <div class="gradient-orb orb-2"></div>
   </div>
 
-  <!-- 제목 뒤로 흐르는 ECG · capnography 파형 (장식) -->
+  <!-- 제목 뒤로 흐르는 ECG 파형 (장식) -->
   <div class="hero-monitor" aria-hidden="true">
     <svg class="hero-wave" viewBox="0 0 1200 120" preserveAspectRatio="xMidYMid slice" focusable="false">
       <defs>
@@ -22,24 +22,19 @@
           <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
-      <g transform="translate(0 40) scale(1 0.6)">
-      <path class="wave-cap-trace" d="M0 100 L40 100 C52 100 54 66 68 64 L190 58 C196 58 198 100 206 100 L300 100 L340 100 C352 100 354 66 368 64 L490 58 C496 58 498 100 506 100 L600 100 L640 100 C652 100 654 66 668 64 L790 58 C796 58 798 100 806 100 L900 100 L940 100 C952 100 954 66 968 64 L1090 58 C1096 58 1098 100 1106 100 L1200 100" />
-      <path class="wave-cap-sweep" d="M0 100 L40 100 C52 100 54 66 68 64 L190 58 C196 58 198 100 206 100 L300 100 L340 100 C352 100 354 66 368 64 L490 58 C496 58 498 100 506 100 L600 100 L640 100 C652 100 654 66 668 64 L790 58 C796 58 798 100 806 100 L900 100 L940 100 C952 100 954 66 968 64 L1090 58 C1096 58 1098 100 1106 100 L1200 100" pathLength="1000" />
-      </g>
-      <g transform="translate(0 -14)">
-      <path id="ecgPath" class="wave-ecg-trace" d="M0 70 L30 70 Q40 61 50 70 L64 70 L68 76 L76 18 L84 86 L90 70 L112 70 Q130 54 148 70 L200 70 L230 70 Q240 61 250 70 L264 70 L268 76 L276 18 L284 86 L290 70 L312 70 Q330 54 348 70 L400 70 L430 70 Q440 61 450 70 L464 70 L468 76 L476 18 L484 86 L490 70 L512 70 Q530 54 548 70 L600 70 L630 70 Q640 61 650 70 L664 70 L668 76 L676 18 L684 86 L690 70 L712 70 Q730 54 748 70 L800 70 L830 70 Q840 61 850 70 L864 70 L868 76 L876 18 L884 86 L890 70 L912 70 Q930 54 948 70 L1000 70 L1030 70 Q1040 61 1050 70 L1064 70 L1068 76 L1076 18 L1084 86 L1090 70 L1112 70 Q1130 54 1148 70 L1200 70" />
-      <path class="wave-ecg-sweep" d="M0 70 L30 70 Q40 61 50 70 L64 70 L68 76 L76 18 L84 86 L90 70 L112 70 Q130 54 148 70 L200 70 L230 70 Q240 61 250 70 L264 70 L268 76 L276 18 L284 86 L290 70 L312 70 Q330 54 348 70 L400 70 L430 70 Q440 61 450 70 L464 70 L468 76 L476 18 L484 86 L490 70 L512 70 Q530 54 548 70 L600 70 L630 70 Q640 61 650 70 L664 70 L668 76 L676 18 L684 86 L690 70 L712 70 Q730 54 748 70 L800 70 L830 70 Q840 61 850 70 L864 70 L868 76 L876 18 L884 86 L890 70 L912 70 Q930 54 948 70 L1000 70 L1030 70 Q1040 61 1050 70 L1064 70 L1068 76 L1076 18 L1084 86 L1090 70 L1112 70 Q1130 54 1148 70 L1200 70" pathLength="1000" filter="url(#waveGlow)" />
-      <circle class="wave-head" r="3.2" filter="url(#waveGlow)">
-        <animateMotion dur="6s" begin="-0.84s" repeatCount="indefinite" rotate="0"><mpath href="#ecgPath" /></animateMotion>
-      </circle>
+      <g transform="translate(0 -4)">
+        <path id="wavePath" class="wave-trace" d="M0 70 L30 70 Q40 61 50 70 L64 70 L68 76 L76 18 L84 86 L90 70 L112 70 Q130 54 148 70 L200 70 L230 70 Q240 61 250 70 L264 70 L268 76 L276 18 L284 86 L290 70 L312 70 Q330 54 348 70 L400 70 L430 70 Q440 61 450 70 L464 70 L468 76 L476 18 L484 86 L490 70 L512 70 Q530 54 548 70 L600 70 L630 70 Q640 61 650 70 L664 70 L668 76 L676 18 L684 86 L690 70 L712 70 Q730 54 748 70 L800 70 L830 70 Q840 61 850 70 L864 70 L868 76 L876 18 L884 86 L890 70 L912 70 Q930 54 948 70 L1000 70 L1030 70 Q1040 61 1050 70 L1064 70 L1068 76 L1076 18 L1084 86 L1090 70 L1112 70 Q1130 54 1148 70 L1200 70" />
+        <path class="wave-sweep" d="M0 70 L30 70 Q40 61 50 70 L64 70 L68 76 L76 18 L84 86 L90 70 L112 70 Q130 54 148 70 L200 70 L230 70 Q240 61 250 70 L264 70 L268 76 L276 18 L284 86 L290 70 L312 70 Q330 54 348 70 L400 70 L430 70 Q440 61 450 70 L464 70 L468 76 L476 18 L484 86 L490 70 L512 70 Q530 54 548 70 L600 70 L630 70 Q640 61 650 70 L664 70 L668 76 L676 18 L684 86 L690 70 L712 70 Q730 54 748 70 L800 70 L830 70 Q840 61 850 70 L864 70 L868 76 L876 18 L884 86 L890 70 L912 70 Q930 54 948 70 L1000 70 L1030 70 Q1040 61 1050 70 L1064 70 L1068 76 L1076 18 L1084 86 L1090 70 L1112 70 Q1130 54 1148 70 L1200 70" pathLength="1000" filter="url(#waveGlow)" />
+        <circle class="wave-head" r="3.2" filter="url(#waveGlow)">
+          <animateMotion dur="6s" begin="-0.84s" repeatCount="indefinite" rotate="0"><mpath href="#wavePath" /></animateMotion>
+        </circle>
       </g>
     </svg>
   </div>
   <div class="hero-vitals" aria-hidden="true">
       <span class="vital vital-hr"><i class="fas fa-heart"></i> HR <b>60</b></span>
       <span class="vital vital-spo2">SpO<sub>2</sub> <b>99</b></span>
-      <span class="vital vital-etco2">EtCO<sub>2</sub> <b>35</b></span>
-    </div>
+  </div>
 
   <div class="hero-content text-center">
     <h1 class="hero-title">Welcome to <span class="hero-brand">ANExuS</span></h1>
@@ -63,6 +58,34 @@
 {% with member=is_member %}
 <div id="features" class="features-section">
   <div class="container-xxl">
+    {% if surgeries %}
+    <!-- 수술 현황 요약 (현황판을 쓰는 회원) -->
+    <a class="lp-or" href="{% url 'schedule_dashboard' %}">
+      <div class="lp-or-head">
+        <span class="lp-or-title">{% if surgeries.counts.ongoing %}<span class="lp-or-live" aria-hidden="true"></span>{% endif %}수술 현황</span>
+        <span class="lp-or-counts">
+          <span class="c-ongoing">진행 <b>{{ surgeries.counts.ongoing }}</b></span>
+          <span class="c-pending">예정 <b>{{ surgeries.counts.pending }}</b></span>
+          <span class="c-finished">완료 <b>{{ surgeries.counts.finished }}</b></span>
+        </span>
+        <span class="lp-or-go">현황판 열기 <i class="fas fa-arrow-right"></i></span>
+      </div>
+      {% if surgeries.ongoing %}
+      <ul class="lp-or-list">
+        {% for c in surgeries.ongoing|slice:":8" %}
+        <li{% if c.overdue %} class="is-over"{% endif %}>
+          <span class="lp-or-room">{{ c.room|default:"-" }}</span>
+          <span class="lp-or-op">{{ c.surgery_name }}</span>
+          {% if c.expected_end %}<span class="lp-or-eta">{% if c.overdue %}예정 초과 {% else %}~{% endif %}{{ c.expected_end|time:"H:i" }}</span>{% endif %}
+        </li>
+        {% endfor %}
+        {% if surgeries.ongoing|length > 8 %}<li class="lp-or-more">외 {{ surgeries.ongoing|length|add:"-8" }}건</li>{% endif %}
+      </ul>
+      {% else %}
+      <p class="lp-or-empty">지금 진행 중인 수술은 없습니다.</p>
+      {% endif %}
+    </a>
+    {% endif %}
     {% for section in sections %}
     <section class="lp-section" id="{{ section.id }}" aria-labelledby="{{ section.id }}-title">
       <header class="lp-section-head">
