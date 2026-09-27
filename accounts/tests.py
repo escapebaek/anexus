@@ -212,3 +212,30 @@ class SettingsTests(TestCase):
             self.assertEqual(prod.EMAIL_BACKEND, 'django.core.mail.backends.smtp.EmailBackend')
             self.assertEqual(prod.DEFAULT_FROM_EMAIL, 'ANExuS <x@gmail.com>')
         reload(prod)
+
+
+class AdminLoginTests(AccountTestBase):
+    """관리자 화면 로그인도 시도 횟수 제한이 있는 사이트 로그인을 거친다."""
+
+    def test_admin_login_goes_through_site_login(self):
+        res = self.client.get('/admin/')
+        self.assertRedirects(res, '/admin/login/?next=/admin/', fetch_redirect_response=False)
+        res = self.client.get('/admin/login/?next=/admin/')
+        self.assertRedirects(res, reverse('login') + '?next=%2Fadmin%2F', fetch_redirect_response=False)
+        # 비밀번호를 admin 로그인 화면에 직접 보내도 처리하지 않는다
+        make_user('boss', 'boss@example.com', is_staff=True, is_superuser=True)
+        res = self.client.post('/admin/login/', {'username': 'boss', 'password': 'S3cure-pass!'})
+        self.assertEqual(res.status_code, 302)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_staff_returns_to_admin_after_site_login(self):
+        make_user('boss', 'boss@example.com', is_staff=True, is_superuser=True)
+        res = self.client.post(reverse('login') + '?next=/admin/', {'username': 'boss', 'password': 'S3cure-pass!', 'next': '/admin/'})
+        self.assertRedirects(res, '/admin/', fetch_redirect_response=False)
+        self.assertEqual(self.client.get('/admin/').status_code, 200)
+        self.assertRedirects(self.client.get('/admin/login/?next=https://evil.example.com/'), '/admin/', fetch_redirect_response=False)
+
+    def test_non_staff_member_is_not_looped(self):
+        self.client.force_login(make_user())
+        res = self.client.get('/admin/', follow=True)
+        self.assertEqual(res.redirect_chain[-1][0], reverse('home'))

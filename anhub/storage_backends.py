@@ -13,6 +13,16 @@ from django.conf import settings
 from datetime import datetime, timedelta
 from storages.backends.s3boto3 import S3Boto3Storage
 
+def supabase_auth_headers():
+    """저장소 요청용 인증 헤더. 서버 전용 키(SUPABASE_SERVICE_KEY)가 있으면 그것을 쓴다 —
+    그래야 버킷을 '누구나 쓰기'로 열어 두지 않아도 업로드할 수 있다. 새 형식 키(sb_secret_…)는
+    JWT 가 아니므로 apikey 헤더로만 보낸다."""
+    key = settings.SUPABASE_SERVICE_KEY or settings.SUPABASE_KEY
+    if key.startswith('sb_'):
+        return {"apikey": key}
+    return {"apikey": key, "Authorization": f"Bearer {key}"}
+
+
 class SupabaseStorage(Storage):
     def __init__(self):
         self.supabase_url = settings.SUPABASE_URL
@@ -42,8 +52,7 @@ class SupabaseStorage(Storage):
         content_type = (getattr(content, "content_type", None)
                         or mimetypes.guess_type(name)[0] or "application/octet-stream")
         headers = {
-            "apikey": self.supabase_key,
-            "Authorization": f"Bearer {self.supabase_key}",
+            **supabase_auth_headers(),
             "Content-Type": content_type,
         }
         response = requests.post(url, headers=headers, data=file_data, timeout=60)
@@ -61,10 +70,7 @@ class SupabaseStorage(Storage):
     
     def size(self, name):
         url = f"{settings.SUPABASE_URL}/storage/v1/object/{settings.SUPABASE_STORAGE_BUCKET}/{name}"
-        response = requests.head(url, headers={
-            'apikey': settings.SUPABASE_KEY,
-            'Authorization': f"Bearer {settings.SUPABASE_KEY}"
-        })
+        response = requests.head(url, headers=supabase_auth_headers())
         return int(response.headers.get('Content-Length', 0))
 
 

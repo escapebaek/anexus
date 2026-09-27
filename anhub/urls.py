@@ -23,14 +23,31 @@ from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
+from urllib.parse import urlencode
 
 
 def health(request):
     return HttpResponse('ok')
 
 
+def admin_login(request):
+    """관리자 화면 로그인도 사이트 로그인으로 보낸다 — 거기에만 시도 횟수 제한이 있다
+    (기본 /admin/login/ 은 제한 없이 비밀번호를 계속 넣어 볼 수 있었다)."""
+    next_url = request.GET.get('next') or ''
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = '/admin/'
+    if request.user.is_authenticated:
+        # 로그인했지만 관리자가 아니면 여기로 온다 — 다시 로그인으로 보내면 무한 반복
+        return redirect(next_url if request.user.is_staff else 'home')
+    return redirect(f"{reverse('login')}?{urlencode({'next': next_url})}")
+
+
 urlpatterns = [
     path('health/', health),
+    path('admin/login/', admin_login),
     path('admin/', admin.site.urls),
     path('', include('land.urls')),
     path('coag/', include('coag.urls')),
