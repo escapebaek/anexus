@@ -152,12 +152,16 @@ CKEDITOR_5_FILE_STORAGE = "anhub.storage_backends.EditorImageStorage"
 # Supabase 설정
 SUPABASE_URL = config('SUPABASE_URL')
 SUPABASE_KEY = config('SUPABASE_KEY')
+# 서버 전용 키 (Supabase > Project Settings > API Keys 의 secret / service_role). 사진 업로드에 사용.
+SUPABASE_SERVICE_KEY = config('SUPABASE_SERVICE_KEY', default='')
 SUPABASE_JWT_SECRET = config('SUPABASE_JWT_SECRET')
 SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET')
 
 ############################################################################
 # Gemini API - parses uploaded schedule files (any institution's format)
 # into a structured JSON schedule (see schedule/gemini_client.py).
+# openFDA (약물 사전) - https://open.fda.gov/apis/authentication/ 에서 발급, 없어도 동작
+FDA_API_KEY = config('FDA_API_KEY', default='')
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-3.1-flash-lite')
 # GEMINI_MODEL 이 과부하(503)·무료 한도 초과(429)·없음(404)일 때 차례로 시도할 무료 모델들 (쉼표 구분)
@@ -277,7 +281,7 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
 # HSTS (HTTP Strict Transport Security) - 브라우저가 HTTPS만 사용하도록 강제
-SECURE_HSTS_SECONDS = 3600  # 1시간
+SECURE_HSTS_SECONDS = 31536000  # 1년 (브라우저가 항상 https 로만 접속)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = False
 

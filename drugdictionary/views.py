@@ -1,11 +1,14 @@
 # drugdictionary/views.py
+import logging
+
 import requests
+from django.conf import settings
 from django.shortcuts import render
 from django.http import JsonResponse
 from accounts.decorators import user_is_approved
 
 FDA_LABEL_URL = "https://api.fda.gov/drug/label.json"
-FDA_API_KEY   = "LoEIW4vqYgLL9UgbrVwVejEqcA9ubglvfbrTcekh"
+logger = logging.getLogger(__name__)
 
 def _first(lst, fallback=''):
     return lst[0] if lst else fallback
@@ -25,7 +28,9 @@ def drug_info(request):
             )
             resp = requests.get(
                 FDA_LABEL_URL,
-                params={'api_key': FDA_API_KEY, 'search': search_q, 'limit': 24},
+                # 키는 환경변수로 (없어도 openFDA 는 동작 - 하루 호출 한도만 낮음)
+                params={**({'api_key': settings.FDA_API_KEY} if settings.FDA_API_KEY else {}),
+                        'search': search_q, 'limit': 24},
                 timeout=10,
             )
             data = resp.json()
@@ -59,8 +64,10 @@ def drug_info(request):
 
         except requests.exceptions.Timeout:
             context['error'] = "Request timed out. Please try again."
-        except Exception as e:
-            context['error'] = f"Error: {str(e)}"
+        except Exception:
+            # 내부 오류 내용은 화면에 보여주지 않고 로그에만
+            logger.exception("openFDA lookup failed for %r", query)
+            context['error'] = "Could not load drug information. Please try again later."
 
     return render(request, 'drugdictionary/drug_info.html', context)
 

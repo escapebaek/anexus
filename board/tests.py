@@ -193,3 +193,15 @@ class BoardFormDefaultsTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertNotContains(res, 'value="default"')
         self.assertContains(res, '<label for="id_title">제목</label>', html=True)
+
+
+class StorageKeyTests(TestCase):
+    def test_server_key_is_preferred_and_new_format_uses_apikey_only(self):
+        from django.test import override_settings
+        from anhub.storage_backends import supabase_auth_headers
+        with override_settings(SUPABASE_KEY='anon.jwt', SUPABASE_SERVICE_KEY=''):
+            self.assertEqual(supabase_auth_headers(), {'apikey': 'anon.jwt', 'Authorization': 'Bearer anon.jwt'})
+        with override_settings(SUPABASE_KEY='anon.jwt', SUPABASE_SERVICE_KEY='service.jwt'):
+            self.assertEqual(supabase_auth_headers()['Authorization'], 'Bearer service.jwt')
+        with override_settings(SUPABASE_KEY='anon.jwt', SUPABASE_SERVICE_KEY='sb_secret_abc'):
+            self.assertEqual(supabase_auth_headers(), {'apikey': 'sb_secret_abc'})
