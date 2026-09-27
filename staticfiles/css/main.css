@@ -4313,3 +4313,80 @@ input[type="text"]:focus {
   align-items: center;
   gap: 8px;
 }
+
+/* ---------- 모바일 메뉴 (햄버거) ----------
+   예전: 네비바 높이가 고정이라 펼친 메뉴가 투명하게 본문 위로 흘러나오고,
+   버튼이 한 줄에 하나씩 크게 쌓여 화면을 많이 가렸다.
+   지금: 불투명한 카드 안에 인사말 · (가입 승인) · [My Page | Logout] 을 촘촘하게. */
+@media (max-width: 991.98px) {
+  .navbar {
+    height: auto;
+    min-height: var(--navbar-height);
+  }
+  .navbar > .container-fluid {
+    flex-wrap: wrap;
+  }
+  #navbarNav {
+    flex-basis: 100%;
+  }
+  #navbarNav.show,
+  #navbarNav.collapsing {
+    margin: 8px 0 4px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid rgba(43, 88, 118, 0.14);
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+  }
+  #navbarNav .navbar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center !important;
+    gap: 8px;
+  }
+  #navbarNav .nav-item {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* 인사말 · 가입 승인 알림은 한 줄씩, 버튼들은 한 줄에 나란히 */
+  #navbarNav .nav-item:has(.navbar-text),
+  #navbarNav .nav-item:has(.nav-approval-badge) {
+    flex-basis: 100%;
+  }
+  #navbarNav .navbar-text {
+    display: block;
+    margin: 0;
+    padding: 0 2px 2px !important;
+    background: none;
+    border: none;
+    backdrop-filter: none;
+    text-align: left;
+    font-size: 0.85rem;
+    color: #6b7a8c !important;
+  }
+  #navbarNav .nav-approval-badge {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 7px 10px;
+  }
+  #navbarNav .nav-item form {
+    display: block !important;
+  }
+  #navbarNav .btn {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.2;
+    border-radius: 10px;
+  }
+}
+@media (max-width: 991.98px) and (prefers-color-scheme: dark) {
+  #navbarNav.show,
+  #navbarNav.collapsing {
+    background: #1a1f2e;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}

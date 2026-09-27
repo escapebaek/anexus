@@ -186,6 +186,17 @@
           });
         }
 
+        // 모바일 메뉴: 펼친 채로 바깥(본문)을 누르면 닫기
+        const navMenu = document.getElementById("navbarNav");
+        if (navMenu && window.bootstrap) {
+          const closeMenu = () => {
+            if (navMenu.classList.contains("show")) bootstrap.Collapse.getOrCreateInstance(navMenu, { toggle: false }).hide();
+          };
+          document.addEventListener("click", (e) => {
+            if (!e.target.closest("#mainNavbar")) closeMenu();
+          });
+        }
+
         // Optimized auto-hide alerts
         document.querySelectorAll(".alert").forEach((alert, index) => {
           setTimeout(() => {
