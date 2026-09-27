@@ -99,40 +99,25 @@
 .wave-sweep {
   stroke: rgba(165, 200, 253, 0.85);
   stroke-width: 2.2;
-  stroke-dasharray: 150 850;
-  animation: waveSweep 6s linear infinite;
+  stroke-dasharray: 0 99999;   /* 스크립트가 점과 함께 움직임 */
 }
 .wave-head { fill: #e0f2fe; }
-@keyframes waveSweep {
-  from { stroke-dashoffset: 1000; }
-  to   { stroke-dashoffset: 0; }
-}
 
-/* 모니터 수치 (오른쪽 위 모서리) */
-.hero-vitals {
+/* 방문 수 (오른쪽 위 모서리, 모니터 수치처럼) */
+.hero-visits {
   position: absolute;
   z-index: 2;
   right: 22px;
   top: 16px;
   display: flex;
   gap: 18px;
-  font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  letter-spacing: 0.04em;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.55);
 }
-.vital { white-space: nowrap; }
-.vital b { font-size: 17px; font-weight: 700; margin-left: 3px; }
-.vital sub { font-size: 0.7em; }
-.vital-hr b, .vital-hr i { color: #93c5fd; }
-.vital-hr i { font-size: 10px; animation: heartBeat 1s ease-in-out infinite; display: inline-block; }
-.vital-spo2 b { color: #e0f2fe; }
-.vital-abp b { color: #c4b5fd; }
-
-@keyframes heartBeat {
-  0%, 100% { transform: scale(1); }
-  15% { transform: scale(1.3); }
-  30% { transform: scale(1); }
-}
+.visits-item { white-space: nowrap; }
+.visits-num { font-size: 17px; font-weight: 700; margin-left: 4px; color: #93c5fd; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.visits-item + .visits-item .visits-num { color: #c4b5fd; }
 
 /* ANExuS 브랜드 강조 */
 .hero-brand {
@@ -454,8 +439,8 @@ a.lp-card:hover .lp-go {
   }
 
   .hero-monitor { height: 170px; transform: translateY(-78%); }
-  .hero-vitals { right: 50%; transform: translateX(50%); top: 14px; gap: 14px; font-size: 10px; }
-  .vital b { font-size: 13px; }
+  .hero-visits { right: 50%; transform: translateX(50%); top: 14px; gap: 14px; font-size: 9.5px; }
+  .visits-num { font-size: 13px; }
 
   .hero-title {
     font-size: 2.1rem;
@@ -556,8 +541,7 @@ a.lp-card:hover .lp-go {
 /* 움직임 줄이기 설정 존중 */
 @media (prefers-reduced-motion: reduce) {
   .gradient-orb,
-  .hero-cursor,
-  .vital-hr i {
+  .hero-cursor {
     animation: none;
   }
 

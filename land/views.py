@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.decorators import is_member
+from anhub.middleware import visit_totals
 
 
 def _card(title, text, url, icon):
@@ -72,11 +73,10 @@ def home(request):
         },
         {
             'id': 'resources',
-            'cols': 6,  # 넓은 화면에서 한 줄 카드 수 (끝줄이 한두 장만 남지 않게)
+            'cols': 5,  # 넓은 화면에서 한 줄 카드 수 (끝줄이 한두 장만 남지 않게)
             'title': 'Resources',
             'subtitle': 'Societies, references and learning materials.',
             'cards': [
-                _card('Trends in Anesthesia', 'Recent anesthesia trends in major journals.', 'https://escapebaek.github.io/trends_anesthesia/', 'fas fa-chart-line'),
                 _card('KSA', 'Korean Society of Anesthesiologists.', 'https://www.anesthesia.or.kr/', 'fas fa-user-md'),
                 _card('SNUH Anesthesia', 'More information for alumni.', 'https://dept.snuh.org/dept/AN/index.do', 'fas fa-hospital'),
                 _card('NYSORA', 'Renowned educational organization in anesthesiology.', 'https://www.nysora.com/', 'fas fa-book-medical'),
@@ -89,4 +89,13 @@ def home(request):
         'sections': sections,
         'is_member': is_member(request.user),
         'surgeries': surgery_summary(request.user),
+        'visits': _visits(),
     })
+
+
+def _visits():
+    try:
+        total, today = visit_totals()
+    except Exception:           # 방문 수를 못 읽어도 첫 화면은 떠야 함
+        return None
+    return {'total': total, 'today': today}
