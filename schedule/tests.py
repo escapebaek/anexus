@@ -923,3 +923,34 @@ class DurationColumnTests(TestCase):
         res = self.client.post(reverse('schedule_dashboard'),
                                {'file': SimpleUploadedFile('s.csv', '방,시간,수술명,환자명\n1,08:00,TKRA,홍길동\n'.encode())}, follow=True)
         self.assertIn('수술 메뉴에서 예상 시간을 입력', str(list(res.context['messages'])[0]))
+
+
+class EditCaseInfoTests(TestCase):
+    """현황판에서 예정 시각·수술명 직접 수정."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+        self.a = make(self.user, '101', '08:00', name='A', info='')
+        self.b = make(self.user, '101', '10:00', name='B', info='')
+
+    def post(self, case, **data):
+        return self.client.post(reverse('schedule_update', args=[case.id]), json.dumps(data), content_type='application/json')
+
+    def test_edit_time_slot_and_name_reorders_room(self):
+        room = self.post(self.a, time_slot='1130', surgery_name='  Lap  chole ').json()['room']
+        a = SurgerySchedule.objects.get(id=self.a.id)
+        self.assertEqual((a.time_slot, a.surgery_name), ('11:30', 'Lap chole'))
+        self.assertEqual([c['id'] for c in room['cases']], [self.b.id, self.a.id])   # 시간 순으로 뒤로
+
+    def test_time_slot_normalization_and_validation(self):
+        from schedule.views import normalize_time_slot
+        self.assertEqual([normalize_time_slot(v) for v in ('9:30', '930', '9.30', '8A', 'TF1', '')],
+                         ['09:30', '09:30', '09:30', '8A', 'TF1', ''])
+        self.assertEqual(self.post(self.a, surgery_name='  ').status_code, 400)
+        self.assertEqual(SurgerySchedule.objects.get(id=self.a.id).surgery_name, 'Op')
+        other = get_user_model().objects.create_user('x', password='x')
+        theirs = make(other, '101', '08:00', name='T', info='')
+        self.assertEqual(self.post(theirs, surgery_name='hack').status_code, 404)

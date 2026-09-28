@@ -128,6 +128,12 @@
   <button type="button" class="rm-opt" data-status="ongoing"><i class="fas fa-play-circle"></i> 수술 진행중</button>
   <button type="button" class="rm-opt" data-status="finished"><i class="fas fa-check-circle"></i> 수술 완료</button>
   <button type="button" class="rm-opt" data-status="pending"><i class="far fa-clock"></i> 예정</button>
+  <div class="rm-group">수술 정보</div>
+  <form class="rm-info" id="infoForm" autocomplete="off">
+    <label class="rm-time"><span>예정</span><input type="text" id="slotInput" maxlength="10" placeholder="09:30" title="예정 시각 (예: 09:30, 8A)" /></label>
+    <input type="text" id="opNameInput" maxlength="200" placeholder="수술명" title="수술명" />
+    <button type="submit" class="rm-mini" title="예정 시각·수술명 저장"><i class="fas fa-check"></i> 저장</button>
+  </form>
   <div class="rm-group">시간</div>
   <form class="rm-times" id="timeForm" autocomplete="off">
     <label class="rm-time" id="startField"><span>시작</span><input type="text" id="startInput" inputmode="numeric" maxlength="5" placeholder="09:30" title="24시간 형식 (예: 13:05)" /></label>
@@ -403,6 +409,8 @@
     document.getElementById("roomMenuAnes").innerHTML = ANES_TYPES.map(([code, label]) =>
       `<button type="button" class="rm-at${c.anesthesia_type === code ? " is-on" : ""}" data-anes-type="${code}" title="${esc(label)}"><span class="at at-${code}">${code}</span></button>`).join("") +
       (c.anesthesia_type ? '<button type="button" class="rm-at rm-at-clear" data-anes-type="" title="마취 방법 지우기">지움</button>' : "");
+    document.getElementById("slotInput").value = c.time_slot || "";
+    document.getElementById("opNameInput").value = c.surgery_name || "";
     const startInput = document.getElementById("startInput");
     startInput.value = c.started_at ? hm(new Date(c.started_at)) : "";
     document.getElementById("startField").hidden = c.group !== "ongoing";
@@ -510,6 +518,20 @@
     if (/^\d{3,4}$/.test(start)) start = start.slice(0, -2) + ":" + start.slice(-2);   // 930 -> 9:30
     if (/^\d:/.test(start)) start = "0" + start;
     if (c.group === "ongoing" && start !== (c.started_at ? hm(new Date(c.started_at)) : "")) patch.started_at = start;
+    closeRoomMenu();
+    if (Object.keys(patch).length) updateCase(c.id, patch);
+  });
+
+  document.getElementById("infoForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const c = findCase(menuCaseId);
+    if (!c) return;
+    const patch = {};
+    const slot = document.getElementById("slotInput").value.trim();
+    const name = document.getElementById("opNameInput").value.trim();
+    if (slot !== (c.time_slot || "")) patch.time_slot = slot;
+    if (name && name !== c.surgery_name) patch.surgery_name = name;
+    if (!name) return alert("수술명을 입력하세요.");
     closeRoomMenu();
     if (Object.keys(patch).length) updateCase(c.id, patch);
   });

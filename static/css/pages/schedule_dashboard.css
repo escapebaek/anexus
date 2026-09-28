@@ -482,6 +482,20 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
 .rm-time input:focus { border-color: #2b5876; box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.12); }
 .rm-time em { font-style: normal; }
 .rm-times .rm-mini { margin-left: auto; }
+.rm-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 3px 8px 5px; max-width: 240px; }
+.rm-info .rm-mini { margin-left: auto; }
+.rm-time input#slotInput { width: 58px; text-align: center; }
+#opNameInput {
+  flex: 1 1 100%;
+  min-width: 0;
+  border: 1px solid #d3dbe6;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12.5px;
+  color: #2c3e50;
+  outline: none;
+}
+#opNameInput:focus { border-color: #2b5876; box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.12); }
 .rm-pos { display: flex; gap: 4px; padding: 3px 8px; }
 .rm-pos[hidden] { display: none; }
 .rm-mini {

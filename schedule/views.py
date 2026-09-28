@@ -279,6 +279,16 @@ def parse_start_time(value, now=None):
     return started
 
 
+def normalize_time_slot(value):
+    """현황판에서 입력한 예정 시각. 930 / 9:30 / 9.30 -> 09:30 (방 안에서 시간 순 정렬이 맞도록).
+    8A, TF1 처럼 병원 고유 표기는 그대로 둠."""
+    text = re.sub(r"\s+", "", str(value or ""))
+    match = re.fullmatch(r"(\d{1,2})[:.;]?(\d{2})", text)
+    if match and int(match.group(1)) <= 23 and int(match.group(2)) <= 59:
+        return f"{int(match.group(1)):02d}:{match.group(2)}"
+    return text[:FIELD_MAX_LENGTHS["time_slot"]]
+
+
 @login_required
 @user_is_specially_approved
 def schedule_dashboard(request):
@@ -664,7 +674,7 @@ def update_schedules_from_records(records, user, existing_schedules):
 @require_POST
 def update_schedule(request, schedule_id):
     """현황판에서 수술 한 건을 수정: 마취의 입력, 당직/Hold 표시, 상태(진행중/완료/예정) 변경,
-    예상 시간(분)·시작 시각(HH:MM) 수정.
+    예상 시간(분)·시작 시각(HH:MM)·예정 시각(time_slot)·수술명 수정.
     응답으로 그 방의 최신 상태(build_board 의 room 항목)를 돌려줌."""
     schedule = SurgerySchedule.objects.filter(id=schedule_id, user=request.user).first()
     if schedule is None:
@@ -691,6 +701,13 @@ def update_schedule(request, schedule_id):
             started_at = parse_start_time(data.get("started_at"))
         except ValueError as exc:
             return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    info = {}
+    if "time_slot" in data:
+        info["time_slot"] = normalize_time_slot(data.get("time_slot"))
+    if "surgery_name" in data:
+        info["surgery_name"] = re.sub(r"\s+", " ", str(data.get("surgery_name") or "")).strip()[:FIELD_MAX_LENGTHS["surgery_name"]]
+        if not info["surgery_name"]:
+            return JsonResponse({"status": "error", "message": "수술명을 입력하세요."}, status=400)
     new_room = None
     if "room" in data:
         new_room = re.sub(r"\s+", " ", str(data.get("room") or "")).strip()[:FIELD_MAX_LENGTHS["room"]]
@@ -716,6 +733,9 @@ def update_schedule(request, schedule_id):
         if "started_at" in data:
             schedule.started_at = started_at
             fields.append("started_at")
+        for field, value in info.items():
+            setattr(schedule, field, value)
+            fields.append(field)
         if fields:
             schedule.save(update_fields=fields)
         if "status" in data:
