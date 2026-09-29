@@ -561,6 +561,77 @@ class LocalAiTests(TestCase):
         self.assertEqual((settings.GEMINI_API_KEY, settings.GROQ_API_KEY, settings.OPENROUTER_API_KEY), ('', '', ''))
 
 
+class LocalAiDiagnosticsTests(TestCase):
+    """로컬 AI 에 못 닿을 때 원인을 화면 문구로, 관리자용 점검 주소로 알려줌."""
+
+    def setUp(self):
+        from . import ai_client
+        ai_client._discovered_models.clear()
+        ai_client._discovery_errors.clear()
+        self.addCleanup(ai_client._discovered_models.clear)
+        self.addCleanup(ai_client._discovery_errors.clear)
+
+    def local(self, **extra):
+        from django.test import override_settings
+        conf = dict(SCHEDULE_AI_PROVIDERS='localai', LOCALAI_URL='https://ai.example.ts.net',
+                    LOCALAI_API_KEY='k', LOCALAI_MODEL='', SCHEDULE_AI_TIME_BUDGET=100)
+        conf.update(extra)
+        return override_settings(**conf)
+
+    def resp(self, code, body):
+        from unittest import mock
+        r = mock.Mock(status_code=code, text=json.dumps(body))
+        r.json.return_value = body
+        return r
+
+    def test_dns_failure_explains_tailscale_funnel(self):
+        from unittest import mock
+        from . import ai_client
+        err = ai_client.requests.ConnectionError("Failed to resolve 'ai.example.ts.net' ([Errno -2] Name or service not known)")
+        with self.local(), mock.patch.object(ai_client.requests, 'get', side_effect=err):
+            with self.assertRaises(ai_client.ScheduleExtractionError) as ctx:
+                ai_client.extract_schedules('메모', 'm.txt')
+        self.assertIn('ai.example.ts.net 주소를 인터넷에서 찾을 수 없습니다', str(ctx.exception))
+        self.assertIn('Tailscale Funnel', str(ctx.exception))
+
+    def test_key_rejected_and_ollama_list_fallback(self):
+        from unittest import mock
+        from . import ai_client
+        with self.local(), mock.patch.object(ai_client.requests, 'get', return_value=self.resp(401, {})):
+            self.assertEqual(ai_client.list_models('localai')[1][:40], 'ai.example.ts.net 가 API 키를 거부했습니다 (401, LOCALA'[:40])
+        calls = []
+
+        def fake_get(url, **kw):
+            calls.append(url)
+            return self.resp(404, {}) if url.endswith('/v1/models') else self.resp(200, {'models': [{'name': 'qwen3:32b'}]})
+
+        with self.local(), mock.patch.object(ai_client.requests, 'get', side_effect=fake_get):
+            self.assertEqual(ai_client.list_models('localai'), (['qwen3:32b'], ''))
+        self.assertEqual(calls, ['https://ai.example.ts.net/v1/models', 'https://ai.example.ts.net/api/tags'])
+
+    def test_ai_check_page(self):
+        from unittest import mock
+        from . import ai_client
+        User = get_user_model()
+        member = User.objects.create_user('m', password='x')
+        staff = User.objects.create_user('s', password='x', is_staff=True)
+        url = reverse('schedule_ai_check')
+        self.client.force_login(member)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_login(staff)
+        chat = self.resp(200, {'choices': [{'message': {'content': '{"ok": true}'}}]})
+        with self.local(), mock.patch.object(ai_client.requests, 'get', return_value=self.resp(200, {'data': [{'id': 'qwen'}]})), \
+                mock.patch.object(ai_client.requests, 'post', return_value=chat):
+            data = self.client.get(url).json()
+        self.assertEqual(data['1. 모델 목록'], ['qwen'])
+        self.assertTrue(data['결론'].startswith('정상'))
+        self.assertEqual(data['LOCALAI_API_KEY'], '설정됨')          # 키 값은 보여주지 않음
+        err = ai_client.requests.ConnectionError('Connection refused')
+        with self.local(), mock.patch.object(ai_client.requests, 'get', side_effect=err):
+            data = self.client.get(url).json()
+        self.assertIn('연결을 거부했습니다', data['결론'])
+
+
 class UploadJobTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user('doc', password='x')

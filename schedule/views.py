@@ -818,3 +818,48 @@ def handle_memo(request, schedule_id):
                 'status': 'error',
                 'message': str(e)
             }, status=500)
+
+
+@login_required
+def ai_check(request):
+    """관리자용 로컬 AI 연결 점검: /schedule/ai-check/ 를 브라우저로 열면 어디서 막히는지 보여줌.
+    (주소 확인 → 모델 목록 → 짧은 테스트 질문 1개). API 키 값은 보여주지 않음."""
+    import time as _time
+
+    from . import ai_client
+
+    if not request.user.is_staff:
+        return JsonResponse({"error": "관리자만 볼 수 있습니다."}, status=403)
+    from django.conf import settings
+
+    name = "localai"
+    result = {
+        "providers": ai_client.configured_providers(),
+        "LOCALAI_URL": settings.LOCALAI_URL or "(없음)",
+        "LOCALAI_API_KEY": "설정됨" if settings.LOCALAI_API_KEY else "(없음)",
+        "LOCALAI_MODEL": settings.LOCALAI_MODEL or "(비어 있음 - 자동 선택)",
+    }
+    if name not in result["providers"]:
+        result["결론"] = "LOCALAI_URL 과 LOCALAI_API_KEY 를 Render 환경변수에 넣어야 합니다."
+        return JsonResponse(result, json_dumps_params={"ensure_ascii": False, "indent": 2})
+
+    result["요청 주소"] = ai_client._base_url(name)
+    models, reason = ai_client.list_models(name)
+    result["1. 모델 목록"] = models if models else f"실패 - {reason}"
+    model = settings.LOCALAI_MODEL.split(",")[0].strip() if settings.LOCALAI_MODEL else (models or [""])[0]
+    if not model:
+        result["결론"] = f"서버에 닿지 못했거나 모델 목록이 없습니다: {reason}"
+        return JsonResponse(result, json_dumps_params={"ensure_ascii": False, "indent": 2})
+
+    started = _time.monotonic()
+    try:
+        answer = ai_client._ask_openai_compatible_json(
+            name, 'Respond with ONLY this JSON: {"ok": true}', "ping", min(60, settings.LOCALAI_TIMEOUT))
+        result["2. 테스트 질문"] = {"모델": model, "답": answer[:200],
+                                "걸린 시간(초)": round(_time.monotonic() - started, 1)}
+        result["결론"] = "정상 - 로컬 AI 에 연결되어 답을 받았습니다."
+    except Exception as exc:  # 점검 화면이므로 어떤 실패든 원인을 그대로 보여줌
+        result["2. 테스트 질문"] = f"실패 - {exc}"
+        result["결론"] = ("모델 목록까지는 됐지만 질문에 답하지 못했습니다." if models
+                        else f"로컬 AI 에 연결하지 못했습니다: {exc}")
+    return JsonResponse(result, json_dumps_params={"ensure_ascii": False, "indent": 2})

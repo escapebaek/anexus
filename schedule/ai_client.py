@@ -148,21 +148,89 @@ def _missing_key_hint():
 
 
 _discovered_models = {}
+_discovery_errors = {}   # 마지막으로 모델 목록을 못 가져온 이유 (화면 오류 문구에 보여줌)
+
+
+def describe_connection_error(exc, url):
+    """requests 예외 -> 사람이 읽을 원인 (Render 에서 로컬 AI 에 못 닿는 흔한 경우들)."""
+    host = requests.utils.urlparse(url).hostname or url
+    text = str(exc)
+    if isinstance(exc, requests.Timeout):
+        return f"{host} 가 제한 시간 안에 응답하지 않습니다 (AI 컴퓨터가 바쁘거나 꺼져 있음)"
+    if isinstance(exc, requests.exceptions.SSLError):
+        return f"{host} 의 HTTPS 인증서를 확인하지 못했습니다"
+    if isinstance(exc, requests.ConnectionError):
+        if any(s in text for s in ("NameResolution", "Name or service not known", "getaddrinfo", "nodename nor servname")):
+            return (f"{host} 주소를 인터넷에서 찾을 수 없습니다. Render 는 Tailscale 네트워크 밖이라 "
+                    "Tailscale Funnel 로 공개해야 접속할 수 있습니다 (AI 컴퓨터에서 'tailscale funnel status' 확인)")
+        if "refused" in text.lower():
+            return f"{host} 가 연결을 거부했습니다 (Funnel 이 가리키는 포트에 AI 서버가 떠 있는지 확인)"
+        return f"{host} 에 연결하지 못했습니다 ({text[:150]})"
+    return text[:200]
+
+
+def describe_http_error(response, url):
+    host = requests.utils.urlparse(url).hostname or url
+    if response.status_code in (401, 403):
+        return f"{host} 가 API 키를 거부했습니다 ({response.status_code}, LOCALAI_API_KEY 확인)"
+    if response.status_code == 404:
+        return f"{url} 주소가 없습니다 (404, LOCALAI_URL 경로 확인)"
+    return f"{host} 응답 {response.status_code}: {response.text[:150]}"
+
+
+def _model_ids(payload):
+    """OpenAI 형식 {"data": [{"id"}]} 과 Ollama 형식 {"models": [{"name"}]} 모두."""
+    items = (payload or {}).get("data") or (payload or {}).get("models") or []
+    return [str(m.get("id") or m.get("model") or m.get("name")) for m in items
+            if isinstance(m, dict) and (m.get("id") or m.get("model") or m.get("name"))]
+
+
+def list_models(name):
+    """서버에 올라와 있는 모델 이름들. 실패하면 (None, 원인)."""
+    base = _base_url(name)
+    urls = [f"{base}/models"]
+    if base.endswith("/v1"):
+        urls.append(base[:-3] + "/api/tags")        # Ollama 고유 주소 (OpenAI 형식 목록이 없을 때)
+    reason = ""
+    for url in urls:
+        try:
+            response = requests.get(url, headers=_headers(name), timeout=15)
+        except requests.RequestException as exc:
+            return None, describe_connection_error(exc, url)   # 연결 자체가 안 되면 다른 주소도 소용없음
+        if response.status_code != 200:
+            reason = describe_http_error(response, url)
+            if response.status_code in (401, 403):
+                return None, reason
+            continue
+        try:
+            ids = _model_ids(response.json())
+        except ValueError:
+            reason = f"{url} 응답이 JSON 이 아닙니다 ({response.text[:80]!r})"
+            continue
+        if ids:
+            return ids, ""
+        reason = f"{url} 에 올라와 있는 모델이 없습니다"
+    return None, reason
 
 
 def _discover_model(name):
-    """모델 이름을 정하지 않았으면 서버에 올라와 있는 첫 번째 모델 (/v1/models)."""
+    """모델 이름을 정하지 않았으면 서버에 올라와 있는 첫 번째 모델."""
     if name in _discovered_models:
         return _discovered_models[name]
-    try:
-        response = requests.get(f"{_base_url(name)}/models", headers=_headers(name), timeout=15)
-        response.raise_for_status()
-        model = response.json()["data"][0]["id"]
-    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as exc:
-        logger.warning("%s model discovery failed: %s", name, exc)
+    ids, reason = list_models(name)
+    if not ids:
+        logger.warning("%s model discovery failed: %s", name, reason)
+        _discovery_errors[name] = reason
         return ""
-    _discovered_models[name] = model
-    return model
+    _discovery_errors.pop(name, None)
+    _discovered_models[name] = ids[0]
+    return ids[0]
+
+
+def no_model_message(name):
+    conf = OPENAI_COMPATIBLE[name]
+    reason = _discovery_errors.get(name) or "서버에서 모델 목록을 받지 못함"
+    return f"{conf['label']} 에서 사용할 모델을 찾지 못했습니다: {reason}. (모델 이름을 {conf['models_setting']} 에 직접 적어도 됩니다)"
 
 
 def _models(name):
@@ -200,7 +268,7 @@ def _openai_compatible(name, source_text, filename, deadline):
     failures = []
     models = _models(name)
     if not models:
-        raise ScheduleExtractionError(f"{conf['label']} 에서 사용할 모델을 찾지 못했습니다 (서버 연결 또는 {conf['models_setting']} 확인).")
+        raise ScheduleExtractionError(no_model_message(name))
     for model in models:
         remaining = deadline - time.monotonic()
         if remaining < 5:
@@ -212,7 +280,7 @@ def _openai_compatible(name, source_text, filename, deadline):
             continue
         except requests.RequestException as exc:
             logger.warning("%s request failed: %s", name, exc)
-            failures.append(f"{model}: 연결 실패")
+            failures.append(f"{model}: {describe_connection_error(exc, _base_url(name))}")
             continue
 
         if response.status_code in (401, 403):
@@ -299,10 +367,14 @@ def _ask_gemini_json(system, prompt, timeout):
 def _ask_openai_compatible_json(name, system, prompt, timeout):
     models = _models(name)
     if not models:
-        raise ValueError("no model")
-    response = _post_chat(name, models[0], [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-                          timeout)
-    response.raise_for_status()
+        raise ValueError(no_model_message(name))
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+    try:
+        response = _post_chat(name, models[0], messages, timeout)
+    except requests.RequestException as exc:
+        raise ValueError(describe_connection_error(exc, _base_url(name))) from exc
+    if response.status_code != 200:
+        raise ValueError(describe_http_error(response, f"{_base_url(name)}/chat/completions"))
     return clean_content(response.json()["choices"][0]["message"]["content"])
 
 
