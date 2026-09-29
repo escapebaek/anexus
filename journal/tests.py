@@ -123,14 +123,15 @@ class ProcessingTests(JournalTestBase):
 
     @mock.patch("journal.processing.crossref_metadata",
                 return_value={"title": "Exact Title From Crossref", "authors": "Kim A, Lee B"})
-    @mock.patch("journal.processing._gemini_summary", return_value=dict(SUMMARY))
-    def test_process_paper_fills_everything(self, gemini, crossref):
+    @mock.patch("journal.processing._gemini_summary")
+    @mock.patch("journal.processing._text_provider_summary", return_value=dict(SUMMARY))
+    def test_process_paper_fills_everything(self, local_ai, gemini, crossref):
         paper = self.make_paper()
         processing.run_pending()
         paper.refresh_from_db()
         crossref.assert_called_with("10.1016/j.bja.2026.01.001")
-        pdf_bytes, text = gemini.call_args.args
-        self.assertTrue(pdf_bytes.startswith(b"%PDF"))
+        gemini.assert_not_called()                      # Gemini 는 사용 중지
+        (text,) = local_ai.call_args.args
         self.assertIn("Methods", text)
         self.assertEqual((paper.title, paper.authors, paper.doi),
                          ("Exact Title From Crossref", "Kim A, Lee B", "10.1016/j.bja.2026.01.001"))
@@ -139,26 +140,37 @@ class ProcessingTests(JournalTestBase):
         self.assertEqual(paper.processing_status, "")
 
     @mock.patch("journal.processing.crossref_metadata", return_value=None)
-    @mock.patch("journal.processing._gemini_summary", side_effect=processing.ProcessingError("quota"))
-    @mock.patch("journal.processing._text_provider_summary", return_value=dict(SUMMARY))
-    def test_falls_back_to_text_provider_and_ai_metadata(self, text_provider, gemini, crossref):
-        paper = self.make_paper("no identifier here")
-        processing.run_pending()
+    def test_local_ai_summary_and_ai_metadata(self, crossref):
+        from django.test import override_settings
+        with override_settings(SCHEDULE_AI_PROVIDERS="localai", LOCALAI_URL="https://ai.example.ts.net",
+                               LOCALAI_API_KEY="k", LOCALAI_MODEL="qwen", LOCALAI_MAX_CHARS=50, LOCALAI_TIMEOUT=77), \
+                mock.patch("schedule.ai_client._ask_openai_compatible_json",
+                           return_value=json.dumps(SUMMARY, ensure_ascii=False)) as ask:
+            paper = self.make_paper("no identifier here")
+            processing.run_pending()
         paper.refresh_from_db()
-        text_provider.assert_called_once()
+        name, system, prompt, timeout = ask.call_args.args
+        self.assertEqual((name, system, timeout), ("localai", processing.SYSTEM_PROMPT, 77))
+        self.assertIn("no identifier here", prompt)
         self.assertEqual((paper.title, paper.authors, paper.doi), ("AI read title", "AI Author", ""))
         self.assertIn("AI 가 PDF", paper.processing_message)
+        self.assertEqual(paper.processing_status, "")
 
     @mock.patch("journal.processing.crossref_metadata", return_value=None)
-    @mock.patch("journal.processing._gemini_summary", side_effect=processing.ProcessingError("quota"))
-    @mock.patch("journal.processing._text_provider_summary", side_effect=processing.ProcessingError("groq down"))
+    @mock.patch("journal.processing._text_provider_summary", side_effect=processing.ProcessingError("로컬 AI 연결 실패"))
     def test_failure_is_recorded_not_raised(self, *_):
         paper = self.make_paper()
         processing.run_pending()
         paper.refresh_from_db()
         self.assertEqual(paper.processing_status, "error")
-        self.assertIn("quota", paper.processing_message)
+        self.assertIn("로컬 AI 연결 실패", paper.processing_message)
         self.assertEqual(paper.title, "file name")
+
+    def test_no_ai_configured_is_clear_error(self):
+        from django.test import override_settings
+        with override_settings(SCHEDULE_AI_PROVIDERS="localai", LOCALAI_URL="", LOCALAI_API_KEY=""):
+            with self.assertRaisesMessage(processing.ProcessingError, "LOCALAI_URL"):
+                processing.summarize(b"%PDF", "some text")
 
     def test_summary_rendering(self):
         html = summary_html("### 연구 목적\n목적 <script>.\n\n### 결과\n결과 1\n결과 2")
