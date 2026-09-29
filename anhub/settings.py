@@ -163,7 +163,27 @@ SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET')
 # into a structured JSON schedule (see schedule/gemini_client.py).
 # openFDA (약물 사전) - https://open.fda.gov/apis/authentication/ 에서 발급, 없어도 동작
 FDA_API_KEY = config('FDA_API_KEY', default='')
-GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+
+# ---------------------------------------------------------------------------
+# 로컬 AI (Qwen, Tailscale) - 지금 쓰는 AI. 수술 스케줄 분석·논문 요약 모두 여기로 보냄.
+# OpenAI 호환 API (/v1/chat/completions). LOCALAI_URL 은 /v1 을 붙이든 안 붙이든 됨.
+LOCALAI_URL = config('LOCALAI_URL', default='')
+LOCALAI_API_KEY = config('LOCALAI_API_KEY', default='')
+LOCALAI_MODEL = config('LOCALAI_MODEL', default='')            # 비우면 서버의 첫 번째 모델을 자동으로 사용
+LOCALAI_TIMEOUT = config('LOCALAI_TIMEOUT', default=300, cast=int)        # 요청 하나당 최대 대기(초)
+LOCALAI_MAX_CHARS = config('LOCALAI_MAX_CHARS', default=40000, cast=int)  # 논문 요약 때 보낼 본문 글자 수
+LOCALAI_THINKING = config('LOCALAI_THINKING', default=False, cast=bool)   # Qwen 생각 모드 (느려짐)
+
+# ---------------------------------------------------------------------------
+# [사용 중지] Gemini / Groq / OpenRouter
+# 되돌리려면: 아래 '# ' 로 막아 둔 줄들의 주석을 풀고, 바로 밑의 '사용 중지' 빈 값 세 줄과
+# SCHEDULE_AI_PROVIDERS = 'localai' 줄을 지우면 예전처럼 동작함 (Render 의 키는 그대로 두면 됨).
+# GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+# GROQ_API_KEY = config('GROQ_API_KEY', default='')
+# OPENROUTER_API_KEY = config('OPENROUTER_API_KEY', default='')
+GEMINI_API_KEY = ''       # 사용 중지
+GROQ_API_KEY = ''         # 사용 중지
+OPENROUTER_API_KEY = ''   # 사용 중지
 GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-3.1-flash-lite')
 # GEMINI_MODEL 이 과부하(503)·무료 한도 초과(429)·없음(404)일 때 차례로 시도할 무료 모델들 (쉼표 구분)
 GEMINI_FALLBACK_MODELS = config(
@@ -173,11 +193,10 @@ GEMINI_FALLBACK_MODELS = config(
 
 # 수술 스케줄 AI 분석: 표 형식 파일은 AI 없이 읽고, 그 밖의 파일만 아래 순서로 무료 AI 에 요청.
 # API 키가 설정된 제공자만 사용됨.
-SCHEDULE_AI_PROVIDERS = config('SCHEDULE_AI_PROVIDERS', default='groq,gemini,openrouter')
-SCHEDULE_AI_TIME_BUDGET = config('SCHEDULE_AI_TIME_BUDGET', default=240, cast=int)  # 초, 백그라운드 작업 기준
-GROQ_API_KEY = config('GROQ_API_KEY', default='')
+# SCHEDULE_AI_PROVIDERS = config('SCHEDULE_AI_PROVIDERS', default='groq,gemini,openrouter')   # [사용 중지]
+SCHEDULE_AI_PROVIDERS = 'localai'
+SCHEDULE_AI_TIME_BUDGET = config('SCHEDULE_AI_TIME_BUDGET', default=420, cast=int)  # 초, 백그라운드 작업 기준 (로컬 AI 는 느려서 넉넉히)
 GROQ_MODELS = config('GROQ_MODELS', default='llama-3.3-70b-versatile,openai/gpt-oss-120b,openai/gpt-oss-20b')
-OPENROUTER_API_KEY = config('OPENROUTER_API_KEY', default='')
 OPENROUTER_MODELS = config('OPENROUTER_MODELS', default='meta-llama/llama-3.3-70b-instruct:free,deepseek/deepseek-chat-v3-0324:free')
 
 # Supabase - media storage

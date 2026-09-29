@@ -478,7 +478,7 @@ class AiProviderTests(TestCase):
     def test_no_keys_gives_clear_message(self):
         calls, exc = self.run_with({}, keys={'GROQ_API_KEY': '', 'OPENROUTER_API_KEY': '', 'GEMINI_API_KEY': ''})
         self.assertEqual(calls, [])
-        self.assertIn('API 키가 설정되어 있지 않습니다', str(exc))
+        self.assertIn('AI 가 설정되어 있지 않습니다', str(exc))
 
     def test_only_gemini_configured_hints_other_keys(self):
         calls, exc = self.run_with({}, providers='groq,gemini,openrouter',
@@ -491,6 +491,74 @@ class AiProviderTests(TestCase):
         calls, exc = self.run_with({'g1': (429, None), 'g2': (429, None), 'o1': (503, None)})
         self.assertIn('Groq', str(exc))
         self.assertIn('OpenRouter', str(exc))
+
+
+class LocalAiTests(TestCase):
+    """로컬 AI (Qwen): 주소·키는 설정에서, 모델은 서버에서 자동, 생각 과정은 걷어내고 해석."""
+
+    def setUp(self):
+        from . import ai_client
+        ai_client._discovered_models.clear()
+        self.addCleanup(ai_client._discovered_models.clear)
+
+    def test_schedule_extraction_via_local_ai(self):
+        from unittest import mock
+        from django.test import override_settings
+        from . import ai_client
+
+        posts, gets = [], []
+
+        class Resp:
+            def __init__(self, code, body):
+                self.status_code, self.text, self._body = code, json.dumps(body), body
+
+            def json(self):
+                return self._body
+
+            def raise_for_status(self):
+                if self.status_code >= 400:
+                    raise ai_client.requests.HTTPError(str(self.status_code))
+
+        answer = '<think>{"schedules": []} 고민 중</think>' + json.dumps({'schedules': [rec('101', '08:00', 'Q', 'Op')]})
+
+        def fake_post(url, **kwargs):
+            posts.append((url, kwargs['headers']['Authorization'], kwargs['json']))
+            if 'response_format' in kwargs['json']:
+                return Resp(400, {'error': 'response_format not supported'})
+            return Resp(200, {'choices': [{'message': {'content': answer}}]})
+
+        def fake_get(url, **kwargs):
+            gets.append(url)
+            return Resp(200, {'data': [{'id': 'qwen3-32b'}]})
+
+        with override_settings(SCHEDULE_AI_PROVIDERS='localai', LOCALAI_URL='https://ai.example.ts.net/',
+                               LOCALAI_API_KEY='secret', LOCALAI_MODEL='', LOCALAI_THINKING=False,
+                               SCHEDULE_AI_TIME_BUDGET=100), \
+                mock.patch.object(ai_client.requests, 'post', side_effect=fake_post), \
+                mock.patch.object(ai_client.requests, 'get', side_effect=fake_get):
+            self.assertEqual(ai_client.configured_providers(), ['localai'])
+            result = ai_client.extract_schedules('메모', 'm.txt')
+            self.assertEqual(ai_client.ask_json('sys', 'q'), {'schedules': [rec('101', '08:00', 'Q', 'Op')]})
+
+        self.assertEqual(result[0]['patient_name'], 'Q')
+        self.assertEqual(gets, ['https://ai.example.ts.net/v1/models'])       # 모델 이름은 한 번만 물어봄
+        url, auth, first = posts[0]
+        self.assertEqual((url, auth, first['model']), ('https://ai.example.ts.net/v1/chat/completions', 'Bearer secret', 'qwen3-32b'))
+        self.assertEqual(first['chat_template_kwargs'], {'enable_thinking': False})
+        self.assertNotIn('response_format', posts[1][2])                      # 400 이면 옵션 빼고 다시
+
+    def test_not_configured_without_url_or_key(self):
+        from django.test import override_settings
+        from . import ai_client
+        with override_settings(SCHEDULE_AI_PROVIDERS='localai', LOCALAI_URL='', LOCALAI_API_KEY='k'):
+            self.assertEqual(ai_client.configured_providers(), [])
+        with override_settings(SCHEDULE_AI_PROVIDERS='localai', LOCALAI_URL='https://x/v1', LOCALAI_API_KEY=''):
+            self.assertEqual(ai_client.configured_providers(), [])
+
+    def test_gemini_and_groq_are_switched_off(self):
+        from django.conf import settings
+        self.assertEqual(settings.SCHEDULE_AI_PROVIDERS, 'localai')
+        self.assertEqual((settings.GEMINI_API_KEY, settings.GROQ_API_KEY, settings.OPENROUTER_API_KEY), ('', '', ''))
 
 
 class UploadJobTests(TestCase):

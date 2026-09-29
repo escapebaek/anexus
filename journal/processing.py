@@ -2,9 +2,9 @@
 1) PDF 앞부분 글자에서 DOI 를 찾아 Crossref(무료 논문 정보 DB)로 정확한 제목·저자를 가져오고
 2) AI 로 한국어 요약(한 줄 요약 + 항목별 요약)을 만든다.
 
-AI 는 Gemini 를 먼저 쓴다 (PDF 를 통째로 읽어 표·그림 설명까지 반영). Gemini 가 안 되면
-PDF 에서 뽑은 글자로 Groq 등 다른 무료 제공자에게 묻는다. 모두 실패하면 '오류' 로 남기고
-화면의 '다시 시도' 로 재처리한다.
+AI 는 로컬 AI 서버(Qwen, settings.LOCALAI_*)에 PDF 에서 뽑은 글자를 보내 요약한다.
+실패하면 '오류' 로 남기고 화면의 '다시 시도' 로 재처리한다.
+[사용 중지] 예전에는 Gemini 가 PDF 를 통째로 읽고, 안 되면 Groq 에 글자로 물었다 (summarize() 의 주석 참고).
 
 처리는 백그라운드 스레드 하나가 대기 중인 논문을 한 편씩 차례로 가져가 처리한다 (무료 AI 한도 보호).
 여러 gunicorn 워커가 동시에 돌아도 DB 에서 '대기 → 처리 중' 으로 바꾸는 데 성공한 쪽만 처리한다.
@@ -164,35 +164,40 @@ def _gemini_summary(pdf_bytes, text):
 
 
 def _text_provider_summary(text):
-    """Gemini 가 안 될 때: PDF 글자로 다른 무료 제공자에게."""
+    """PDF 에서 뽑은 글자로 요약 (지금은 로컬 AI. 예전에는 Gemini 가 안 될 때 Groq 등)."""
     if not text.strip():
-        raise ProcessingError("PDF 에서 글자를 읽을 수 없어 다른 AI 로 요약할 수 없습니다")
-    prompt = ("논문 본문:\n" + text[:MAX_TEXT_CHARS_SMALL]
+        raise ProcessingError("PDF 에서 글자를 읽을 수 없습니다 (스캔 이미지 PDF 는 AI 가 읽을 수 없음)")
+    providers = [name for name in ai_client.configured_providers() if name != "gemini"]
+    if not providers:
+        raise ProcessingError("서버에 AI 가 설정되어 있지 않습니다 (LOCALAI_URL, LOCALAI_API_KEY 확인)")
+    max_chars = settings.LOCALAI_MAX_CHARS if providers[0] == "localai" else MAX_TEXT_CHARS_SMALL
+    prompt = ("논문 본문:\n" + text[:max_chars]
               + '\n\nJSON 형식: {"title": "", "authors": "", "doi": "", "short_summary": "", '
                 '"sections": [{"heading": "", "body": ""}]}')
     errors = []
-    for name in ai_client.configured_providers():
-        if name == "gemini":
-            continue
+    for name in providers:
         try:
-            raw = ai_client._ask_openai_compatible_json(name, SYSTEM_PROMPT, prompt, 120)
+            raw = ai_client._ask_openai_compatible_json(name, SYSTEM_PROMPT, prompt, ai_client._timeout(name, 120))
             return _parse_summary(raw)
         except Exception as exc:
             logger.warning("summary via %s failed: %s", name, exc)
-            errors.append(f"{name}: {exc}"[:200])
-    raise ProcessingError("다른 AI 제공자도 실패했습니다 " + "; ".join(errors))
+            errors.append(f"{ai_client.OPENAI_COMPATIBLE[name]['label']}: {exc}"[:300])
+    raise ProcessingError("요약 실패 - " + "; ".join(errors))
 
 
 def summarize(pdf_bytes, text):
-    try:
-        return _gemini_summary(pdf_bytes, text)
-    except Exception as exc:
-        logger.warning("Gemini summary failed, trying text providers: %s", exc)
-        first_error = str(exc)
-    try:
-        return _text_provider_summary(text)
-    except ProcessingError as exc:
-        raise ProcessingError(f"요약 실패 - Gemini: {first_error[:300]} / {exc}") from exc
+    # [사용 중지] Gemini 가 PDF 를 통째로 먼저 읽던 방식. 되돌리려면 아래 주석을 풀고
+    # 맨 아래 'return _text_provider_summary(text)' 줄을 지움 (settings.py 의 Gemini 키도 되살려야 함).
+    # try:
+    #     return _gemini_summary(pdf_bytes, text)
+    # except Exception as exc:
+    #     logger.warning("Gemini summary failed, trying text providers: %s", exc)
+    #     first_error = str(exc)
+    # try:
+    #     return _text_provider_summary(text)
+    # except ProcessingError as exc:
+    #     raise ProcessingError(f"요약 실패 - Gemini: {first_error[:300]} / {exc}") from exc
+    return _text_provider_summary(text)
 
 
 def format_sections(sections):
