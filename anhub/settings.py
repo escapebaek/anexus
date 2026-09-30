@@ -178,6 +178,10 @@ LOCALAI_TIMEOUT = config('LOCALAI_TIMEOUT', default=600, cast=int)        # 요�
 # 논문 요약 때 보낼 본문 글자 수. 게이트웨이(escapebaek/localapi)의 MAX_INPUT_CHARS(기본 32,000)는 지시문까지 합친
 # 글자 수라 그보다 작게. 게이트웨이 NUM_CTX 가 작으면(기본 4096 토큰) 긴 본문은 잘리니 NUM_CTX=16384 권장.
 LOCALAI_MAX_CHARS = config('LOCALAI_MAX_CHARS', default=24000, cast=int)
+# 스케줄 파일을 AI 로 읽을 때 한 번에 보낼 줄 수 (작은 모델은 긴 JSON 을 한 번에 만들면 매우 느림)
+LOCALAI_CHUNK_LINES = config('LOCALAI_CHUNK_LINES', default=20, cast=int)
+# 스케줄 AI 분석 전체 시간 한도(초). 조각마다 진행 표시가 갱신되어 중단으로 오인되지 않음
+LOCALAI_SCHEDULE_BUDGET = config('LOCALAI_SCHEDULE_BUDGET', default=1800, cast=int)
 LOCALAI_THINKING = config('LOCALAI_THINKING', default=False, cast=bool)   # Qwen 생각 모드 (느려짐)
 
 # ---------------------------------------------------------------------------

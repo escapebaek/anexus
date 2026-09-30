@@ -48,7 +48,7 @@
   <div class="orb-job orb-job-{{ job.status }}" id="jobBanner" data-job-id="{{ job.id }}" data-state="{{ job.status }}">
     <i class="fas {% if job.status == 'running' %}fa-spinner fa-spin{% elif job.status == 'done' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
     <button type="button" class="orb-job-close" id="jobClose" title="닫기"><i class="fas fa-times"></i></button>
-    <span id="jobText">{% if job.status == 'running' %}'{{ job.filename }}' 을(를) AI가 분석 중입니다… 1~3분 걸릴 수 있어요. 이 화면을 그대로 두세요.{% if job.message %} <small>(표로 읽지 않은 이유: {{ job.message }})</small>{% endif %}{% else %}{{ job.message }}{% endif %}</span>
+    <span id="jobText">{% if job.status == 'running' %}'{{ job.filename }}' 을(를) AI가 분석 중입니다… 몇 분 걸릴 수 있어요. 이 화면을 그대로 두세요. <b id="jobProgress">{{ job.progress }}</b>{% if job.reason %} <small>(표로 읽지 않은 이유: {{ job.reason }})</small>{% endif %}{% else %}{{ job.message }}{% endif %}</span>
   </div>
   {% endif %}
 
@@ -794,6 +794,8 @@
           document.getElementById("jobText").textContent = data.job.message;
           return;
         }
+        const prog = document.getElementById("jobProgress");
+        if (prog && data.job) prog.textContent = data.job.progress || "";
       } catch (e) { /* 일시적 네트워크 오류 - 계속 확인 */ }
       setTimeout(poll, 3000);
     };

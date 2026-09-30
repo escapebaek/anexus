@@ -654,6 +654,56 @@ class LocalAiDiagnosticsTests(TestCase):
         self.assertIn('연결을 거부했습니다', data['결론'])
 
 
+class LocalAiChunkTests(TestCase):
+    """로컬 AI: 긴 파일은 조각내 차례로 요청하고 결과를 합침 (한 번에 긴 JSON 을 만들면 시간 초과)."""
+
+    def test_split_chunks_table_and_memo(self):
+        from .ai_client import split_chunks
+        table = "\n".join(["날짜\t방\t환자"] + [f"9/30\t{i}\t환자{i}" for i in range(7)])
+        chunks = split_chunks(table, 3)
+        self.assertEqual(len(chunks), 3)
+        self.assertTrue(all(c.startswith("날짜\t방\t환자\n") for c in chunks))   # 머리글은 조각마다
+        self.assertEqual(sum(c.count("환자") - 1 for c in chunks), 7)              # 행은 빠짐없이 한 번씩
+        self.assertEqual(split_chunks(table, 10), [table])                          # 짧으면 그대로
+        memo = "9월 30일 수술\n" + "\n\n".join(f"{i}번방\n홍길동{i}\nLap chole" for i in range(4))
+        for chunk in split_chunks(memo, 4)[:-1]:
+            self.assertTrue(chunk.rstrip().endswith("Lap chole"))                   # 기록 중간에서 안 끊김
+
+    def test_chunks_are_requested_in_order_merged_and_deduped(self):
+        from unittest import mock
+        from django.test import override_settings
+        from . import ai_client
+        text = "\n".join(["방 환자"] + [f"10{i} 환자{i}" for i in range(4)])
+        header_rec = rec('100', '08:00', '머리글', 'Op')
+
+        def fake_request(name, chunk, note, deadline, allow_empty=False):
+            self.assertTrue(allow_empty)
+            rows = [line for line in chunk.splitlines()[1:]]
+            return [header_rec] + [rec(r.split()[0], '09:00', r.split()[1], 'Op') for r in rows]
+
+        seen = []
+        with override_settings(SCHEDULE_AI_PROVIDERS='localai', LOCALAI_URL='https://x', LOCALAI_API_KEY='k',
+                               LOCALAI_CHUNK_LINES=2, LOCALAI_SCHEDULE_BUDGET=100), \
+                mock.patch.object(ai_client, '_request_schedules', side_effect=fake_request) as req:
+            result = ai_client.extract_schedules(text, 'm.txt', lambda i, n: seen.append((i, n)))
+        self.assertEqual(req.call_count, 2)
+        self.assertEqual(seen, [(0, 2), (1, 2)])
+        self.assertEqual([r['patient_name'] for r in result], ['머리글', '환자0', '환자1', '환자2', '환자3'])
+
+    def test_job_status_reports_progress(self):
+        from .models import ScheduleUploadJob
+        from .views import PROGRESS_MARK
+        user = get_user_model().objects.create_user('doc', password='x')
+        user.is_specially_approved = True
+        user.save()
+        self.client.force_login(user)
+        job = ScheduleUploadJob.objects.create(user=user, filename='m.txt', message='열 이름 없음' + PROGRESS_MARK + '3조각 중 2번째 분석 중')
+        data = self.client.get(reverse('schedule_upload_job', args=[job.id])).json()['job']
+        self.assertEqual((data['message'], data['progress']), ('열 이름 없음', '3조각 중 2번째 분석 중'))
+        page = self.client.get(reverse('schedule_dashboard'), {'job': job.id})
+        self.assertContains(page, '<b id="jobProgress">3조각 중 2번째 분석 중</b>', html=True)
+
+
 class UploadJobTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user('doc', password='x')
