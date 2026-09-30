@@ -200,7 +200,7 @@
   border-radius: 10px;
   overflow: hidden;
 }
-.orb-table col.w-room { width: 52px; }
+.orb-table col.w-room { width: 58px; }
 .orb-table col.w-time { width: 62px; }
 .orb-table col.w-anes { width: 76px; }
 .orb-table col.w-pt { width: 84px; }
@@ -322,7 +322,7 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
 .sub-row .eta b { font-size: 12px; }
 .sub-row .eta small { display: none; }
 /* 좁은 화면(휴대폰): 수술명 칸을 넓히고, 종료 예정은 수술명 아래 줄에 */
-.orb-table.is-compact col.w-room { width: 44px; }
+.orb-table.is-compact col.w-room { width: 52px; }
 .orb-table.is-compact col.w-time { width: 50px; }
 .orb-table.is-compact col.w-anes { width: 58px; }
 .orb-table.is-compact col.w-memo { width: 32px; }
@@ -729,6 +729,144 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
   .orb-body { padding: 8px; }
   .orb { width: calc(100vw - 16px); }
   .orb-table col.w-anes { width: 64px; }
+}
+
+/* ---------- 근무자 명단 · 방킵 ---------- */
+.orb-staff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 12px 12px 0;
+  padding: 8px 12px;
+  background: var(--orb-panel);
+  border: 1px solid var(--orb-border);
+  border-left: 4px solid #0f766e;
+  border-radius: 10px;
+}
+.orb-staff.is-drop { background: #fdecea; border-color: #f5c2bd; border-left-color: #b3261e; }
+.orb-staff.is-drop::after { content: "여기에 놓으면 방킵 해제"; font-size: 12px; font-weight: 700; color: #b3261e; }
+.staff-title { font-size: 13px; font-weight: 800; color: #0f766e; white-space: nowrap; }
+.staff-title small { color: var(--orb-muted); font-weight: 600; margin-left: 2px; }
+.staff-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 320px; min-width: 0; }
+.staff-empty { color: var(--orb-muted); font-size: 12px; align-self: center; }
+.staff-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 4px 3px 10px;
+  border: 1.5px dashed #0f766e;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f766e;
+  font-size: 13px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.staff-chip b { font-weight: 700; }
+.staff-chip small { font-size: 11px; color: var(--orb-muted); font-weight: 600; }
+.staff-chip.is-assigned { border-style: solid; background: #e6f4f1; }
+.staff-chip.is-assigned small { color: #0f766e; }
+.staff-x {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: #9aa8b8;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.staff-x:hover { background: #fdecea; color: #b3261e; }
+.staff-add { display: flex; gap: 4px; }
+.staff-add input {
+  width: 170px;
+  border: 1px solid var(--orb-border);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  outline: none;
+}
+.staff-add input:focus { border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12); }
+.staff-add button, .staff-recent {
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #fff;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.staff-recent { background: #fff; color: #0f766e; }
+.staff-recent[hidden] { display: none; }
+.staff-hint { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--orb-muted); }
+
+/* 방 칸의 방킵 이름 */
+.keepers { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 3px -3px 0; }
+.keeper {
+  display: block;
+  max-width: 100%;
+  padding: 1px 3px;
+  border-radius: 5px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 10.5px;
+  letter-spacing: -0.3px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: grab;
+  touch-action: none;
+}
+.room-ongoing .main-row .keeper { background: #fff; color: #0f766e; }
+.keeper-more { font-size: 10px; font-weight: 700; color: #0f766e; }
+.room-ongoing .main-row .keeper-more { color: #fff; }
+
+/* 끌어다 놓는 중 */
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select: none; }
+.is-drag-src { opacity: 0.4; }
+tbody.room.is-drop > tr > * { background: #e6f4f1 !important; }
+tbody.room.is-drop .c-room { box-shadow: inset 0 0 0 3px #0f766e; }
+.drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4000;
+  pointer-events: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(15, 118, 110, 0.35);
+}
+
+/* 수술 메뉴의 방킵 선택 */
+.rm-keepers { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 8px 5px; max-width: 240px; }
+.rm-kp {
+  border: 1px solid #0f766e;
+  background: #fff;
+  color: #0f766e;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.rm-kp.is-on { background: #0f766e; color: #fff; font-weight: 700; }
+.rm-kp.is-on::before { content: "\2713 "; }
+.rm-kp-empty { font-size: 11.5px; color: var(--orb-muted); }
+
+@media (max-width: 700px) {
+  .orb-staff { margin: 8px 8px 0; padding: 8px 10px; }
+  .staff-chips { flex-basis: 100%; }
+  .staff-chip { font-size: 14px; padding: 5px 4px 5px 11px; }   /* 손가락으로 잡기 쉽게 */
+  .staff-add { flex: 1; }
+  .staff-add input { flex: 1; width: auto; font-size: 14px; }
 }
 
 /* ---------- 메모 모달 ---------- */

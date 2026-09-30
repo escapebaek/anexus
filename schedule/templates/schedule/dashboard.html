@@ -52,6 +52,19 @@
   </div>
   {% endif %}
 
+  <!-- ===== 근무자 명단 · 방킵 배정 ===== -->
+  <section class="orb-staff" id="staffBar" aria-label="근무자 명단">
+    <div class="staff-title"><i class="fas fa-user-md"></i> 근무자 <small id="staffDate"></small></div>
+    <div class="staff-chips" id="staffChips"></div>
+    <form class="staff-add" id="staffAddForm" autocomplete="off">
+      <input type="text" id="staffInput" maxlength="300" placeholder="이름 추가 (쉼표로 여러 명)" />
+      <!-- type=button: 사이트 공통 스크립트가 submit 버튼을 10초간 'Loading...' 으로 바꾸지 않게 (Enter 는 그대로 동작) -->
+      <button type="button" id="staffAddBtn" title="근무자 추가"><i class="fas fa-plus"></i></button>
+    </form>
+    <button type="button" class="staff-recent" id="staffRecent" hidden></button>
+    <p class="staff-hint"><i class="fas fa-hand-pointer"></i> 이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 방의 이름을 다른 방으로 옮기거나 이 줄로 끌어오면 해제. 방 번호를 눌러 메뉴에서 골라도 돼요.</p>
+  </section>
+
   <div class="orb-body">
     <!-- ===== 방별 보드 (JS가 화면 너비에 맞춰 여러 열로 배치) ===== -->
     <main class="orb-board" id="board">
@@ -124,6 +137,8 @@
 <div class="room-menu" id="roomMenu" hidden>
   <div class="rm-title" id="roomMenuTitle"></div>
   <div class="rm-sub" id="roomMenuSub"></div>
+  <div class="rm-group">방킵</div>
+  <div class="rm-keepers" id="roomMenuKeepers"></div>
   <div class="rm-group">상태</div>
   <button type="button" class="rm-opt" data-status="ongoing"><i class="fas fa-play-circle"></i> 수술 진행중</button>
   <button type="button" class="rm-opt" data-status="finished"><i class="fas fa-check-circle"></i> 수술 완료</button>
@@ -183,6 +198,7 @@
 </div>
 
 {{ board|json_script:"board-data" }}
+{{ staff|json_script:"staff-data" }}
 
 <script>
   // ===================== 수술 현황판 =====================
@@ -244,6 +260,47 @@
     (c.on_call ? '<i class="fas fa-moon" title="당직으로 넘김"></i>' : "") +
     (c.hold ? '<i class="fas fa-pause-circle" title="Hold"></i>' : "");
 
+  // ===================== 근무자 명단 · 방킵 =====================
+  let STAFF = JSON.parse(document.getElementById("staff-data").textContent);
+  const STAFF_URL = "{% url 'schedule_staff' %}";
+  const keepersOf = (room) => (STAFF.keepers || {})[room] || [];
+
+  function keeperChips(room) {
+    const names = keepersOf(room);
+    if (!names.length) return "";
+    const shown = names.slice(0, 2).map(n =>
+      `<span class="keeper" data-keeper="${esc(n)}" data-from="${esc(room)}" title="방킵 ${esc(n)} · 끌어서 다른 방으로">${esc(n)}</span>`).join("");
+    return `<span class="keepers">${shown}${names.length > 2 ? `<span class="keeper-more" title="${esc(names.join(", "))}">+${names.length - 2}</span>` : ""}</span>`;
+  }
+
+  function renderStaff() {
+    const d = new Date(STAFF.date + "T00:00:00");
+    document.getElementById("staffDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+    const chips = STAFF.roster.map(p => `
+      <span class="staff-chip${p.rooms.length ? " is-assigned" : ""}" data-name="${esc(p.name)}" title="끌어서 방에 배정">
+        <b>${esc(p.name)}</b><small>${p.rooms.length ? p.rooms.map(esc).join("·") : "미배정"}</small>
+        <button type="button" class="staff-x" data-remove="${esc(p.name)}" title="명단에서 빼기">&times;</button>
+      </span>`).join("");
+    document.getElementById("staffChips").innerHTML = chips || '<span class="staff-empty">오늘 근무자를 추가하세요</span>';
+    const recent = document.getElementById("staffRecent");
+    recent.hidden = !(STAFF.recent && !STAFF.roster.length);
+    if (!recent.hidden) {
+      const rd = new Date(STAFF.recent.date + "T00:00:00");
+      recent.innerHTML = `<i class="fas fa-history"></i> ${rd.getMonth() + 1}/${rd.getDate()} 명단 불러오기 (${STAFF.recent.count}명)`;
+    }
+  }
+
+  async function staffAction(body) {
+    try {
+      const data = await postJSON(STAFF_URL, Object.assign({ date: STAFF.date }, body));
+      STAFF = data.staff;
+    } catch (err) {
+      alert("저장하지 못했습니다: " + err.message);
+    }
+    renderStaff(); renderBoard();
+    if (menuCaseId) renderMenuKeepers();
+  }
+
   function roomBody(r) {
     const cur = r.cases[r.current];
     const others = r.cases.length - 1;
@@ -256,7 +313,7 @@
     const flags = flagIcons(cur) + otherFlags;
     let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}" data-room="${esc(r.room)}">
       <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
-        <th class="c-room" data-case-menu="${cur.id}" title="수술 메뉴: 완료·진행중 / 당직·Hold"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}</th>${caseCells(cur, more)}
+        <th class="c-room" data-case-menu="${cur.id}" title="수술 메뉴: 완료·진행중 / 당직·Hold / 방킵"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}${keeperChips(r.room)}</th>${caseCells(cur, more)}
       </tr>`;
     if (open) {
       r.cases.forEach((c, i) => {
@@ -394,10 +451,21 @@
   let menuCaseId = null;
   const roomOfCase = (id) => BOARD.rooms.find(r => r.cases.some(c => String(c.id) === String(id)));
 
+  function renderMenuKeepers() {
+    const r = roomOfCase(menuCaseId);
+    const box = document.getElementById("roomMenuKeepers");
+    if (!r) return;
+    const on = new Set(keepersOf(r.room));
+    box.innerHTML = STAFF.roster.length
+      ? STAFF.roster.map(p => `<button type="button" class="rm-kp${on.has(p.name) ? " is-on" : ""}" data-keeper-toggle="${esc(p.name)}">${esc(p.name)}</button>`).join("")
+      : '<span class="rm-kp-empty">위 근무자 줄에 이름을 먼저 추가하세요</span>';
+  }
+
   function openCaseMenu(caseId, anchor) {
     const c = findCase(caseId), r = roomOfCase(caseId);
     if (!c || !r) return;
     menuCaseId = String(caseId);
+    renderMenuKeepers();
     document.getElementById("roomMenuTitle").textContent = `${r.room}번 방 · ${c.time_slot || "-"}`;
     document.getElementById("roomMenuSub").textContent = [c.surgery_name, c.patient_name].filter(Boolean).join(" · ");
     menu.querySelectorAll("[data-status]").forEach(b => {
@@ -468,6 +536,11 @@
     const id = menuCaseId;
     const c = findCase(id), r = roomOfCase(id);
     if (!c || !r) return;
+    const kp = e.target.closest("[data-keeper-toggle]");
+    if (kp) {
+      const name = kp.dataset.keeperToggle;
+      return staffAction({ action: keepersOf(r.room).includes(name) ? "unassign" : "assign", name, room: r.room });
+    }
     const status = e.target.closest("[data-status]");
     if (status && !status.disabled) {
       closeRoomMenu();
@@ -540,6 +613,92 @@
     const btn = e.target.closest("[data-release]");
     if (btn) updateCase(btn.dataset.release, { hold: false });
   });
+
+  // ----- 근무자 추가/삭제 · 지난 명단 -----
+  function addStaffFromInput() {
+    const input = document.getElementById("staffInput");
+    const names = input.value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+    input.value = "";
+    if (names.length) staffAction({ action: "add", names });
+  }
+  document.getElementById("staffAddForm").addEventListener("submit", (e) => { e.preventDefault(); addStaffFromInput(); });
+  document.getElementById("staffAddBtn").addEventListener("click", addStaffFromInput);
+  document.getElementById("staffRecent").addEventListener("click", () => staffAction({ action: "load_recent" }));
+  document.getElementById("staffChips").addEventListener("click", (e) => {
+    const x = e.target.closest("[data-remove]");
+    if (!x) return;
+    const person = STAFF.roster.find(p => p.name === x.dataset.remove);
+    if (person && person.rooms.length && !confirm(`${person.name} 님을 명단에서 빼면 ${person.rooms.join(", ")} 방킵 배정도 해제됩니다.`)) return;
+    staffAction({ action: "remove", name: x.dataset.remove });
+  });
+
+  // ----- 끌어다 놓기 (마우스·터치 공통: pointer 이벤트) -----
+  // 명단의 이름 → 방: 배정 (한 사람이 여러 방 가능) / 방의 이름 → 다른 방: 이동 / 방의 이름 → 근무자 줄: 해제
+  let drag = null, suppressClick = false;
+  const dropTargetAt = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    return el && (el.closest("tbody.room[data-room]") || el.closest("#staffBar"));
+  };
+  document.addEventListener("pointerdown", (e) => {
+    const chip = e.target.closest(".staff-chip[data-name], .keeper[data-keeper]");
+    if (!chip || e.target.closest(".staff-x") || (e.pointerType === "mouse" && e.button !== 0)) return;
+    drag = { chip, name: chip.dataset.name || chip.dataset.keeper, from: chip.dataset.from || "",
+             x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, ghost: null, target: null };
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+      drag.ghost = document.createElement("div");
+      drag.ghost.className = "drag-ghost";
+      drag.ghost.textContent = drag.name;
+      document.body.appendChild(drag.ghost);
+      document.body.classList.add("is-dragging");
+      drag.chip.classList.add("is-drag-src");
+      autoScroll();
+    }
+    e.preventDefault();
+    drag.ghost.style.transform = `translate(${e.clientX + 12}px, ${e.clientY + 12}px)`;
+    const target = dropTargetAt(e.clientX, e.clientY);
+    if (target !== drag.target) {
+      if (drag.target) drag.target.classList.remove("is-drop");
+      drag.target = target;
+      if (target) target.classList.add("is-drop");
+    }
+  }, { passive: false });
+  function autoScroll() {
+    if (!drag || !drag.ghost) return;
+    const edge = 70, h = window.innerHeight;
+    if (drag.y < edge) window.scrollBy(0, -Math.ceil((edge - drag.y) / 4));
+    else if (drag.y > h - edge) window.scrollBy(0, Math.ceil((drag.y - (h - edge)) / 4));
+    requestAnimationFrame(autoScroll);
+  }
+  function endDrag(e, cancelled) {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    if (!d.ghost) return;  // 끌지 않고 누르기만 함 → 평소 클릭 동작
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 0);
+    d.ghost.remove();
+    d.chip.classList.remove("is-drag-src");
+    document.body.classList.remove("is-dragging");
+    if (d.target) d.target.classList.remove("is-drop");
+    if (cancelled || !d.target) return;
+    if (d.target.id === "staffBar") {
+      if (d.from) staffAction({ action: "unassign", name: d.name, room: d.from });
+      return;
+    }
+    const room = d.target.dataset.room;
+    if (room !== d.from) staffAction({ action: "assign", name: d.name, room, from_room: d.from });
+  }
+  document.addEventListener("pointerup", (e) => endDrag(e, false));
+  document.addEventListener("pointercancel", (e) => endDrag(e, true));
+  document.addEventListener("click", (e) => {
+    if (suppressClick) { e.preventDefault(); e.stopPropagation(); suppressClick = false; }
+  }, true);
+  renderStaff();
 
   // ----- 마취의 직접 입력 -----
   function editAnesthesiologist(td) {

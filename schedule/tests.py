@@ -1192,3 +1192,65 @@ class EditCaseInfoTests(TestCase):
         other = get_user_model().objects.create_user('x', password='x')
         theirs = make(other, '101', '08:00', name='T', info='')
         self.assertEqual(self.post(theirs, surgery_name='hack').status_code, 404)
+
+
+class RoomKeeperTests(TestCase):
+    """근무자 명단 · 방킵 배정."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+        self.day = '2026-08-27'
+
+    def act(self, **body):
+        body.setdefault('date', self.day)
+        res = self.client.post(reverse('schedule_staff'), json.dumps(body), content_type='application/json')
+        return res
+
+    def state(self, **body):
+        res = self.act(**body)
+        self.assertEqual(res.status_code, 200, res.content)
+        return res.json()['staff']
+
+    def test_roster_assign_move_unassign_remove(self):
+        s = self.state(action='add', names=[' 김철수 ', '이영희', '김철수', ''])
+        self.assertEqual([p['name'] for p in s['roster']], ['김철수', '이영희'])        # 공백 정리·중복 제거
+        s = self.state(action='assign', name='김철수', room='101')
+        s = self.state(action='assign', name='김철수', room='102')                        # 한 사람이 여러 방
+        self.assertEqual(s['keepers'], {'101': ['김철수'], '102': ['김철수']})
+        self.assertEqual(s['roster'][0]['rooms'], ['101', '102'])
+        s = self.state(action='assign', name='김철수', room='103', from_room='102')        # 방 → 방 이동
+        self.assertEqual(s['keepers'], {'101': ['김철수'], '103': ['김철수']})
+        s = self.state(action='unassign', name='김철수', room='101')
+        self.assertEqual(s['keepers'], {'103': ['김철수']})
+        s = self.state(action='remove', name='김철수')                                     # 명단에서 빼면 배정도 해제
+        self.assertEqual((s['keepers'], [p['name'] for p in s['roster']]), ({}, ['이영희']))
+
+    def test_assign_adds_unknown_name_and_bad_requests(self):
+        s = self.state(action='assign', name='박새댁', room='105')
+        self.assertEqual([p['name'] for p in s['roster']], ['박새댁'])
+        self.assertEqual(self.act(action='assign', name='', room='105').status_code, 400)
+        self.assertEqual(self.act(action='bogus').status_code, 400)
+        self.assertEqual(self.act(date='nope', action='add', names=['a']).status_code, 400)
+
+    def test_days_and_users_are_separate_and_recent_roster(self):
+        self.state(action='add', names=['A', 'B'])
+        s = self.state(date='2026-08-28', action='add', names=[])
+        self.assertEqual((s['roster'], s['recent']), ([], {'date': '2026-08-27', 'count': 2}))
+        s = self.state(date='2026-08-28', action='load_recent')
+        self.assertEqual([p['name'] for p in s['roster']], ['A', 'B'])
+        other = get_user_model().objects.create_user('o', password='x')
+        other.is_specially_approved = True
+        other.save()
+        self.client.force_login(other)
+        self.assertEqual(self.state(action='add', names=[])['roster'], [])
+
+    def test_dashboard_shows_keepers_for_board_date(self):
+        make(self.user, '101', '08:00')                      # 2026-08-27 일정
+        self.state(action='assign', name='김철수', room='101')
+        res = self.client.get(reverse('schedule_dashboard'))
+        staff = res.context['staff']
+        self.assertEqual((staff['date'], staff['keepers']), (self.day, {'101': ['김철수']}))
+        self.assertContains(res, 'id="staffBar"')

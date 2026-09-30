@@ -9,7 +9,7 @@ import os
 import re
 import subprocess
 from io import BytesIO
-from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice
+from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice, DutyStaff, RoomKeeper
 from . import table_parser
 from .ai_client import extract_schedules, find_duration_column
 from django.contrib import messages
@@ -333,6 +333,7 @@ def schedule_dashboard(request):
 
     return render(request, "schedule/dashboard.html", {
         "board": board,
+        "staff": staff_state(request.user, board_date(board)),
         "form": form,
         "error_message": error_message,
         "build_version": BUILD_VERSION,
@@ -890,3 +891,90 @@ def ai_check(request):
         result["결론"] = ("모델 목록까지는 됐지만 질문에 답하지 못했습니다." if models
                         else f"로컬 AI 에 연결하지 못했습니다: {exc}")
     return JsonResponse(result, json_dumps_params={"ensure_ascii": False, "indent": 2})
+
+
+# ---------------------------------------------------------------------------
+# 근무자 명단 · 방킵 배정 (스케줄 파일에는 보통 없어서 현황판에서 직접)
+# ---------------------------------------------------------------------------
+MAX_STAFF = 60
+
+
+def board_date(board):
+    """방킵을 기록할 날짜: 현황판에 오늘 일정이 있으면 오늘, 아니면 현황판 일정의 첫 날짜, 없으면 오늘."""
+    today = timezone.localdate()
+    dates = board.get("dates") or []
+    if today.isoformat() in dates or not dates:
+        return today
+    return date_parser.parse(dates[0]).date()
+
+
+def _clean_name(value):
+    return re.sub(r"\s+", " ", str(value or "")).strip()[:50]
+
+
+def staff_state(user, day):
+    """-> {date, roster: [{name, rooms}], keepers: {room: [names]}, recent: {date, count} | None}"""
+    keepers = defaultdict(list)
+    rooms_of = defaultdict(list)
+    for keeper in RoomKeeper.objects.filter(user=user, date=day):
+        keepers[keeper.room].append(keeper.name)
+        rooms_of[keeper.name].append(keeper.room)
+    roster = [{"name": s.name, "rooms": sorted(rooms_of.get(s.name, []), key=_room_sort_key)}
+              for s in DutyStaff.objects.filter(user=user, date=day)]
+    recent = None
+    if not roster:
+        last = DutyStaff.objects.filter(user=user, date__lt=day).order_by("-date").values_list("date", flat=True).first()
+        if last:
+            recent = {"date": last.isoformat(), "count": DutyStaff.objects.filter(user=user, date=last).count()}
+    return {"date": day.isoformat(), "roster": roster, "keepers": dict(keepers), "recent": recent}
+
+
+def _add_staff(user, day, names):
+    existing = set(DutyStaff.objects.filter(user=user, date=day).values_list("name", flat=True))
+    order = DutyStaff.objects.filter(user=user, date=day).count()
+    for name in names:
+        if name and name not in existing and len(existing) < MAX_STAFF:
+            DutyStaff.objects.create(user=user, date=day, name=name, order=order)
+            existing.add(name)
+            order += 1
+
+
+@login_required
+@user_is_specially_approved
+@require_POST
+def staff_api(request):
+    """근무자 명단·방킵 변경. action:
+    add(names) · remove(name) · load_recent · assign(name, room[, from_room]) · unassign(name, room).
+    응답으로 그날의 명단·배정 전체를 돌려줌."""
+    try:
+        data = json.loads(request.body or b"{}")
+        day = date_parser.isoparse(str(data.get("date"))).date()
+    except (json.JSONDecodeError, ValueError, TypeError, OverflowError):
+        return JsonResponse({"status": "error", "message": "날짜를 확인할 수 없습니다."}, status=400)
+    user, action = request.user, data.get("action")
+    name = _clean_name(data.get("name"))
+    room = re.sub(r"\s+", " ", str(data.get("room") or "")).strip()[:FIELD_MAX_LENGTHS["room"]]
+
+    with transaction.atomic():
+        if action == "add":
+            raw = data.get("names") or []
+            raw = raw if isinstance(raw, list) else re.split(r"[,\n]", str(raw))
+            _add_staff(user, day, [_clean_name(n) for n in raw])
+        elif action == "remove" and name:
+            DutyStaff.objects.filter(user=user, date=day, name=name).delete()
+            RoomKeeper.objects.filter(user=user, date=day, name=name).delete()
+        elif action == "load_recent":
+            last = DutyStaff.objects.filter(user=user, date__lt=day).order_by("-date").values_list("date", flat=True).first()
+            if last:
+                _add_staff(user, day, list(DutyStaff.objects.filter(user=user, date=last).values_list("name", flat=True)))
+        elif action == "assign" and name and room:
+            _add_staff(user, day, [name])
+            from_room = str(data.get("from_room") or "").strip()
+            if from_room and from_room != room:
+                RoomKeeper.objects.filter(user=user, date=day, room=from_room, name=name).delete()
+            RoomKeeper.objects.get_or_create(user=user, date=day, room=room, name=name)
+        elif action == "unassign" and name and room:
+            RoomKeeper.objects.filter(user=user, date=day, room=room, name=name).delete()
+        else:
+            return JsonResponse({"status": "error", "message": "요청을 이해하지 못했습니다."}, status=400)
+    return JsonResponse({"status": "success", "staff": staff_state(user, day)})
