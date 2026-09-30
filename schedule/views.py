@@ -328,6 +328,8 @@ def schedule_dashboard(request):
     job_id = request.GET.get("job", "")
     if job_id.isdigit():
         job = ScheduleUploadJob.objects.filter(id=int(job_id), user=request.user).first()
+        if job is not None:
+            job.reason, job.progress = split_progress(job.message)
 
     return render(request, "schedule/dashboard.html", {
         "board": board,
@@ -422,10 +424,26 @@ def start_background(func, *args):
     threading.Thread(target=target, daemon=True).start()
 
 
+PROGRESS_MARK = "\n[진행] "
+
+
+def split_progress(message):
+    """job.message = '표로 읽지 않은 이유' + (처리 중이면) 진행 표시. -> (이유, 진행)"""
+    reason, _, progress = (message or "").partition(PROGRESS_MARK)
+    return reason, progress
+
+
 def run_upload_job(job_id, source_text):
     job = ScheduleUploadJob.objects.select_related("user").get(id=job_id)
+    reason = job.message
+
+    def progress(index, total):
+        # updated_at 도 갱신해 오래 걸려도 '중단됨'으로 보지 않게 함
+        ScheduleUploadJob.objects.filter(id=job_id).update(
+            message=f"{reason}{PROGRESS_MARK}{total}조각 중 {index + 1}번째 분석 중", updated_at=timezone.now())
+
     try:
-        records = extract_schedules(source_text, job.filename)
+        records = extract_schedules(source_text, job.filename, progress)
         count = apply_records(records, job.user, job.action)
         job.status, job.message = "done", f"'{job.filename}' 에서 {count}건을 AI로 읽어 반영했습니다."
     except (ScheduleExtractionError, ValueError) as exc:
@@ -436,8 +454,9 @@ def run_upload_job(job_id, source_text):
     job.save(update_fields=["status", "message", "updated_at"])
 
 
-# 이보다 오래 '처리 중'이면 서버 재시작 등으로 작업이 끊긴 것으로 봄
-STALE_JOB_AFTER = timedelta(minutes=8)
+# 이보다 오래 '처리 중'(진행 표시 갱신 없음)이면 서버 재시작 등으로 작업이 끊긴 것으로 봄.
+# 로컬 AI 요청 하나가 최대 LOCALAI_TIMEOUT(기본 10분) 걸릴 수 있어 그보다 길게.
+STALE_JOB_AFTER = timedelta(minutes=12)
 
 
 @login_required
@@ -449,7 +468,10 @@ def upload_job_status(request, job_id):
     if job.status == "running" and timezone.now() - job.updated_at > STALE_JOB_AFTER:
         job.status, job.message = "error", "처리가 중단되었습니다 (서버 재시작 등). 다시 업로드해주세요."
         job.save(update_fields=["status", "message", "updated_at"])
-    return JsonResponse({"status": "success", "job": {"id": job.id, "state": job.status, "message": job.message,
+    reason, progress = split_progress(job.message)
+    return JsonResponse({"status": "success", "job": {"id": job.id, "state": job.status,
+                                                      "message": reason if job.status == "running" else job.message,
+                                                      "progress": progress if job.status == "running" else "",
                                                       "filename": job.filename}})
 
 

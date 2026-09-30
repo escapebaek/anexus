@@ -276,7 +276,57 @@ def _parse_json_schedules(text):
     return [s for s in schedules if isinstance(s, dict)]
 
 
-def _openai_compatible(name, source_text, filename, deadline):
+def split_chunks(text, max_lines):
+    """로컬 AI 용: 긴 파일을 max_lines 줄씩 나눔. 첫 줄(열 이름/제목)은 조각마다 앞에 붙여 맥락 유지.
+    빈 줄로 구분된 메모 형식이면 되도록 빈 줄에서 끊어 한 환자 기록이 둘로 갈리지 않게 함."""
+    lines = text.splitlines()
+    filled = [i for i, line in enumerate(lines) if line.strip()]
+    if max_lines <= 0 or len(filled) <= max_lines + 1:
+        return [text]
+    header, rest = lines[filled[0]], lines[filled[0] + 1:]
+    memo_style = any(not line.strip() for line in rest)
+    chunks, current, count = [], [], 0
+    for line in rest:
+        current.append(line)
+        if line.strip():
+            count += 1
+        at_break = not line.strip() if memo_style else True
+        if count >= max_lines and (at_break or count >= max_lines * 3 // 2):
+            chunks.append(current)
+            current, count = [], 0
+    if count:
+        chunks.append(current)
+    return ["\n".join([header, *chunk]).strip("\n") for chunk in chunks]
+
+
+def _dedupe(records):
+    seen, result = set(), []
+    for record in records:
+        key = json.dumps(record, sort_keys=True, ensure_ascii=False, default=str)
+        if key not in seen:
+            seen.add(key)
+            result.append(record)
+    return result
+
+
+def _openai_compatible(name, source_text, filename, deadline, progress=None):
+    """로컬 AI 는 한 번에 긴 JSON 을 만들면 느려 시간 초과가 나므로 파일을 조각내 차례로 요청."""
+    chunks = split_chunks(source_text, settings.LOCALAI_CHUNK_LINES) if name == "localai" else [source_text]
+    if len(chunks) == 1:
+        return _request_schedules(name, source_text, filename, deadline)
+    records = []
+    for index, chunk in enumerate(chunks):
+        if progress:
+            progress(index, len(chunks))
+        note = (f"{filename} - 전체 {len(chunks)}조각 중 {index + 1}번째. 첫 줄은 열 이름/제목(맥락용)이니 "
+                "그 줄 자체가 일정이 아니면 일정으로 만들지 마세요")
+        records.extend(_request_schedules(name, chunk, note, deadline, allow_empty=True))
+    if not records:
+        raise ScheduleExtractionError(f"{OPENAI_COMPATIBLE[name]['label']} 가 파일에서 일정을 찾지 못했습니다.")
+    return _dedupe(records)
+
+
+def _request_schedules(name, source_text, filename, deadline, allow_empty=False):
     conf = OPENAI_COMPATIBLE[name]
     messages = [{"role": "system", "content": JSON_INSTRUCTIONS}]
     for example in BASE_EXAMPLES:
@@ -295,7 +345,9 @@ def _openai_compatible(name, source_text, filename, deadline):
         try:
             response = _post_chat(name, model, messages, min(_timeout(name), remaining))
         except requests.Timeout:
-            failures.append(f"{model}: 시간 초과")
+            failures.append(f"{model}: 시간 초과" + (" - AI 컴퓨터가 너무 느립니다. 게이트웨이 .env 의 NUM_CTX 를 8192 로 "
+                                                     "낮추거나(그래픽카드 메모리 부족 시 CPU 로 돌아 매우 느려짐) "
+                                                     "Render 의 LOCALAI_CHUNK_LINES 를 줄여 보세요" if name == "localai" else ""))
             continue
         except requests.RequestException as exc:
             logger.warning("%s request failed: %s", name, exc)
@@ -318,14 +370,15 @@ def _openai_compatible(name, source_text, filename, deadline):
             logger.warning("%s model %s gave unparseable output: %s", name, model, exc)
             failures.append(f"{model}: 응답 해석 실패")
             continue
-        if schedules:
+        if schedules or allow_empty:
             return schedules
         failures.append(f"{model}: 일정 없음")
     raise ScheduleExtractionError(f"{conf['label']} 모델이 응답하지 않았습니다 ({'; '.join(failures) or '시간 부족'}).")
 
 
-def extract_schedules(source_text, filename=""):
-    """Tries each configured provider in order; returns the first non-empty result."""
+def extract_schedules(source_text, filename="", progress=None):
+    """Tries each configured provider in order; returns the first non-empty result.
+    progress(i, n): 로컬 AI 가 파일을 n 조각으로 나눠 i 번째를 시작할 때 불림 (화면 진행 표시용)."""
     if not source_text.strip():
         raise ScheduleExtractionError("파일에서 읽을 수 있는 내용이 없습니다.")
     if len(source_text) > MAX_SOURCE_CHARS:
@@ -337,7 +390,8 @@ def extract_schedules(source_text, filename=""):
             "LOCALAI_URL 과 LOCALAI_API_KEY 를 설정하거나, 날짜·방·시간·수술명·환자명 열이 있는 엑셀로 올려주세요."
         )
 
-    deadline = time.monotonic() + settings.SCHEDULE_AI_TIME_BUDGET
+    budget = settings.LOCALAI_SCHEDULE_BUDGET if "localai" in providers else settings.SCHEDULE_AI_TIME_BUDGET
+    deadline = time.monotonic() + budget
     errors = []
     for name in providers:
         if deadline - time.monotonic() < 5:
@@ -345,7 +399,7 @@ def extract_schedules(source_text, filename=""):
         try:
             if name == "gemini":
                 return gemini_client.extract_schedules_from_text(source_text, filename)
-            return _openai_compatible(name, source_text, filename, deadline)
+            return _openai_compatible(name, source_text, filename, deadline, progress)
         except ScheduleExtractionError as exc:
             logger.warning("AI provider %s failed: %s", name, exc)
             errors.append(str(exc))
