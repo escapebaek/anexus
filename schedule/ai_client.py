@@ -88,7 +88,16 @@ def _timeout(name, default=None):
 
 def _headers(name):
     key = getattr(settings, OPENAI_COMPATIBLE[name]["key_setting"])
-    return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    if name == "localai":
+        # 직접 만든 게이트웨이는 키를 받는 헤더가 제각각이라 흔한 방식을 함께 보냄 (같은 서버로만 감)
+        header = (settings.LOCALAI_AUTH_HEADER or "").strip()
+        if not header:
+            headers.update({"X-API-Key": key, "api-key": key})
+        elif header.lower() != "authorization":
+            headers.pop("Authorization")
+            headers[header] = key
+    return headers
 
 
 def _extra_body(name):
@@ -172,7 +181,7 @@ def describe_connection_error(exc, url):
 def describe_http_error(response, url):
     host = requests.utils.urlparse(url).hostname or url
     if response.status_code in (401, 403):
-        return f"{host} 가 API 키를 거부했습니다 ({response.status_code}, LOCALAI_API_KEY 확인)"
+        return (f"{host} 가 API 키를 거부했습니다 ({response.status_code}). Render 의 LOCALAI_API_KEY 가 AI 서버의 키와 똑같은지, AI 서버가 키를 받는 헤더 이름(LOCALAI_AUTH_HEADER)을 확인하세요")
     if response.status_code == 404:
         return f"{url} 주소가 없습니다 (404, LOCALAI_URL 경로 확인)"
     return f"{host} 응답 {response.status_code}: {response.text[:150]}"

@@ -598,7 +598,7 @@ class LocalAiDiagnosticsTests(TestCase):
         from unittest import mock
         from . import ai_client
         with self.local(), mock.patch.object(ai_client.requests, 'get', return_value=self.resp(401, {})):
-            self.assertEqual(ai_client.list_models('localai')[1][:40], 'ai.example.ts.net 가 API 키를 거부했습니다 (401, LOCALA'[:40])
+            self.assertIn('ai.example.ts.net 가 API 키를 거부했습니다 (401)', ai_client.list_models('localai')[1])
         calls = []
 
         def fake_get(url, **kw):
@@ -608,6 +608,18 @@ class LocalAiDiagnosticsTests(TestCase):
         with self.local(), mock.patch.object(ai_client.requests, 'get', side_effect=fake_get):
             self.assertEqual(ai_client.list_models('localai'), (['qwen3:32b'], ''))
         self.assertEqual(calls, ['https://ai.example.ts.net/v1/models', 'https://ai.example.ts.net/api/tags'])
+
+    def test_key_is_sent_in_common_headers_and_cleaned(self):
+        from . import ai_client
+        with self.local(LOCALAI_API_KEY='secret'):
+            h = ai_client._headers('localai')
+        self.assertEqual((h['Authorization'], h['X-API-Key'], h['api-key']), ('Bearer secret', 'secret', 'secret'))
+        with self.local(LOCALAI_API_KEY='secret', LOCALAI_AUTH_HEADER='X-Token'):
+            h = ai_client._headers('localai')
+        self.assertEqual(h.get('X-Token'), 'secret')
+        self.assertNotIn('Authorization', h)
+        with self.local(GROQ_API_KEY='g'):
+            self.assertNotIn('X-API-Key', ai_client._headers('groq'))    # 다른 제공자에는 보내지 않음
 
     def test_ai_check_page(self):
         from unittest import mock
@@ -625,7 +637,7 @@ class LocalAiDiagnosticsTests(TestCase):
             data = self.client.get(url).json()
         self.assertEqual(data['1. 모델 목록'], ['qwen'])
         self.assertTrue(data['결론'].startswith('정상'))
-        self.assertEqual(data['LOCALAI_API_KEY'], '설정됨')          # 키 값은 보여주지 않음
+        self.assertTrue(data['LOCALAI_API_KEY'].startswith('설정됨 (길이 1, sha256 앞자리 '))   # 키 값은 보여주지 않음
         err = ai_client.requests.ConnectionError('Connection refused')
         with self.local(), mock.patch.object(ai_client.requests, 'get', side_effect=err):
             data = self.client.get(url).json()

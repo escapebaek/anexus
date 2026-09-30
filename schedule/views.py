@@ -25,6 +25,7 @@ from .gemini_client import ScheduleExtractionError
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
+import hashlib
 import json
 import logging
 from accounts.decorators import user_is_specially_approved
@@ -836,7 +837,11 @@ def ai_check(request):
     result = {
         "providers": ai_client.configured_providers(),
         "LOCALAI_URL": settings.LOCALAI_URL or "(없음)",
-        "LOCALAI_API_KEY": "설정됨" if settings.LOCALAI_API_KEY else "(없음)",
+        # 키 값 대신 길이와 지문만: AI 컴퓨터에서 echo -n '키' | sha256sum 앞 8자리와 비교
+        "LOCALAI_API_KEY": (f"설정됨 (길이 {len(settings.LOCALAI_API_KEY)}, sha256 앞자리 "
+                            f"{hashlib.sha256(settings.LOCALAI_API_KEY.encode()).hexdigest()[:8]})"
+                            if settings.LOCALAI_API_KEY else "(없음)"),
+        "키를 보내는 헤더": settings.LOCALAI_AUTH_HEADER or "Authorization: Bearer, X-API-Key, api-key",
         "LOCALAI_MODEL": settings.LOCALAI_MODEL or "(비어 있음 - 자동 선택)",
     }
     if name not in result["providers"]:
