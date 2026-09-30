@@ -167,8 +167,12 @@ FDA_API_KEY = config('FDA_API_KEY', default='')
 # ---------------------------------------------------------------------------
 # 로컬 AI (Qwen, Tailscale) - 지금 쓰는 AI. 수술 스케줄 분석·논문 요약 모두 여기로 보냄.
 # OpenAI 호환 API (/v1/chat/completions). LOCALAI_URL 은 /v1 을 붙이든 안 붙이든 됨.
-LOCALAI_URL = config('LOCALAI_URL', default='')
-LOCALAI_API_KEY = config('LOCALAI_API_KEY', default='')
+# 붙여넣을 때 섞여 들어간 앞뒤 공백·따옴표는 떼어냄 (키가 한 글자만 달라도 401)
+LOCALAI_URL = config('LOCALAI_URL', default='').strip().strip('\'"').strip()
+LOCALAI_API_KEY = config('LOCALAI_API_KEY', default='').strip().strip('\'"').strip()
+# 키를 보낼 헤더. 비우면 흔한 방식을 모두 보냄 (Authorization: Bearer, X-API-Key, api-key).
+# AI 서버가 한 가지만 받는다면 그 이름을 적어도 됨 (예: X-API-Key)
+LOCALAI_AUTH_HEADER = config('LOCALAI_AUTH_HEADER', default='').strip()
 LOCALAI_MODEL = config('LOCALAI_MODEL', default='')            # 비우면 서버의 첫 번째 모델을 자동으로 사용
 LOCALAI_TIMEOUT = config('LOCALAI_TIMEOUT', default=300, cast=int)        # 요청 하나당 최대 대기(초)
 LOCALAI_MAX_CHARS = config('LOCALAI_MAX_CHARS', default=40000, cast=int)  # 논문 요약 때 보낼 본문 글자 수
