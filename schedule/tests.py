@@ -1218,13 +1218,14 @@ class RoomKeeperTests(TestCase):
         s = self.state(action='add', names=[' 김철수 ', '이영희', '김철수', ''])
         self.assertEqual([p['name'] for p in s['roster']], ['김철수', '이영희'])        # 공백 정리·중복 제거
         s = self.state(action='assign', name='김철수', room='101')
-        s = self.state(action='assign', name='김철수', room='102')                        # 한 사람이 여러 방
-        self.assertEqual(s['keepers'], {'101': ['김철수'], '102': ['김철수']})
-        self.assertEqual(s['roster'][0]['rooms'], ['101', '102'])
-        s = self.state(action='assign', name='김철수', room='103', from_room='102')        # 방 → 방 이동
-        self.assertEqual(s['keepers'], {'101': ['김철수'], '103': ['김철수']})
-        s = self.state(action='unassign', name='김철수', room='101')
-        self.assertEqual(s['keepers'], {'103': ['김철수']})
+        s = self.state(action='assign', name='이영희', room='101')                        # 한 방에 여러 명은 가능
+        s = self.state(action='assign', name='김철수', room='103')                        # 한 사람은 한 방만: 옮겨짐
+        self.assertEqual(s['keepers'], {'101': ['이영희'], '103': ['김철수']})
+        self.assertEqual(s['roster'][0]['rooms'], ['103'])
+        s = self.state(action='assign', name='김철수', room='101')
+        self.assertEqual(s['keepers'], {'101': ['이영희', '김철수']})
+        s = self.state(action='unassign', name='이영희', room='101')
+        self.assertEqual(s['keepers'], {'101': ['김철수']})
         s = self.state(action='remove', name='김철수')                                     # 명단에서 빼면 배정도 해제
         self.assertEqual((s['keepers'], [p['name'] for p in s['roster']]), ({}, ['이영희']))
 

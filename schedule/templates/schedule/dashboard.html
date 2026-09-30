@@ -52,19 +52,6 @@
   </div>
   {% endif %}
 
-  <!-- ===== 근무자 명단 · 방킵 배정 ===== -->
-  <section class="orb-staff" id="staffBar" aria-label="근무자 명단">
-    <div class="staff-title"><i class="fas fa-user-md"></i> 근무자 <small id="staffDate"></small></div>
-    <div class="staff-chips" id="staffChips"></div>
-    <form class="staff-add" id="staffAddForm" autocomplete="off">
-      <input type="text" id="staffInput" maxlength="300" placeholder="이름 추가 (쉼표로 여러 명)" />
-      <!-- type=button: 사이트 공통 스크립트가 submit 버튼을 10초간 'Loading...' 으로 바꾸지 않게 (Enter 는 그대로 동작) -->
-      <button type="button" id="staffAddBtn" title="근무자 추가"><i class="fas fa-plus"></i></button>
-    </form>
-    <button type="button" class="staff-recent" id="staffRecent" hidden></button>
-    <p class="staff-hint"><i class="fas fa-hand-pointer"></i> 이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 방의 이름을 다른 방으로 옮기거나 이 줄로 끌어오면 해제. 방 번호를 눌러 메뉴에서 골라도 돼요.</p>
-  </section>
-
   <div class="orb-body">
     <!-- ===== 방별 보드 (JS가 화면 너비에 맞춰 여러 열로 배치) ===== -->
     <main class="orb-board" id="board">
@@ -88,6 +75,21 @@
         <h4 class="side-head"><i class="fas fa-bullhorn"></i> 공지 · 메모 <span class="notice-status" id="noticeStatus"></span></h4>
         <textarea id="noticeText" class="notice-text" maxlength="20000"
                   placeholder="전체 공지나 오늘의 메모를 적어두세요. (자동 저장)&#10;예) 11시 전체 회의 / 3번 방 초음파 기계 점검 중">{{ notice.content|default:"" }}</textarea>
+      </section>
+
+      <!-- ===== 근무자 명단 · 방킵 배정 ===== -->
+      <section class="side-card side-staff" id="staffBar" aria-label="근무자 명단">
+        <h4 class="side-head"><i class="fas fa-user-md"></i> 근무자 · 방킵 <small id="staffDate"></small></h4>
+        <div class="staff-body">
+          <div class="staff-chips" id="staffChips"></div>
+          <form class="staff-add" id="staffAddForm" autocomplete="off">
+            <input type="text" id="staffInput" maxlength="300" placeholder="이름 추가 (쉼표로 여러 명)" />
+            <!-- type=button: 사이트 공통 스크립트가 submit 버튼을 10초간 'Loading...' 으로 바꾸지 않게 (Enter 는 그대로 동작) -->
+            <button type="button" id="staffAddBtn" title="근무자 추가"><i class="fas fa-plus"></i></button>
+          </form>
+          <button type="button" class="staff-recent" id="staffRecent" hidden></button>
+          <p class="staff-hint">이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 한 사람은 한 방만 — 다른 방으로 끌면 옮겨지고, 이 칸으로 끌어오면 해제돼요. 방 번호를 눌러 메뉴에서 골라도 돼요.</p>
+        </div>
       </section>
 
       <section class="side-card" id="uploadCard">
@@ -249,16 +251,17 @@
       <td class="c-time"><span>${esc(c.time_slot) || "-"}</span>${extraTime || ""}</td>
       <td class="c-op"><div class="op-bar op-${c.group}"${c.group === "ongoing" ? ` data-eta="${c.id}"` : ""} title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
         ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
-        ${compact ? "" : anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${esc(c.surgery_name) || "-"}</span>${small}</div>${c.group === "ongoing" && !etaLine ? '<span class="eta"></span>' : ""}</div></td>
+        ${compact ? "" : anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${c.hold ? '<span class="op-tag tag-hold">HOLD</span>' : ""}${c.on_call ? '<span class="op-tag tag-oncall">당직</span>' : ""}${esc(c.surgery_name) || "-"}</span>${small}</div>${c.group === "ongoing" && !etaLine ? '<span class="eta"></span>' : ""}</div></td>
       <td class="c-anes" data-anes="${c.id}" title="클릭해서 마취의 입력">${c.anesthesiologist ? esc(c.anesthesiologist) : '<span class="anes-empty">+ 입력</span>'}</td>
       ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
       <td class="c-memo"><button type="button" class="memo-btn${c.memo ? " has-memo" : ""}" data-memo="${c.id}"
         title="${c.memo ? esc(c.memo.length > 200 ? c.memo.slice(0, 200) + "…" : c.memo) : "메모 작성"}"><i class="fas ${c.memo ? "fa-sticky-note" : "fa-pen-fancy"}"></i></button></td>`;
   }
 
-  const flagIcons = (c) =>
-    (c.on_call ? '<i class="fas fa-moon" title="당직으로 넘김"></i>' : "") +
-    (c.hold ? '<i class="fas fa-pause-circle" title="Hold"></i>' : "");
+  // 당직·Hold: 방 칸에 글자 배지 (아이콘만으로는 잘 안 보여서)
+  const PILL_ONCALL = '<span class="flag-pill fp-oncall" title="당직으로 넘김"><i class="fas fa-moon"></i>당직</span>';
+  const PILL_HOLD = '<span class="flag-pill fp-hold" title="Hold"><i class="fas fa-pause"></i>HOLD</span>';
+  const flagIcons = (c) => (c.on_call ? PILL_ONCALL : "") + (c.hold ? PILL_HOLD : "");
 
   // ===================== 근무자 명단 · 방킵 =====================
   let STAFF = JSON.parse(document.getElementById("staff-data").textContent);
@@ -277,7 +280,7 @@
     const d = new Date(STAFF.date + "T00:00:00");
     document.getElementById("staffDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
     const chips = STAFF.roster.map(p => `
-      <span class="staff-chip${p.rooms.length ? " is-assigned" : ""}" data-name="${esc(p.name)}" title="끌어서 방에 배정">
+      <span class="staff-chip${p.rooms.length ? " is-assigned" : ""}" data-name="${esc(p.name)}" title="끌어서 방에 배정 (다른 방으로 끌면 옮겨짐)">
         <b>${esc(p.name)}</b><small>${p.rooms.length ? p.rooms.map(esc).join("·") : "미배정"}</small>
         <button type="button" class="staff-x" data-remove="${esc(p.name)}" title="명단에서 빼기">&times;</button>
       </span>`).join("");
@@ -308,10 +311,11 @@
     const more = others ? `<span class="more" title="이 방의 다른 일정 ${others}건">+${others}</span>` : "";
     // 방 칸: 지금 보이는 수술의 표시 + (접혀 있을 때) 다른 남은 수술에 걸린 표시는 흐리게
     const hidden = open ? [] : r.cases.filter((c, i) => i !== r.current && c.group !== "finished");
-    const otherFlags = (hidden.some(c => c.on_call) ? '<i class="fas fa-moon is-other" title="다음 수술 중 당직 넘김 있음"></i>' : "") +
-      (hidden.some(c => c.hold) ? '<i class="fas fa-pause-circle is-other" title="다음 수술 중 Hold 있음"></i>' : "");
+    const otherFlags = (hidden.some(c => c.on_call) && !cur.on_call ? '<span class="flag-pill fp-oncall is-other" title="이 방의 다음 수술 중 당직으로 넘길 수술 있음"><i class="fas fa-moon"></i>당직</span>' : "") +
+      (hidden.some(c => c.hold) && !cur.hold ? '<span class="flag-pill fp-hold is-other" title="이 방의 다음 수술 중 Hold 있음"><i class="fas fa-pause"></i>HOLD</span>' : "");
     const flags = flagIcons(cur) + otherFlags;
-    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}" data-room="${esc(r.room)}">
+    const roomOnCall = r.cases.some(c => c.on_call && c.group !== "finished");
+    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}${roomOnCall ? " has-oncall" : ""}" data-room="${esc(r.room)}">
       <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
         <th class="c-room" data-case-menu="${cur.id}" title="수술 메뉴: 완료·진행중 / 당직·Hold / 방킵"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}${keeperChips(r.room)}</th>${caseCells(cur, more)}
       </tr>`;
@@ -691,7 +695,7 @@
       return;
     }
     const room = d.target.dataset.room;
-    if (room !== d.from) staffAction({ action: "assign", name: d.name, room, from_room: d.from });
+    if (room !== d.from) staffAction({ action: "assign", name: d.name, room });
   }
   document.addEventListener("pointerup", (e) => endDrag(e, false));
   document.addEventListener("pointercancel", (e) => endDrag(e, true));
