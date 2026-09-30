@@ -102,8 +102,10 @@ def _headers(name):
 
 def _extra_body(name):
     """로컬 Qwen: 생각 모드(<think>)를 꺼서 빠르게. 모르는 서버는 이 값을 무시함."""
-    if name == "localai" and not settings.LOCALAI_THINKING:
-        return {"chat_template_kwargs": {"enable_thinking": False}}
+    if name == "localai":
+        think = bool(settings.LOCALAI_THINKING)
+        # think: escapebaek/localapi 게이트웨이 확장 / chat_template_kwargs: vLLM·llama.cpp 방식
+        return {"think": think, "chat_template_kwargs": {"enable_thinking": think}}
     return {}
 
 
@@ -181,7 +183,11 @@ def describe_connection_error(exc, url):
 def describe_http_error(response, url):
     host = requests.utils.urlparse(url).hostname or url
     if response.status_code in (401, 403):
-        return (f"{host} 가 API 키를 거부했습니다 ({response.status_code}). Render 의 LOCALAI_API_KEY 가 AI 서버의 키와 똑같은지, AI 서버가 키를 받는 헤더 이름(LOCALAI_AUTH_HEADER)을 확인하세요")
+        return (f"{host} 가 API 키를 거부했습니다 ({response.status_code}). Render 의 LOCALAI_API_KEY 값이 "
+                "AI 컴퓨터 게이트웨이 .env 의 API_KEYS 에 들어 있는지 확인하고, .env 를 고쳤다면 게이트웨이를 다시 시작하세요")
+    if response.status_code == 413:
+        return (f"{host}: 보낸 글이 AI 서버의 입력 한도보다 깁니다 (413, 게이트웨이 .env 의 MAX_INPUT_CHARS 를 늘리거나 "
+                "Render 의 LOCALAI_MAX_CHARS 를 줄이세요)")
     if response.status_code == 404:
         return f"{url} 주소가 없습니다 (404, LOCALAI_URL 경로 확인)"
     return f"{host} 응답 {response.status_code}: {response.text[:150]}"
@@ -296,7 +302,8 @@ def _openai_compatible(name, source_text, filename, deadline):
             raise ScheduleExtractionError(f"{conf['label']} API 키가 올바르지 않습니다 ({conf['key_setting']} 확인).")
         if response.status_code != 200:
             logger.warning("%s model %s returned %s: %s", name, model, response.status_code, response.text[:300])
-            failures.append(f"{model}: {response.status_code}")
+            failures.append(f"{model}: {describe_http_error(response, f'{_base_url(name)}/chat/completions')}"
+                            if name == "localai" else f"{model}: {response.status_code}")
             if response.status_code in SKIP_STATUS_CODES or response.status_code == 400:
                 continue
             break
