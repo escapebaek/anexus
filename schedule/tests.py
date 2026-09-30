@@ -610,6 +610,15 @@ class LocalAiDiagnosticsTests(TestCase):
             self.assertEqual(ai_client.list_models('localai'), (['qwen3:32b'], ''))
         self.assertEqual(calls, ['https://ai.example.ts.net/v1/models', 'https://ai.example.ts.net/api/tags'])
 
+    def test_empty_502_means_gateway_is_off(self):
+        from unittest import mock
+        from . import ai_client
+        empty = mock.Mock(status_code=502, text='')
+        with self.local(), mock.patch.object(ai_client.requests, 'get', return_value=empty):
+            reason = ai_client.list_models('localai')[1]
+        self.assertIn('게이트웨이 프로그램이 꺼져 있습니다 (502)', reason)
+        self.assertIn('start_windows.bat', reason)
+
     def test_key_is_sent_in_common_headers_and_cleaned(self):
         from . import ai_client
         with self.local(LOCALAI_API_KEY='secret'):

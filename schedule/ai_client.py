@@ -190,6 +190,10 @@ def describe_http_error(response, url):
                 "Render 의 LOCALAI_MAX_CHARS 를 줄이세요)")
     if response.status_code == 404:
         return f"{url} 주소가 없습니다 (404, LOCALAI_URL 경로 확인)"
+    if response.status_code in (502, 503, 504) and not (response.text or "").strip():
+        # 내용 없는 502 = Tailscale Funnel 은 켜져 있지만 그 뒤의 게이트웨이 프로그램이 꺼져 있음
+        return (f"{host} 는 연결되지만 AI 컴퓨터의 게이트웨이 프로그램이 꺼져 있습니다 ({response.status_code}). "
+                "AI 컴퓨터에서 localapi 의 scripts\\start_windows.bat 을 실행하세요")
     return f"{host} 응답 {response.status_code}: {response.text[:150]}"
 
 
