@@ -30,6 +30,7 @@
   --st-hold: #b7791f;
   --st-hold-bg: #fdf3e1;
   --st-oncall: #4e4376;
+  --st-oncall-strong: #6c4fd1;
 
   /* 현황판은 사이트 본문 폭을 넘어 화면 너비를 씀 (최대 1920px) */
   width: min(1920px, calc(100vw - 32px));
@@ -241,17 +242,55 @@
 .main-row .c-room { cursor: pointer; position: relative; }
 .main-row .c-room:hover .room-no { text-decoration: underline; text-underline-offset: 3px; }
 .room-no { display: block; line-height: 1.1; }
-.room-flags { display: flex; justify-content: center; gap: 3px; font-size: 10px; margin-top: 1px; }
-.room-flags .fa-pause-circle { color: var(--st-hold); }
-.room-flags .fa-moon { color: var(--st-oncall); }
-.room-ongoing .main-row .room-flags i { color: #fff; }
-.room-flags i.is-other { opacity: 0.45; }
+/* 당직·Hold 배지 (방 칸) */
+.room-flags { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 2px; }
+.flag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1.6;
+  color: #fff;
+  white-space: nowrap;
+}
+.flag-pill i { font-size: 8px; }
+.fp-oncall { background: var(--st-oncall-strong); }
+.fp-hold { background: var(--st-hold); }
+/* 접힌 다음 수술에 걸린 표시: 테두리만 */
+.flag-pill.is-other { background: #fff; border: 1px dashed currentColor; line-height: 1.4; }
+.fp-oncall.is-other { color: var(--st-oncall-strong); }
+.fp-hold.is-other { color: var(--st-hold); }
 /* Hold 수술: 방 칸·수술명 바를 호박색으로 */
 .main-row.is-hold .c-room { background: var(--st-hold-bg) !important; color: var(--st-hold) !important; box-shadow: inset 3px 0 0 var(--st-hold); }
-.main-row.is-hold .room-flags i { color: var(--st-hold); }
-tr.is-hold .op-bar { background: var(--st-hold-bg); color: #8a5a12; border-left: 3px solid var(--st-hold); box-shadow: none; }
-/* 당직으로 넘길 수술: 행 오른쪽 끝 표시 */
-tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
+tr.is-hold .op-bar { background: var(--st-hold-bg); color: #8a5a12; border-left: 4px solid var(--st-hold); box-shadow: none; }
+/* Hold 수술 행: 호박색 사선 무늬 */
+tr.is-hold > td { background: repeating-linear-gradient(-45deg, #fff8ea 0 7px, #fdecc8 7px 14px); }
+/* 당직으로 넘길 수술 행: 보라색 바탕 + 양 끝 굵은 띠 */
+tr.is-oncall > td { background-color: #efeafb; }
+tr.is-oncall > td.c-time { box-shadow: inset 4px 0 0 var(--st-oncall-strong); }
+tr.is-oncall > td:last-child { box-shadow: inset -5px 0 0 var(--st-oncall-strong); }
+/* 당직으로 넘길 수술이 남아 있는 방: 방 칸 오른쪽에 보라 띠 */
+tbody.room.has-oncall .main-row .c-room { box-shadow: inset -5px 0 0 var(--st-oncall-strong); }
+.main-row.is-hold .c-room { box-shadow: inset 5px 0 0 var(--st-hold) !important; }
+/* 수술명 앞 글자 표시 */
+.op-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.5;
+  vertical-align: 1px;
+  color: #fff;
+}
+.tag-hold { background: var(--st-hold); }
+/* Hold 바 위의 경과·종료 예정 글자: 호박색 바탕에서도 읽히게 */
+tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; }
+.tag-oncall { background: var(--st-oncall-strong); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7); }
 .sub-row { cursor: pointer; }
 .sub-row:hover td, .sub-row:hover th { background: #f3f5fa; }
 .sub-row .room-flags { margin-top: 2px; }
@@ -732,23 +771,12 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
 }
 
 /* ---------- 근무자 명단 · 방킵 ---------- */
-.orb-staff {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  margin: 12px 12px 0;
-  padding: 8px 12px;
-  background: var(--orb-panel);
-  border: 1px solid var(--orb-border);
-  border-left: 4px solid #0f766e;
-  border-radius: 10px;
-}
-.orb-staff.is-drop { background: #fdecea; border-color: #f5c2bd; border-left-color: #b3261e; }
-.orb-staff.is-drop::after { content: "여기에 놓으면 방킵 해제"; font-size: 12px; font-weight: 700; color: #b3261e; }
-.staff-title { font-size: 13px; font-weight: 800; color: #0f766e; white-space: nowrap; }
-.staff-title small { color: var(--orb-muted); font-weight: 600; margin-left: 2px; }
-.staff-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 320px; min-width: 0; }
+.side-staff .side-head { border-left-color: #0f766e; color: #0f766e; background: #e6f4f1; }
+.side-staff .side-head small { color: var(--orb-muted); font-weight: 600; margin-left: 2px; }
+.staff-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; }
+.side-staff.is-drop { background: #fdecea; border-color: #f5c2bd; }
+.side-staff.is-drop .staff-body::before { content: "여기에 놓으면 방킵 해제"; font-size: 12px; font-weight: 700; color: #b3261e; }
+.staff-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .staff-empty { color: var(--orb-muted); font-size: 12px; align-self: center; }
 .staff-chip {
   display: inline-flex;
@@ -782,7 +810,8 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
 .staff-x:hover { background: #fdecea; color: #b3261e; }
 .staff-add { display: flex; gap: 4px; }
 .staff-add input {
-  width: 170px;
+  flex: 1;
+  min-width: 0;
   border: 1px solid var(--orb-border);
   border-radius: 8px;
   padding: 5px 8px;
@@ -799,9 +828,9 @@ tr.is-oncall td:last-child { box-shadow: inset -3px 0 0 var(--st-oncall); }
   font-size: 12px;
   cursor: pointer;
 }
-.staff-recent { background: #fff; color: #0f766e; }
+.staff-recent { background: #fff; color: #0f766e; align-self: flex-start; }
 .staff-recent[hidden] { display: none; }
-.staff-hint { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--orb-muted); }
+.staff-hint { margin: 0; font-size: 11px; line-height: 1.5; color: var(--orb-muted); }
 
 /* 방 칸의 방킵 이름 */
 .keepers { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 3px -3px 0; }
@@ -862,11 +891,8 @@ tbody.room.is-drop .c-room { box-shadow: inset 0 0 0 3px #0f766e; }
 .rm-kp-empty { font-size: 11.5px; color: var(--orb-muted); }
 
 @media (max-width: 700px) {
-  .orb-staff { margin: 8px 8px 0; padding: 8px 10px; }
-  .staff-chips { flex-basis: 100%; }
   .staff-chip { font-size: 14px; padding: 5px 4px 5px 11px; }   /* 손가락으로 잡기 쉽게 */
-  .staff-add { flex: 1; }
-  .staff-add input { flex: 1; width: auto; font-size: 14px; }
+  .staff-add input { font-size: 14px; }
 }
 
 /* ---------- 메모 모달 ---------- */

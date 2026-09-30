@@ -944,7 +944,8 @@ def _add_staff(user, day, names):
 @require_POST
 def staff_api(request):
     """근무자 명단·방킵 변경. action:
-    add(names) · remove(name) · load_recent · assign(name, room[, from_room]) · unassign(name, room).
+    add(names) · remove(name) · load_recent · assign(name, room) · unassign(name, room).
+    한 사람은 하루에 한 방만: 다른 방으로 배정하면 전에 있던 방에서는 빠짐.
     응답으로 그날의 명단·배정 전체를 돌려줌."""
     try:
         data = json.loads(request.body or b"{}")
@@ -969,9 +970,7 @@ def staff_api(request):
                 _add_staff(user, day, list(DutyStaff.objects.filter(user=user, date=last).values_list("name", flat=True)))
         elif action == "assign" and name and room:
             _add_staff(user, day, [name])
-            from_room = str(data.get("from_room") or "").strip()
-            if from_room and from_room != room:
-                RoomKeeper.objects.filter(user=user, date=day, room=from_room, name=name).delete()
+            RoomKeeper.objects.filter(user=user, date=day, name=name).exclude(room=room).delete()
             RoomKeeper.objects.get_or_create(user=user, date=day, room=room, name=name)
         elif action == "unassign" and name and room:
             RoomKeeper.objects.filter(user=user, date=day, room=room, name=name).delete()
