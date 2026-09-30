@@ -545,6 +545,7 @@ class LocalAiTests(TestCase):
         url, auth, first = posts[0]
         self.assertEqual((url, auth, first['model']), ('https://ai.example.ts.net/v1/chat/completions', 'Bearer secret', 'qwen3-32b'))
         self.assertEqual(first['chat_template_kwargs'], {'enable_thinking': False})
+        self.assertIs(first['think'], False)                                   # escapebaek/localapi 게이트웨이 방식
         self.assertNotIn('response_format', posts[1][2])                      # 400 이면 옵션 빼고 다시
 
     def test_not_configured_without_url_or_key(self):

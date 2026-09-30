@@ -174,8 +174,10 @@ LOCALAI_API_KEY = config('LOCALAI_API_KEY', default='').strip().strip('\'"').str
 # AI 서버가 한 가지만 받는다면 그 이름을 적어도 됨 (예: X-API-Key)
 LOCALAI_AUTH_HEADER = config('LOCALAI_AUTH_HEADER', default='').strip()
 LOCALAI_MODEL = config('LOCALAI_MODEL', default='')            # 비우면 서버의 첫 번째 모델을 자동으로 사용
-LOCALAI_TIMEOUT = config('LOCALAI_TIMEOUT', default=300, cast=int)        # 요청 하나당 최대 대기(초)
-LOCALAI_MAX_CHARS = config('LOCALAI_MAX_CHARS', default=40000, cast=int)  # 논문 요약 때 보낼 본문 글자 수
+LOCALAI_TIMEOUT = config('LOCALAI_TIMEOUT', default=600, cast=int)        # 요청 하나당 최대 대기(초), 게이트웨이 REQUEST_TIMEOUT 과 같게
+# 논문 요약 때 보낼 본문 글자 수. 게이트웨이(escapebaek/localapi)의 MAX_INPUT_CHARS(기본 32,000)는 지시문까지 합친
+# 글자 수라 그보다 작게. 게이트웨이 NUM_CTX 가 작으면(기본 4096 토큰) 긴 본문은 잘리니 NUM_CTX=16384 권장.
+LOCALAI_MAX_CHARS = config('LOCALAI_MAX_CHARS', default=24000, cast=int)
 LOCALAI_THINKING = config('LOCALAI_THINKING', default=False, cast=bool)   # Qwen 생각 모드 (느려짐)
 
 # ---------------------------------------------------------------------------
