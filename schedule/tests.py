@@ -704,6 +704,33 @@ class LocalAiChunkTests(TestCase):
         self.assertContains(page, '<b id="jobProgress">3조각 중 2번째 분석 중</b>', html=True)
 
 
+class TableFormatVariantTests(TestCase):
+    """병원마다 열 순서·이름이 달라도 표로 같은 결과 (가짜 데이터)."""
+    HEADER = ["입실시간", "수술실", "시간", "수술명", "환자명", "등록번호", "나이", "성별", "예정소요시간", "수술종료시간"]
+    ROWS = [["", "2구역1번방", "8A", "Lap chole", "홍길동", "11112222", "60세", "M", "90", ""],
+            ["", "2구역2번방", "TF1", "TKR", "김철수", "33334444", "70세", "F", "1:30", ""]]
+
+    def parse(self, header, rows):
+        from .table_parser import parse_table_rows
+        return parse_table_rows([header] + rows)
+
+    def expect(self, recs):
+        self.assertEqual([(r["time_slot"], r["duration"], r["patient_info"]) for r in recs],
+                         [("8A", 90, "11112222 (M/60세)"), ("TF1", 90, "33334444 (F/70세)")])
+
+    def test_original_and_shuffled_columns_match(self):
+        self.expect(self.parse(self.HEADER, self.ROWS))
+        order = [8, 3, 0, 7, 5, 1, 9, 6, 4, 2]      # 비어 있는 '입실시간' 이 '시간' 보다 앞에 와도
+        self.expect(self.parse([self.HEADER[i] for i in order], [[r[i] for i in order] for r in self.ROWS]))
+
+    def test_ambiguous_names_are_resolved_by_values(self):
+        # '수술시간' 이 시작 시각(8A)을 담은 병원 + 'Expected Time' 영어 이름
+        header = ["입실시간", "수술실", "수술시간", "수술명", "환자명", "등록번호", "나이", "성별", "예상소요시간", "수술종료시간"]
+        self.expect(self.parse(header, self.ROWS))
+        header = ["Actual In", "OR", "Start", "Operation", "Name", "Chart No", "나이", "성별", "Expected Time", "End"]
+        self.expect(self.parse(header, self.ROWS))
+
+
 class UploadJobTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user('doc', password='x')

@@ -94,7 +94,7 @@ HEADER_RULES = [
     ("anesthesia_either", r"^마취$|^anes$|^anesth$|^anesthesia$|^anaesthesia$|^anesthetic$"),
     # 종료(예정) 시각 열: 예상 시간 열이 없을 때 시작 시각과의 차이로 예상 시간을 계산
     ("end_time", r"종료|끝나는|^끝$|^end(time)?$|^finish|endtime|finishtime|^to$"),
-    ("duration", r"소요|예상시간|예상소요|수술시간|duration|^dur$|length|optime|^mins?$|^분$|esttime|estimated"),
+    ("duration", r"소요|예상시간|예상소요|수술시간|duration|^dur$|length|optime|^mins?$|^분$|esttime|estimated|expected|^exp(ected)?time$"),
     ("date", r"날짜|일자|^수술일|^일$|^date|opdate|surgerydate|casedate|^day$"),
     ("regnum", r"등록번호|병록|차트|환자번호|환자id|mrn|chart|regno|registration|unitno|hospno|patientid|^ptid$|^id$"),
     ("age_sex", r"성별|나이|연령|^age|^sex|gender|^sa$|^mf$"),
@@ -118,18 +118,24 @@ FIELD_LABELS = {
 }
 
 
-def classify_header(cell):
-    """One header cell -> field name, 'ignore', or None (unknown)."""
+def _classify(cell):
+    """One header cell -> (field, rank) or (None, None). rank: 정확히 일치하는 별칭이 규칙보다,
+    별칭 목록의 앞쪽이 뒤쪽보다 우선 (같은 뜻의 열이 여러 개일 때 고르는 기준)."""
     key = _norm_header(cell)
     if not key:
-        return None
+        return None, None
     field = _SYNONYM_TO_FIELD.get(key)
     if field:
-        return field
+        return field, (0, HEADER_SYNONYMS[field].index(key))
     for field, pattern in _HEADER_RULES:
         if pattern.search(key):
-            return field
-    return None
+            return field, (1, 0)
+    return None, None
+
+
+def classify_header(cell):
+    """One header cell -> field name, 'ignore', or None (unknown)."""
+    return _classify(cell)[0]
 
 
 def _cell_text(value):
@@ -141,25 +147,77 @@ def _cell_text(value):
 
 
 def _map_header(row):
-    """{field: column index} for a candidate header row (first column wins per field),
-    plus 'age_sex' may collect several columns (성별 + 나이) under '_age_sex_cols'."""
-    mapping = {}
+    """{field: column index} for a candidate header row, plus
+    '_candidates': {field: [(rank, index), ...]} - 같은 뜻으로 읽힌 열 전부 (값을 보고 다시 고를 때 사용),
+    '_age_sex_cols': 성별 + 나이처럼 여러 열을 함께 쓰는 경우."""
+    candidates = {}
+    plain_time_cols = 0
     for index, cell in enumerate(row):
-        field = classify_header(cell)
+        field, rank = _classify(cell)
         if field in (None, "ignore"):
             continue
         # '시간' 열이 두 번 나오면 두 번째는 보통 소요시간 (예: 시간=MD, 시간=4:00)
-        if field == "time_slot" and "time_slot" in mapping and "duration" not in mapping \
-                and _norm_header(cell) in ("시간", "time"):
-            field = "duration"
-        if field == "age_sex":
-            mapping.setdefault("_age_sex_cols", []).append(index)
-        if field not in mapping:
-            mapping[field] = index
+        if _norm_header(cell) in ("시간", "time"):
+            plain_time_cols += 1
+            if plain_time_cols == 2:
+                field, rank = "duration", (1, 1)
+        candidates.setdefault(field, []).append((rank, index))
+    mapping = {field: min(options)[1] for field, options in candidates.items()}
+    if "age_sex" in candidates:
+        # 열 순서와 상관없이 성별 → 나이 순으로 ('M/76세')
+        sex_first = lambda i: (0 if re.search(r"성별|sex|gender|mf", _norm_header(row[i])) else 1, i)
+        mapping["_age_sex_cols"] = sorted((index for _, index in candidates["age_sex"]), key=sex_first)
     # 시각 열이 없으면 순번/순서 열을 시간 칸에 표시
     if "time_slot" not in mapping and "sequence" in mapping:
         mapping["time_slot"] = mapping["sequence"]
+    mapping["_candidates"] = candidates
     return mapping
+
+
+def _refine_with_data(rows, header_index, mapping):
+    """열 이름만으로는 헷갈리는 경우를 실제 값으로 바로잡음. 병원마다 양식이 달라도 같은 결과가 나오게.
+    - 같은 뜻의 열이 여럿이면 값이 채워진 열 우선 ('입실시간'·'수술시작시간'처럼 수술 후에야 채워지는
+      실제 기록 열보다 예정 시각 열)
+    - 소요시간 열은 값이 정말 시간 길이(5분~24시간)일 때만. 아니면('8A', 'TF1' 등) 시작 시각 열 후보로."""
+    candidates = mapping.get("_candidates") or {}
+    sample = [r for r in rows[header_index + 1:header_index + 61] if any(_cell_text(c) for c in r)]
+    if not sample:
+        return
+    column = lambda i: [r[i] if i < len(r) else None for r in sample]
+    filled = lambda i: sum(1 for v in column(i) if _cell_text(v)) / len(sample)
+
+    def best(options, ok):
+        good = sorted(o for o in options if ok(o[1]))
+        return good[0][1] if good else None
+
+    # 소요시간: 값으로 확인. 탈락한 열은 시작 시각 후보로 넘김
+    duration_options = candidates.get("duration", [])
+    duration = best(duration_options, lambda i: filled(i) >= 0.3 and plausible_duration_column(column(i), "duration"))
+    rejected = [(rank, i) for rank, i in duration_options if i != duration]
+    if duration is None:
+        mapping.pop("duration", None)
+    else:
+        mapping["duration"] = duration
+
+    time_options = [o for o in candidates.get("time_slot", []) if o[1] != duration]
+    time_slot = best(time_options, lambda i: filled(i) >= 0.3) or \
+        best([((2,) + rank, i) for rank, i in rejected], lambda i: filled(i) >= 0.3)
+    if time_slot is not None:
+        mapping["time_slot"] = time_slot
+
+    # 종료 시각 열이 비어 있으면(실제 종료 기록 등) 쓰지 않음
+    end_time = best(candidates.get("end_time", []), lambda i: filled(i) >= 0.3)
+    if end_time is None:
+        mapping.pop("end_time", None)
+    else:
+        mapping["end_time"] = end_time
+
+    for field, options in candidates.items():
+        if field in ("duration", "time_slot", "end_time", "age_sex") or len(options) < 2:
+            continue
+        choice = best(options, lambda i: filled(i) >= 0.3)
+        if choice is not None:
+            mapping[field] = choice
 
 
 def _is_header(mapping):
@@ -389,6 +447,7 @@ def parse_table_rows(rows, filename="", default_date=None, report=None, resolve_
     if mapping is None:
         report["reason"] = "열 이름(방·수술명 등)이 있는 머리글 줄을 찾지 못했습니다."
         return None
+    _refine_with_data(rows, header_index, mapping)
     if resolve_duration and "surgery_name" in mapping and "duration" not in mapping and "end_time" not in mapping:
         _find_duration_column(rows, header_index, header, mapping, resolve_duration)
     used, unused = _header_report(header, mapping)
