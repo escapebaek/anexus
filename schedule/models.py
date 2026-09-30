@@ -76,3 +76,34 @@ class BoardNotice(models.Model):
 
     def __str__(self):
         return f"Notice of {self.user}"
+
+
+class DutyStaff(models.Model):
+    """현황판 근무자 명단 (사용자·날짜별). 방킵 배정에 쓰는 이름 목록."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='duty_staff')
+    date = models.DateField()
+    name = models.CharField(max_length=50)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = [("user", "date", "name")]
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.date} {self.name}"
+
+
+class RoomKeeper(models.Model):
+    """그날 그 방의 방킵. 방 이름으로 연결하므로 스케줄을 다시 올려도(같은 방 이름이면) 유지됨."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='room_keepers')
+    date = models.DateField()
+    room = models.CharField(max_length=10)
+    name = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("user", "date", "room", "name")]
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"{self.date} {self.room}: {self.name}"
