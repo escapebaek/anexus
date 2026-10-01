@@ -79,14 +79,16 @@ class BoardNotice(models.Model):
 
 
 class DutyStaff(models.Model):
-    """현황판 근무자 명단 (사용자·날짜별). 방킵 배정에 쓰는 이름 목록."""
+    """현황판 명단 (사용자·날짜별). role: keeper = 근무자(방킵 배정), anes = 마취의(수술별 마취의 칸)."""
+    ROLE_CHOICES = [("keeper", "근무자"), ("anes", "마취의")]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='duty_staff')
     date = models.DateField()
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="keeper")
     name = models.CharField(max_length=50)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        unique_together = [("user", "date", "name")]
+        unique_together = [("user", "date", "role", "name")]
         ordering = ["order", "id"]
 
     def __str__(self):

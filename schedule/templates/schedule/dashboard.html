@@ -39,7 +39,8 @@
     </div>
 
     <div class="orb-actions">
-      <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
+      <button type="button" class="orb-btn" id="expandRemainBtn" title="각 방의 남은(완료 안 된) 수술만 펼치기"><i class="fas fa-stream"></i> <span>남은 것 펼치기</span></button>
+      <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기 (완료 포함)"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
       <button type="button" class="orb-btn" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
     </div>
   </header>
@@ -77,6 +78,20 @@
                   placeholder="전체 공지나 오늘의 메모를 적어두세요. (자동 저장)&#10;예) 11시 전체 회의 / 3번 방 초음파 기계 점검 중">{{ notice.content|default:"" }}</textarea>
       </section>
 
+      <!-- ===== 마취의 명단 (수술별 마취의 칸에 끌어다 놓기) ===== -->
+      <section class="side-card side-anes" id="anesBar" aria-label="마취의 명단">
+        <h4 class="side-head"><i class="fas fa-user-md"></i> 마취의 <small id="anesDate"></small></h4>
+        <div class="staff-body">
+          <div class="staff-chips" id="anesChips"></div>
+          <form class="staff-add" id="anesAddForm" autocomplete="off">
+            <input type="text" id="anesInput" maxlength="300" placeholder="마취의 추가 (쉼표로 여러 명)" />
+            <button type="button" id="anesAddBtn" title="마취의 추가"><i class="fas fa-plus"></i></button>
+          </form>
+          <button type="button" class="staff-recent" id="anesRecent" hidden></button>
+          <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요.</p>
+        </div>
+      </section>
+
       <!-- ===== 근무자 명단 · 방킵 배정 ===== -->
       <section class="side-card side-staff" id="staffBar" aria-label="근무자 명단">
         <h4 class="side-head"><i class="fas fa-user-md"></i> 근무자 · 방킵 <small id="staffDate"></small></h4>
@@ -98,6 +113,7 @@
           <b>표 형식 엑셀/CSV</b>는 열 이름이 병원마다 달라도(수술실·Room·OR, 환자성명·Pt, 집도의사·Surgeon 등) AI 없이 바로 읽고,
           업로드 후 <b>어떤 열을 읽었는지</b> 알려드립니다. <b>예상 수술 시간</b> 열은 이름이 낯설면 AI가 찾아 종료 예정 시각에 씁니다. 표로 읽을 수 없는 메모 형식은 AI가 분석합니다.
           <b>업데이트</b>는 방·순서가 바뀌어도 같은 환자의 메모·마취의·당직/Hold 표시를 유지합니다.
+          <b>마취의</b>는 파일에 있어도 가져오지 않으니, 위 마취의 칸에서 끌어다 놓거나 직접 입력하세요.
         </p>
         {% if error_message %}
           <div class="upload-error"><i class="fas fa-exclamation-triangle"></i> {{ error_message }}</div>
@@ -139,6 +155,8 @@
 <div class="room-menu" id="roomMenu" hidden>
   <div class="rm-title" id="roomMenuTitle"></div>
   <div class="rm-sub" id="roomMenuSub"></div>
+  <div class="rm-group">마취의 (이 수술)</div>
+  <div class="rm-keepers rm-anes-list" id="roomMenuAnesList"></div>
   <div class="rm-group">방킵</div>
   <div class="rm-keepers" id="roomMenuKeepers"></div>
   <div class="rm-group">상태</div>
@@ -215,6 +233,8 @@
   const anesBadge = (code) => code
     ? `<span class="at at-${ANES_LABEL[code] ? code : "etc"}" title="마취: ${esc(ANES_LABEL[code] || code)}">${esc(code)}</span>` : "";
   const expanded = new Set();
+  let remainingOnly = false;   // '남은 것 펼치기': 펼친 방에서 완료된 수술은 숨김
+  const isRemainingOther = (r, c, i) => i !== r.current && c.group !== "finished";
   let compact = false;  // 좁은 화면: 환자 열 생략
 
   const csrf = () => document.querySelector("[name=csrfmiddlewaretoken]").value;
@@ -252,7 +272,9 @@
       <td class="c-op"><div class="op-bar op-${c.group}"${c.group === "ongoing" ? ` data-eta="${c.id}"` : ""} title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
         ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
         ${compact ? "" : anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${c.hold ? '<span class="op-tag tag-hold">HOLD</span>' : ""}${c.on_call ? '<span class="op-tag tag-oncall">당직</span>' : ""}${esc(c.surgery_name) || "-"}</span>${small}</div>${c.group === "ongoing" && !etaLine ? '<span class="eta"></span>' : ""}</div></td>
-      <td class="c-anes" data-anes="${c.id}" title="클릭해서 마취의 입력">${c.anesthesiologist ? esc(c.anesthesiologist) : '<span class="anes-empty">+ 입력</span>'}</td>
+      <td class="c-anes" data-anes="${c.id}" title="클릭해서 입력 · 마취의 명단에서 끌어다 놓기">${c.anesthesiologist
+        ? `<span class="anes-name" data-anes-name="${esc(c.anesthesiologist)}" data-from-case="${c.id}">${esc(c.anesthesiologist)}</span>`
+        : '<span class="anes-empty">+ 입력</span>'}</td>
       ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
       <td class="c-memo"><button type="button" class="memo-btn${c.memo ? " has-memo" : ""}" data-memo="${c.id}"
         title="${c.memo ? esc(c.memo.length > 200 ? c.memo.slice(0, 200) + "…" : c.memo) : "메모 작성"}"><i class="fas ${c.memo ? "fa-sticky-note" : "fa-pen-fancy"}"></i></button></td>`;
@@ -274,6 +296,26 @@
     const shown = names.slice(0, 2).map(n =>
       `<span class="keeper" data-keeper="${esc(n)}" data-from="${esc(room)}" title="방킵 ${esc(n)} · 끌어서 다른 방으로">${esc(n)}</span>`).join("");
     return `<span class="keepers">${shown}${names.length > 2 ? `<span class="keeper-more" title="${esc(names.join(", "))}">+${names.length - 2}</span>` : ""}</span>`;
+  }
+
+  // ----- 마취의 명단: 이름마다 맡은 남은 수술 수 (현황판 데이터로 셈) -----
+  function renderAnes() {
+    const d = new Date(STAFF.date + "T00:00:00");
+    document.getElementById("anesDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+    const count = {};
+    for (const r of BOARD.rooms) for (const c of r.cases)
+      if (c.anesthesiologist && c.group !== "finished") count[c.anesthesiologist] = (count[c.anesthesiologist] || 0) + 1;
+    document.getElementById("anesChips").innerHTML = (STAFF.anes || []).map(n => `
+      <span class="staff-chip anes-chip${count[n] ? " is-assigned" : ""}" data-anes-person="${esc(n)}" title="끌어서 수술의 마취의 칸에 놓기">
+        <b>${esc(n)}</b><small>${count[n] ? `${count[n]}건` : "미배정"}</small>
+        <button type="button" class="staff-x" data-remove-anes="${esc(n)}" title="명단에서 빼기">&times;</button>
+      </span>`).join("") || '<span class="staff-empty">오늘 마취의를 추가하세요</span>';
+    const recent = document.getElementById("anesRecent");
+    recent.hidden = !(STAFF.anes_recent && !(STAFF.anes || []).length);
+    if (!recent.hidden) {
+      const rd = new Date(STAFF.anes_recent.date + "T00:00:00");
+      recent.innerHTML = `<i class="fas fa-history"></i> ${rd.getMonth() + 1}/${rd.getDate()} 명단 불러오기 (${STAFF.anes_recent.count}명)`;
+    }
   }
 
   function renderStaff() {
@@ -301,14 +343,16 @@
       alert("저장하지 못했습니다: " + err.message);
     }
     renderStaff(); renderBoard();
-    if (menuCaseId) renderMenuKeepers();
+    if (menuCaseId) { renderMenuKeepers(); renderMenuAnes(); }
   }
 
   function roomBody(r) {
     const cur = r.cases[r.current];
     const others = r.cases.length - 1;
     const open = expanded.has(r.room);
-    const more = others ? `<span class="more" title="이 방의 다른 일정 ${others}건">+${others}</span>` : "";
+    // 표시 숫자는 남은(완료 안 된) 다른 수술만
+    const remaining = r.cases.filter((c, i) => isRemainingOther(r, c, i)).length;
+    const more = remaining ? `<span class="more" title="이 방에 남은 다른 수술 ${remaining}건">+${remaining}</span>` : "";
     // 방 칸: 지금 보이는 수술의 표시 + (접혀 있을 때) 다른 남은 수술에 걸린 표시는 흐리게
     const hidden = open ? [] : r.cases.filter((c, i) => i !== r.current && c.group !== "finished");
     const otherFlags = (hidden.some(c => c.on_call) && !cur.on_call ? '<span class="flag-pill fp-oncall is-other" title="이 방의 다음 수술 중 당직으로 넘길 수술 있음"><i class="fas fa-moon"></i>당직</span>' : "") +
@@ -321,7 +365,7 @@
       </tr>`;
     if (open) {
       r.cases.forEach((c, i) => {
-        if (i === r.current) return;
+        if (i === r.current || (remainingOnly && c.group === "finished")) return;
         html += `<tr class="sub-row${c.hold ? " is-hold" : ""}${c.on_call ? " is-oncall" : ""}" data-case-menu="${c.id}" title="클릭: 수술 메뉴">
           <th class="c-room"><span class="dot dot-${c.group}" title="${esc(c.status)}"></span>${flagIcons(c) ? `<span class="room-flags">${flagIcons(c)}</span>` : ""}</th>${caseCells(c)}</tr>`;
       });
@@ -330,6 +374,7 @@
   }
 
   function renderBoard() {
+    renderAnes();
     const board = document.getElementById("board");
     if (!BOARD.rooms.length) return;
     const width = board.clientWidth;
@@ -465,11 +510,21 @@
       : '<span class="rm-kp-empty">위 근무자 줄에 이름을 먼저 추가하세요</span>';
   }
 
+  function renderMenuAnes() {
+    const c = findCase(menuCaseId);
+    const box = document.getElementById("roomMenuAnesList");
+    if (!c) return;
+    box.innerHTML = (STAFF.anes || []).length
+      ? STAFF.anes.map(n => `<button type="button" class="rm-kp rm-an${c.anesthesiologist === n ? " is-on" : ""}" data-anes-pick="${esc(n)}">${esc(n)}</button>`).join("")
+      : '<span class="rm-kp-empty">사이드바 마취의 칸에 이름을 먼저 추가하세요</span>';
+  }
+
   function openCaseMenu(caseId, anchor) {
     const c = findCase(caseId), r = roomOfCase(caseId);
     if (!c || !r) return;
     menuCaseId = String(caseId);
     renderMenuKeepers();
+    renderMenuAnes();
     document.getElementById("roomMenuTitle").textContent = `${r.room}번 방 · ${c.time_slot || "-"}`;
     document.getElementById("roomMenuSub").textContent = [c.surgery_name, c.patient_name].filter(Boolean).join(" · ");
     menu.querySelectorAll("[data-status]").forEach(b => {
@@ -540,6 +595,12 @@
     const id = menuCaseId;
     const c = findCase(id), r = roomOfCase(id);
     if (!c || !r) return;
+    const an = e.target.closest("[data-anes-pick]");
+    if (an) {
+      const name = an.dataset.anesPick;
+      updateCase(id, { anesthesiologist: c.anesthesiologist === name ? "" : name }).then(() => { if (menuCaseId) renderMenuAnes(); });
+      return;
+    }
     const kp = e.target.closest("[data-keeper-toggle]");
     if (kp) {
       const name = kp.dataset.keeperToggle;
@@ -628,6 +689,19 @@
   document.getElementById("staffAddForm").addEventListener("submit", (e) => { e.preventDefault(); addStaffFromInput(); });
   document.getElementById("staffAddBtn").addEventListener("click", addStaffFromInput);
   document.getElementById("staffRecent").addEventListener("click", () => staffAction({ action: "load_recent" }));
+  function addAnesFromInput() {
+    const input = document.getElementById("anesInput");
+    const names = input.value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+    input.value = "";
+    if (names.length) staffAction({ action: "add", role: "anes", names });
+  }
+  document.getElementById("anesAddForm").addEventListener("submit", (e) => { e.preventDefault(); addAnesFromInput(); });
+  document.getElementById("anesAddBtn").addEventListener("click", addAnesFromInput);
+  document.getElementById("anesRecent").addEventListener("click", () => staffAction({ action: "load_recent", role: "anes" }));
+  document.getElementById("anesChips").addEventListener("click", (e) => {
+    const x = e.target.closest("[data-remove-anes]");
+    if (x) staffAction({ action: "remove", role: "anes", name: x.dataset.removeAnes });
+  });
   document.getElementById("staffChips").addEventListener("click", (e) => {
     const x = e.target.closest("[data-remove]");
     if (!x) return;
@@ -639,14 +713,20 @@
   // ----- 끌어다 놓기 (마우스·터치 공통: pointer 이벤트) -----
   // 명단의 이름 → 방: 배정 (한 사람이 여러 방 가능) / 방의 이름 → 다른 방: 이동 / 방의 이름 → 근무자 줄: 해제
   let drag = null, suppressClick = false;
-  const dropTargetAt = (x, y) => {
+  // 마취의: 명단의 이름 → 수술의 마취의 칸: 배정 / 칸의 이름 → 다른 수술: 옮김 / 칸의 이름 → 마취의 카드: 지움
+  const dropTargetAt = (x, y, kind) => {
     const el = document.elementFromPoint(x, y);
-    return el && (el.closest("tbody.room[data-room]") || el.closest("#staffBar"));
+    if (!el) return null;
+    return kind === "anes"
+      ? (el.closest("td.c-anes[data-anes]") || el.closest("#anesBar"))
+      : (el.closest("tbody.room[data-room]") || el.closest("#staffBar"));
   };
   document.addEventListener("pointerdown", (e) => {
-    const chip = e.target.closest(".staff-chip[data-name], .keeper[data-keeper]");
+    const chip = e.target.closest(".staff-chip[data-name], .keeper[data-keeper], .anes-chip[data-anes-person], .anes-name[data-anes-name]");
     if (!chip || e.target.closest(".staff-x") || (e.pointerType === "mouse" && e.button !== 0)) return;
-    drag = { chip, name: chip.dataset.name || chip.dataset.keeper, from: chip.dataset.from || "",
+    const kind = chip.matches(".anes-chip, .anes-name") ? "anes" : "keeper";
+    drag = { chip, kind, name: chip.dataset.name || chip.dataset.keeper || chip.dataset.anesPerson || chip.dataset.anesName,
+             from: chip.dataset.from || "", fromCase: chip.dataset.fromCase || "",
              x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, ghost: null, target: null };
   });
   document.addEventListener("pointermove", (e) => {
@@ -655,7 +735,7 @@
     if (!drag.ghost) {
       if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
       drag.ghost = document.createElement("div");
-      drag.ghost.className = "drag-ghost";
+      drag.ghost.className = "drag-ghost" + (drag.kind === "anes" ? " is-anes" : "");
       drag.ghost.textContent = drag.name;
       document.body.appendChild(drag.ghost);
       document.body.classList.add("is-dragging");
@@ -664,7 +744,7 @@
     }
     e.preventDefault();
     drag.ghost.style.transform = `translate(${e.clientX + 12}px, ${e.clientY + 12}px)`;
-    const target = dropTargetAt(e.clientX, e.clientY);
+    const target = dropTargetAt(e.clientX, e.clientY, drag.kind);
     if (target !== drag.target) {
       if (drag.target) drag.target.classList.remove("is-drop");
       drag.target = target;
@@ -690,6 +770,18 @@
     document.body.classList.remove("is-dragging");
     if (d.target) d.target.classList.remove("is-drop");
     if (cancelled || !d.target) return;
+    if (d.kind === "anes") {
+      if (d.target.id === "anesBar") {
+        if (d.fromCase) updateCase(d.fromCase, { anesthesiologist: "" });
+        return;
+      }
+      const caseId = d.target.dataset.anes;
+      if (caseId === d.fromCase) return;
+      updateCase(caseId, { anesthesiologist: d.name }).then(() => {
+        if (d.fromCase) updateCase(d.fromCase, { anesthesiologist: "" });
+      });
+      return;
+    }
     if (d.target.id === "staffBar") {
       if (d.from) staffAction({ action: "unassign", name: d.name, room: d.from });
       return;
@@ -746,16 +838,25 @@
     renderBoard();
   });
 
+  // 모두 펼치기: 완료 포함 전체 / 남은 것 펼치기: 남은 수술이 있는 방만, 완료된 수술은 숨김
   const expandBtn = document.getElementById("expandAllBtn");
-  expandBtn.addEventListener("click", () => {
-    const multi = BOARD.rooms.filter(r => r.cases.length > 1).map(r => r.room);
-    const allOpen = multi.length && multi.every(r => expanded.has(r));
+  const remainBtn = document.getElementById("expandRemainBtn");
+  let expandMode = null;  // null | "all" | "remaining"
+  function setExpandMode(mode) {
+    expandMode = expandMode === mode ? null : mode;
+    remainingOnly = expandMode === "remaining";
     expanded.clear();
-    if (!allOpen) multi.forEach(r => expanded.add(r));
-    expandBtn.classList.toggle("is-active", !allOpen);
-    expandBtn.querySelector("span").textContent = allOpen ? "모두 펼치기" : "모두 접기";
+    if (expandMode === "all") BOARD.rooms.filter(r => r.cases.length > 1).forEach(r => expanded.add(r.room));
+    if (expandMode === "remaining")
+      BOARD.rooms.filter(r => r.cases.some((c, i) => isRemainingOther(r, c, i))).forEach(r => expanded.add(r.room));
+    expandBtn.classList.toggle("is-active", expandMode === "all");
+    remainBtn.classList.toggle("is-active", expandMode === "remaining");
+    expandBtn.querySelector("span").textContent = expandMode === "all" ? "모두 접기" : "모두 펼치기";
+    remainBtn.querySelector("span").textContent = expandMode === "remaining" ? "남은 것 접기" : "남은 것 펼치기";
     renderBoard();
-  });
+  }
+  expandBtn.addEventListener("click", () => setExpandMode("all"));
+  remainBtn.addEventListener("click", () => setExpandMode("remaining"));
 
   const orb = document.getElementById("orb");
   document.getElementById("fullscreenBtn").addEventListener("click", () => {

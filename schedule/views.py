@@ -496,7 +496,8 @@ def _normalize_record(record):
         "surgery_name": str(record.get("surgery_name") or "").strip(),
         "department": str(record.get("department") or "").strip(),
         "surgeon": str(record.get("surgeon") or "").strip(),
-        "anesthesiologist": str(record.get("anesthesiologist") or "").strip(),
+        # 마취의는 업로드 파일에서 가져오지 않음 - 현황판에서 직접 입력/끌어다 놓기 (업데이트 때도 기존 값 유지)
+        "anesthesiologist": "",
         "anesthesia_type": table_parser.normalize_anesthesia(record.get("anesthesia_type")),
         "duration": duration,
         "patient_name": str(record.get("patient_name") or "").strip(),
@@ -912,29 +913,39 @@ def _clean_name(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()[:50]
 
 
+def _recent_roster(user, day, role):
+    last = DutyStaff.objects.filter(user=user, role=role, date__lt=day).order_by("-date") \
+        .values_list("date", flat=True).first()
+    if not last:
+        return None
+    return {"date": last.isoformat(), "count": DutyStaff.objects.filter(user=user, role=role, date=last).count()}
+
+
 def staff_state(user, day):
-    """-> {date, roster: [{name, rooms}], keepers: {room: [names]}, recent: {date, count} | None}"""
+    """-> {date,
+           roster: [{name, rooms}] (근무자), keepers: {room: [names]}, recent: {date, count} | None,
+           anes: [names] (마취의 명단), anes_recent: {date, count} | None}
+    마취의를 맡은 수술 수는 화면이 현황판 데이터로 셈."""
     keepers = defaultdict(list)
     rooms_of = defaultdict(list)
     for keeper in RoomKeeper.objects.filter(user=user, date=day):
         keepers[keeper.room].append(keeper.name)
         rooms_of[keeper.name].append(keeper.room)
+    people = DutyStaff.objects.filter(user=user, date=day)
     roster = [{"name": s.name, "rooms": sorted(rooms_of.get(s.name, []), key=_room_sort_key)}
-              for s in DutyStaff.objects.filter(user=user, date=day)]
-    recent = None
-    if not roster:
-        last = DutyStaff.objects.filter(user=user, date__lt=day).order_by("-date").values_list("date", flat=True).first()
-        if last:
-            recent = {"date": last.isoformat(), "count": DutyStaff.objects.filter(user=user, date=last).count()}
-    return {"date": day.isoformat(), "roster": roster, "keepers": dict(keepers), "recent": recent}
+              for s in people if s.role == "keeper"]
+    anes = [s.name for s in people if s.role == "anes"]
+    return {"date": day.isoformat(), "roster": roster, "keepers": dict(keepers),
+            "recent": None if roster else _recent_roster(user, day, "keeper"),
+            "anes": anes, "anes_recent": None if anes else _recent_roster(user, day, "anes")}
 
 
-def _add_staff(user, day, names):
-    existing = set(DutyStaff.objects.filter(user=user, date=day).values_list("name", flat=True))
-    order = DutyStaff.objects.filter(user=user, date=day).count()
+def _add_staff(user, day, names, role="keeper"):
+    existing = set(DutyStaff.objects.filter(user=user, date=day, role=role).values_list("name", flat=True))
+    order = len(existing)
     for name in names:
         if name and name not in existing and len(existing) < MAX_STAFF:
-            DutyStaff.objects.create(user=user, date=day, name=name, order=order)
+            DutyStaff.objects.create(user=user, date=day, role=role, name=name, order=order)
             existing.add(name)
             order += 1
 
@@ -943,9 +954,10 @@ def _add_staff(user, day, names):
 @user_is_specially_approved
 @require_POST
 def staff_api(request):
-    """근무자 명단·방킵 변경. action:
-    add(names) · remove(name) · load_recent · assign(name, room) · unassign(name, room).
-    한 사람은 하루에 한 방만: 다른 방으로 배정하면 전에 있던 방에서는 빠짐.
+    """근무자·마취의 명단과 방킵 변경. action:
+    add(names) · remove(name) · load_recent  - role: keeper(근무자, 기본) | anes(마취의)
+    assign(name, room) · unassign(name, room) - 방킵. 한 사람은 하루에 한 방만 (다른 방으로 배정하면 옮겨짐).
+    (수술별 마취의 자체는 schedule_update 의 anesthesiologist 로 저장)
     응답으로 그날의 명단·배정 전체를 돌려줌."""
     try:
         data = json.loads(request.body or b"{}")
@@ -953,6 +965,7 @@ def staff_api(request):
     except (json.JSONDecodeError, ValueError, TypeError, OverflowError):
         return JsonResponse({"status": "error", "message": "날짜를 확인할 수 없습니다."}, status=400)
     user, action = request.user, data.get("action")
+    role = "anes" if data.get("role") == "anes" else "keeper"
     name = _clean_name(data.get("name"))
     room = re.sub(r"\s+", " ", str(data.get("room") or "")).strip()[:FIELD_MAX_LENGTHS["room"]]
 
@@ -960,14 +973,16 @@ def staff_api(request):
         if action == "add":
             raw = data.get("names") or []
             raw = raw if isinstance(raw, list) else re.split(r"[,\n]", str(raw))
-            _add_staff(user, day, [_clean_name(n) for n in raw])
+            _add_staff(user, day, [_clean_name(n) for n in raw], role)
         elif action == "remove" and name:
-            DutyStaff.objects.filter(user=user, date=day, name=name).delete()
-            RoomKeeper.objects.filter(user=user, date=day, name=name).delete()
+            DutyStaff.objects.filter(user=user, date=day, role=role, name=name).delete()
+            if role == "keeper":
+                RoomKeeper.objects.filter(user=user, date=day, name=name).delete()
         elif action == "load_recent":
-            last = DutyStaff.objects.filter(user=user, date__lt=day).order_by("-date").values_list("date", flat=True).first()
+            last = _recent_roster(user, day, role)
             if last:
-                _add_staff(user, day, list(DutyStaff.objects.filter(user=user, date=last).values_list("name", flat=True)))
+                names = DutyStaff.objects.filter(user=user, role=role, date=last["date"]).values_list("name", flat=True)
+                _add_staff(user, day, list(names), role)
         elif action == "assign" and name and room:
             _add_staff(user, day, [name])
             RoomKeeper.objects.filter(user=user, date=day, name=name).exclude(room=room).delete()

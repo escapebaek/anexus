@@ -226,6 +226,10 @@ def _is_header(mapping):
     return "room" in mapping and has_case and len(fields) >= 3
 
 
+# 마취의 열은 알아보되 쓰지 않음 (현황판에서 직접 입력) - 결과 안내의 '사용하지 않은 열'에 이 표시로
+MANUAL_COLUMN_NOTE = "(현황판에서 직접 입력)"
+
+
 def _header_report(row, mapping):
     """(읽은 열 설명 목록, 사용하지 않은 열 이름 목록) - 업로드 결과 안내용."""
     used_cols = {index: field for field, index in mapping.items() if not field.startswith("_")}
@@ -235,6 +239,9 @@ def _header_report(row, mapping):
     for index, cell in enumerate(row):
         name = _cell_text(cell)
         if not name:
+            continue
+        if used_cols.get(index) == "anesthesiologist":
+            unused.append(name + MANUAL_COLUMN_NOTE)
             continue
         if index in used_cols:
             label = FIELD_LABELS.get(used_cols[index], used_cols[index])
@@ -457,7 +464,8 @@ def parse_table_rows(rows, filename="", default_date=None, report=None, resolve_
     if "surgery_name" not in mapping:
         report["reason"] = "수술명 열을 찾지 못했습니다."
         return None
-    if "patient_name" not in mapping and "regnum" not in mapping and unused:
+    unknown = [name for name in unused if not name.endswith(MANUAL_COLUMN_NOTE)]
+    if "patient_name" not in mapping and "regnum" not in mapping and unknown:
         report["reason"] = "환자 이름/번호 열을 확실히 찾지 못했습니다."
         return None
 
