@@ -29,8 +29,10 @@
   --st-finished-bg: #eef1f5;
   --st-hold: #b7791f;
   --st-hold-bg: #fdf3e1;
-  --st-oncall: #4e4376;
-  --st-oncall-strong: #6c4fd1;
+  /* 당직: 와인색 - 진행중(남색)·예정(보라)·Hold(호박)·방킵(청록)·마취의(파랑)와 구분 */
+  --st-oncall: #9e3653;
+  --st-oncall-strong: #9e3653;
+  --st-oncall-bg: #fbedf1;
 
   /* 현황판은 사이트 본문 폭을 넘어 화면 너비를 씀 (최대 1920px) */
   width: min(1920px, calc(100vw - 32px));
@@ -90,7 +92,7 @@
 .lg-finished i { background: rgba(255, 255, 255, 0.45); }
 .lg-oncall .fa, .lg-hold .fa { font-size: 12px; }
 .lg-hold .fa { color: #ffd38a; }
-.lg-oncall .fa { color: #d9d2f5; }
+.lg-oncall .fa { color: #ffb8c9; }
 .orb-progress { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .orb-progress-bar {
   flex: 1;
@@ -153,6 +155,25 @@
 .orb-anes-legend { margin-top: -1px; }
 .orb-anes-legend:empty { display: none; }
 .orb-anes-legend .lg { gap: 4px; }
+/* 헤더: 당직으로 넘길 방 요약 */
+.orb-oncall-sum {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--st-oncall);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.orb-oncall-sum[hidden] { display: none; }
+.orb-oncall-sum b { font-size: 15px; font-weight: 800; }
+.orb-oncall-sum .sum-rooms { font-weight: 800; letter-spacing: 0.02em; }
+.orb-oncall-sum small { opacity: 0.8; font-size: 11.5px; }
 .orb-anes-legend .at { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
 
 /* ---------- 업로드 작업 안내 ---------- */
@@ -269,12 +290,24 @@ tr.is-hold .op-bar { background: var(--st-hold-bg); color: #8a5a12; border-left:
 /* Hold 수술 행: 호박색 사선 무늬 */
 tr.is-hold > td { background: repeating-linear-gradient(-45deg, #fff8ea 0 7px, #fdecc8 7px 14px); }
 /* 당직으로 넘길 수술 행: 보라색 바탕 + 양 끝 굵은 띠 */
-tr.is-oncall > td { background-color: #efeafb; }
+tr.is-oncall > td { background-color: var(--st-oncall-bg); }
 tr.is-oncall > td.c-time { box-shadow: inset 4px 0 0 var(--st-oncall-strong); }
 tr.is-oncall > td:last-child { box-shadow: inset -5px 0 0 var(--st-oncall-strong); }
 /* 당직으로 넘길 수술이 남아 있는 방: 방 칸 오른쪽에 보라 띠 */
 tbody.room.has-oncall .main-row .c-room { box-shadow: inset -5px 0 0 var(--st-oncall-strong); }
 .main-row.is-hold .c-room { box-shadow: inset 5px 0 0 var(--st-hold) !important; }
+/* 펼친 방 맨 위: 당직으로 넘어가는 방 띠 */
+.orb-table tbody tr.oncall-banner > td {
+  height: auto;
+  padding: 4px 10px;
+  background: var(--st-oncall);
+  color: #fff;
+  font-size: 12px;
+  text-align: left;
+  border-bottom: none;
+}
+tr.oncall-banner b { font-weight: 800; margin-right: 4px; }
+tr.oncall-banner span { opacity: 0.9; }
 /* 수술명 앞 글자 표시 */
 .op-tag {
   display: inline-block;
