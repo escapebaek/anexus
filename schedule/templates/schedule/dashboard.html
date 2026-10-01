@@ -39,6 +39,7 @@
     </div>
 
     <div class="orb-actions">
+      <button type="button" class="orb-btn" id="reorderBtn" title="잠금을 풀면 수술을 끌어다 놓아 순서·방을 바꿀 수 있어요"><i class="fas fa-lock"></i> <span>순서 변경</span></button>
       <button type="button" class="orb-btn" id="expandRemainBtn" title="각 방의 남은(완료 안 된) 수술만 펼치기"><i class="fas fa-stream"></i> <span>남은 것 펼치기</span></button>
       <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기 (완료 포함)"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
       <button type="button" class="orb-btn" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
@@ -219,6 +220,7 @@
 
 <script>
   // ===================== 수술 현황판 =====================
+  const orbEl = document.getElementById("orb");
   const BOARD = JSON.parse(document.getElementById("board-data").textContent);
   const SCHEDULE_URL = (id) => "{% url 'schedule_update' 0 %}".replace("/0/", `/${id}/`);
   const NOTICE_URL = "{% url 'schedule_notice' %}";
@@ -230,7 +232,8 @@
   const anesBadge = (code) => code
     ? `<span class="at at-${ANES_LABEL[code] ? code : "etc"}" title="마취: ${esc(ANES_LABEL[code] || code)}">${esc(code)}</span>` : "";
   const expanded = new Set();
-  let remainingOnly = false;   // '남은 것 펼치기': 펼친 방에서 완료된 수술은 숨김
+  let remainingOnly = false;
+  let reorderMode = false;     // '순서 변경' 잠금 해제: 모든 수술을 실제 순서대로 펼치고 끌어다 놓기 손잡이 표시   // '남은 것 펼치기': 펼친 방에서 완료된 수술은 숨김
   const isRemainingOther = (r, c, i) => i !== r.current && c.group !== "finished";
   let compact = false;  // 좁은 화면: 환자 열 생략
 
@@ -266,7 +269,7 @@
       : (sub ? `<small>${esc(sub)}</small>` : "");
     const patient = [c.patient_name, c.patient_info].filter(Boolean).join(" ");
     return `
-      <td class="c-time"><span>${esc(c.time_slot) || "-"}</span>${extraTime || ""}</td>
+      <td class="c-time">${reorderMode ? `<span class="rh" data-reorder="${c.id}" title="끌어서 순서·방 바꾸기"><i class="fas fa-grip-vertical"></i></span>` : ""}<span>${esc(c.time_slot) || "-"}</span>${extraTime || ""}</td>
       <td class="c-op"><div class="op-bar op-${c.group}"${c.group === "ongoing" ? ` data-eta="${c.id}"` : ""} title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
         ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
         ${compact ? "" : anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${c.hold ? '<span class="op-tag tag-hold">HOLD</span>' : ""}${c.on_call ? '<span class="op-tag tag-oncall">당직</span>' : ""}${esc(c.surgery_name) || "-"}</span>${small}</div>${c.group === "ongoing" && !etaLine ? '<span class="eta"></span>' : ""}</div></td>
@@ -345,14 +348,16 @@
   }
 
   function roomBody(r) {
-    const cur = r.cases[r.current];
+    // 순서 변경 중에는 실제 순서 그대로(맨 위 = 첫 수술) 모두 펼침
+    const curIdx = reorderMode ? 0 : r.current;
+    const cur = r.cases[curIdx];
     const others = r.cases.length - 1;
-    const open = expanded.has(r.room);
+    const open = reorderMode || expanded.has(r.room);
     // 표시 숫자는 남은(완료 안 된) 다른 수술만
     const remaining = r.cases.filter((c, i) => isRemainingOther(r, c, i)).length;
-    const more = remaining ? `<span class="more" title="이 방에 남은 다른 수술 ${remaining}건">+${remaining}</span>` : "";
+    const more = remaining && !reorderMode ? `<span class="more" title="이 방에 남은 다른 수술 ${remaining}건">+${remaining}</span>` : "";
     // 방 칸: 지금 보이는 수술의 표시 + (접혀 있을 때) 다른 남은 수술에 걸린 표시는 흐리게
-    const hidden = open ? [] : r.cases.filter((c, i) => i !== r.current && c.group !== "finished");
+    const hidden = open ? [] : r.cases.filter((c, i) => i !== curIdx && c.group !== "finished");
     const otherFlags = (hidden.some(c => c.on_call) && !cur.on_call ? '<span class="flag-pill fp-oncall is-other" title="이 방의 다음 수술 중 당직으로 넘길 수술 있음"><i class="fas fa-moon"></i>당직</span>' : "") +
       (hidden.some(c => c.hold) && !cur.hold ? '<span class="flag-pill fp-hold is-other" title="이 방의 다음 수술 중 Hold 있음"><i class="fas fa-pause"></i>HOLD</span>' : "");
     const flags = flagIcons(cur) + otherFlags;
@@ -360,18 +365,18 @@
     const roomOnCall = onCallCases.length > 0;
     let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}${roomOnCall ? " has-oncall" : ""}" data-room="${esc(r.room)}">`;
     // 펼쳤을 때(또는 '남은 것 펼치기') 당직으로 넘어가는 방은 맨 위에 띠로 표시
-    if (roomOnCall && (open || remainingOnly)) {
+    if (roomOnCall && (open || remainingOnly) && !reorderMode) {
       const list = onCallCases.map(c => esc([c.time_slot, c.surgery_name].filter(Boolean).join(" "))).join(", ");
       html += `<tr class="oncall-banner"><td colspan="${compact ? 5 : 6}" title="${list}"><i class="fas fa-moon"></i> <b>${esc(r.room)} 당직으로 넘김</b> <span>${onCallCases.length}건 · ${list}</span></td></tr>`;
     }
     html += `
-      <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
+      <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}" data-idx="${curIdx}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
         <th class="c-room" data-case-menu="${cur.id}" title="수술 메뉴: 완료·진행중 / 당직·Hold / 방킵"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}${keeperChips(r.room)}</th>${caseCells(cur, more)}
       </tr>`;
     if (open) {
       r.cases.forEach((c, i) => {
-        if (i === r.current || (remainingOnly && c.group === "finished")) return;
-        html += `<tr class="sub-row${c.hold ? " is-hold" : ""}${c.on_call ? " is-oncall" : ""}" data-case-menu="${c.id}" title="클릭: 수술 메뉴">
+        if (i === curIdx || (remainingOnly && !reorderMode && c.group === "finished")) return;
+        html += `<tr class="sub-row${c.hold ? " is-hold" : ""}${c.on_call ? " is-oncall" : ""}" data-idx="${i}" data-case-menu="${c.id}" title="클릭: 수술 메뉴">
           <th class="c-room"><span class="dot dot-${c.group}" title="${esc(c.status)}"></span>${flagIcons(c) ? `<span class="room-flags">${flagIcons(c)}</span>` : ""}</th>${caseCells(c)}</tr>`;
       });
     }
@@ -729,13 +734,22 @@
   const dropTargetAt = (x, y, kind) => {
     const el = document.elementFromPoint(x, y);
     if (!el) return null;
+    if (kind === "case") return el.closest("tbody.room tr[data-idx]") || el.closest("tbody.room[data-room]");
     return kind === "anes"
       ? (el.closest("td.c-anes[data-anes]") || el.closest("#anesBar"))
       : (el.closest("tbody.room[data-room]") || el.closest("#staffBar"));
   };
   document.addEventListener("pointerdown", (e) => {
-    const chip = e.target.closest(".staff-chip[data-name], .keeper[data-keeper], .anes-chip[data-anes-person], .anes-name[data-anes-name]");
+    const chip = e.target.closest(".staff-chip[data-name], .keeper[data-keeper], .anes-chip[data-anes-person], .anes-name[data-anes-name], .rh[data-reorder]");
     if (!chip || e.target.closest(".staff-x") || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (chip.matches(".rh")) {
+      // 순서 변경: 수술 행을 끌어 다른 자리·다른 방으로
+      const row = chip.closest("tr[data-idx]"), c = findCase(chip.dataset.reorder);
+      drag = { chip: row, kind: "case", caseId: chip.dataset.reorder, name: c ? `${c.time_slot || ""} ${c.surgery_name}`.trim() : "수술",
+               fromRoom: row.closest("tbody.room").dataset.room, fromIdx: +row.dataset.idx,
+               x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, ghost: null, target: null };
+      return;
+    }
     const kind = chip.matches(".anes-chip, .anes-name") ? "anes" : "keeper";
     drag = { chip, kind, name: chip.dataset.name || chip.dataset.keeper || chip.dataset.anesPerson || chip.dataset.anesName,
              from: chip.dataset.from || "", fromCase: chip.dataset.fromCase || "",
@@ -747,7 +761,7 @@
     if (!drag.ghost) {
       if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
       drag.ghost = document.createElement("div");
-      drag.ghost.className = "drag-ghost" + (drag.kind === "anes" ? " is-anes" : "");
+      drag.ghost.className = "drag-ghost" + (drag.kind === "anes" ? " is-anes" : drag.kind === "case" ? " is-case" : "");
       drag.ghost.textContent = drag.name;
       document.body.appendChild(drag.ghost);
       document.body.classList.add("is-dragging");
@@ -757,6 +771,17 @@
     e.preventDefault();
     drag.ghost.style.transform = `translate(${e.clientX + 12}px, ${e.clientY + 12}px)`;
     const target = dropTargetAt(e.clientX, e.clientY, drag.kind);
+    if (drag.kind === "case") {
+      // 놓일 자리: 행의 위쪽 절반이면 그 행 앞, 아래쪽이면 뒤 (선으로 표시)
+      const after = target && target.matches("tr[data-idx]")
+        ? e.clientY > target.getBoundingClientRect().top + target.offsetHeight / 2 : true;
+      if (target !== drag.target || after !== drag.after) {
+        if (drag.target) drag.target.classList.remove("is-drop", "drop-before", "drop-after");
+        drag.target = target; drag.after = after;
+        if (target) target.classList.add(target.matches("tr") ? (after ? "drop-after" : "drop-before") : "is-drop");
+      }
+      return;
+    }
     if (target !== drag.target) {
       if (drag.target) drag.target.classList.remove("is-drop");
       drag.target = target;
@@ -780,8 +805,19 @@
     d.ghost.remove();
     d.chip.classList.remove("is-drag-src");
     document.body.classList.remove("is-dragging");
-    if (d.target) d.target.classList.remove("is-drop");
+    if (d.target) d.target.classList.remove("is-drop", "drop-before", "drop-after");
     if (cancelled || !d.target) return;
+    if (d.kind === "case") {
+      const room = d.target.closest("tbody.room").dataset.room;
+      const data = BOARD.rooms.find(x => x.room === room);
+      let index = d.target.matches("tr[data-idx]") ? +d.target.dataset.idx + (d.after ? 1 : 0) : data.cases.length;
+      if (room === d.fromRoom && d.fromIdx < index) index -= 1;   // 같은 방: 자기 자리를 뺀 목록 기준
+      if (room === d.fromRoom && index === d.fromIdx) return;
+      postJSON(SCHEDULE_URL(d.caseId), { place: { room, index } })
+        .then(res => { BOARD.rooms = res.board.rooms; renderBoard(); renderSide(); })
+        .catch(err => alert("옮기지 못했습니다: " + err.message));
+      return;
+    }
     if (d.kind === "anes") {
       if (d.target.id === "anesBar") {
         if (d.fromCase) updateCase(d.fromCase, { anesthesiologist: "" });
@@ -868,6 +904,16 @@
     renderBoard();
   }
   expandBtn.addEventListener("click", () => setExpandMode("all"));
+  // 순서 변경: 기본은 잠금. 눌러서 풀면 모든 수술이 실제 순서대로 펼쳐지고 ⋮⋮ 손잡이로 끌어 옮김
+  const reorderBtn = document.getElementById("reorderBtn");
+  reorderBtn.addEventListener("click", () => {
+    reorderMode = !reorderMode;
+    orbEl.classList.toggle("is-reorder", reorderMode);
+    reorderBtn.classList.toggle("is-active", reorderMode);
+    reorderBtn.innerHTML = reorderMode ? '<i class="fas fa-lock-open"></i> <span>순서 잠그기</span>'
+                                       : '<i class="fas fa-lock"></i> <span>순서 변경</span>';
+    renderBoard();
+  });
   remainBtn.addEventListener("click", () => setExpandMode("remaining"));
 
   const orb = document.getElementById("orb");

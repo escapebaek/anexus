@@ -946,6 +946,34 @@ td.c-anes.is-drop { background: #e8eefc !important; box-shadow: inset 0 0 0 2px 
 .rm-an { border-color: #1d4ed8; color: #1d4ed8; }
 .rm-an.is-on { background: #1d4ed8; color: #fff; }
 
+/* ---------- 순서 변경 (잠금 해제 시) ---------- */
+.rh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 26px;
+  margin-right: 3px;
+  border-radius: 5px;
+  background: #e6ebf3;
+  color: #4a5b70;
+  font-size: 11px;
+  cursor: grab;
+  touch-action: none;
+  vertical-align: middle;
+}
+.rh:hover { background: var(--orb-primary); color: #fff; }
+.orb.is-reorder .orb-table td.c-time { white-space: nowrap; }
+.orb.is-reorder .orb-table col.w-time { width: 84px; }
+.orb.is-reorder .c-time > span { display: inline-block; vertical-align: middle; max-width: 54px; }
+.orb.is-reorder .c-time > span.rh { display: inline-flex; }
+.orb.is-reorder .c-time .more { display: none; }
+.orb.is-reorder .orb-board { outline: 2px dashed rgba(43, 88, 118, 0.35); outline-offset: 4px; border-radius: 12px; }
+#reorderBtn.is-active { background: #fff; color: var(--orb-primary); font-weight: 700; }
+tr.drop-before > * { box-shadow: inset 0 3px 0 var(--orb-primary) !important; }
+tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
+.drag-ghost.is-case { background: var(--orb-primary); border-radius: 8px; box-shadow: 0 6px 18px rgba(43, 88, 118, 0.35); }
+
 /* ---------- 메모 모달 ---------- */
 .memo-modal {
   display: none;

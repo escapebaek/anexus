@@ -206,6 +206,19 @@ def move_case_to_room(schedule, room):
     schedule.save(update_fields=["room", "position"])
 
 
+def place_case(schedule, room, index):
+    """현황판 '순서 변경'에서 끌어다 놓기: room 의 index 번째 자리로 (방이 같으면 순서만, 다르면 방도 이동).
+    그 방 수술 전체에 1..n 순서를 매겨 저장. 다음 스케줄 업데이트 때는 파일의 방·순서로 다시 맞춰짐."""
+    cases = [c for c in _room_schedules(schedule.user, room) if c.id != schedule.id]
+    index = max(0, min(int(index), len(cases)))
+    schedule.room = room
+    cases.insert(index, schedule)
+    for position, case in enumerate(cases, start=1):
+        if case.position != position or case is schedule:
+            case.position = position
+            case.save(update_fields=["room", "position"])
+
+
 def _now():
     return timezone.now()
 
@@ -715,6 +728,16 @@ def update_schedule(request, schedule_id):
         return JsonResponse({"status": "error", "message": "Invalid status"}, status=400)
     if "move" in data and data["move"] not in ("up", "down"):
         return JsonResponse({"status": "error", "message": "Invalid move"}, status=400)
+    place = None
+    if "place" in data:
+        raw = data.get("place") if isinstance(data.get("place"), dict) else {}
+        place_room = re.sub(r"\s+", " ", str(raw.get("room") or "")).strip()[:FIELD_MAX_LENGTHS["room"]]
+        try:
+            place = (place_room, int(raw.get("index")))
+        except (TypeError, ValueError):
+            place = None
+        if not place or not place_room:
+            return JsonResponse({"status": "error", "message": "Invalid place"}, status=400)
     if "duration" in data:
         try:
             duration = int(data.get("duration") or 0)
@@ -770,8 +793,10 @@ def update_schedule(request, schedule_id):
             move_case_in_room(schedule, data["move"])
         if new_room is not None and new_room != old_room:
             move_case_to_room(schedule, new_room)
+        if place is not None:
+            place_case(schedule, *place)
 
-    if new_room is not None and new_room != old_room:
+    if place is not None or (new_room is not None and new_room != old_room):
         # 방이 바뀌면 방 목록 자체가 달라질 수 있어 현황판 전체를 돌려줌
         board = build_board(SurgerySchedule.objects.filter(user=request.user), _memo_map(request.user))
         return JsonResponse({"status": "success", "board": board,

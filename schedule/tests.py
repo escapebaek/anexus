@@ -1295,3 +1295,44 @@ class AnesRosterTests(TestCase):
         self.assertEqual(len(recs), 1)
         self.assertIn('마취의(현황판에서 직접 입력)', report['unused'])
         self.assertNotIn('마취의', report['used'])
+
+
+class PlaceCaseTests(TestCase):
+    """'순서 변경'에서 끌어다 놓기: 방 안 순서·다른 방으로 이동."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+        self.a = make(self.user, '101', '08:00', name='A', info='')
+        self.b = make(self.user, '101', 'MD', name='B', info='')      # 정형화 안 된 시간 표기
+        self.c = make(self.user, '101', '10:00', name='C', info='')
+        self.d = make(self.user, '102', '08:00', name='D', info='')
+
+    def place(self, case, room, index):
+        res = self.client.post(reverse('schedule_update', args=[case.id]),
+                               json.dumps({'place': {'room': room, 'index': index}}), content_type='application/json')
+        self.assertEqual(res.status_code, 200, res.content)
+        return {r['room']: [c['patient_name'] for c in r['cases']] for r in res.json()['board']['rooms']}
+
+    def test_reorder_within_room_and_move_between_rooms(self):
+        board = self.place(self.b, '101', 0)                 # 'MD' 를 맨 앞으로
+        self.assertEqual(board['101'], ['B', 'A', 'C'])
+        board = self.place(self.a, '101', 2)                 # 맨 뒤로
+        self.assertEqual(board['101'], ['B', 'C', 'A'])
+        board = self.place(self.c, '102', 0)                 # 다른 방의 맨 앞으로
+        self.assertEqual((board['101'], board['102']), (['B', 'A'], ['C', 'D']))
+        board = self.place(self.c, '101', 99)                # 범위를 넘으면 맨 뒤
+        self.assertEqual((board['101'], board['102']), (['B', 'A', 'C'], ['D']))
+
+    def test_bad_place_and_other_users_case(self):
+        bad = lambda body: self.client.post(reverse('schedule_update', args=[self.a.id]), json.dumps(body),
+                                            content_type='application/json').status_code
+        self.assertEqual(bad({'place': {'room': '', 'index': 0}}), 400)
+        self.assertEqual(bad({'place': {'room': '101', 'index': 'x'}}), 400)
+        other = get_user_model().objects.create_user('o', password='x')
+        theirs = make(other, '101', '08:00', name='Z', info='')
+        res = self.client.post(reverse('schedule_update', args=[theirs.id]),
+                               json.dumps({'place': {'room': '101', 'index': 0}}), content_type='application/json')
+        self.assertEqual(res.status_code, 404)
