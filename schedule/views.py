@@ -304,18 +304,19 @@ def schedule_dashboard(request):
         form = ScheduleUploadForm(request.POST, request.FILES)
         if form.is_valid():
             uploaded_file = form.cleaned_data["file"]
-            force_ai = request.POST.get("force_ai") == "1"
             try:
-                records, source_text, report = read_upload(uploaded_file, use_table=not force_ai)
+                # 표 형식은 규칙으로 바로 읽음 (헷갈리는 예상 시간 열만 AI 에 짧게 물어봄).
+                # 표로 읽을 수 없는 파일만 AI 분석으로 넘김.
+                records, source_text, report = read_upload(uploaded_file)
                 if records is not None:
                     # 표 형식 파일: AI 없이 바로 반영
                     count = apply_records(records, request.user, action)
                     messages.success(request, _table_message(uploaded_file.name, count, report, records))
                     return redirect("schedule_dashboard")
-                # 자유 형식 파일(또는 AI 선택): AI 분석은 오래 걸릴 수 있어 백그라운드 작업으로 처리
+                # 자유 형식 파일: AI 분석은 오래 걸릴 수 있어 백그라운드 작업으로 처리
                 job = ScheduleUploadJob.objects.create(
                     user=request.user, filename=uploaded_file.name[:255], action=action,
-                    message="AI 분석을 선택했습니다." if force_ai else (report.get("reason") or ""))
+                    message=report.get("reason") or "")
                 start_background(run_upload_job, job.id, source_text)
                 return redirect(f"{reverse('schedule_dashboard')}?job={job.id}")
             except (ScheduleExtractionError, ValueError) as exc:

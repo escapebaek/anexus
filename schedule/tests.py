@@ -913,7 +913,7 @@ class HeaderVariantTests(TestCase):
                                  ["OR 5"], ["", "09:00", "Op2", "B"]])
         self.assertEqual([(r['date'], r['room']) for r in recs], [('2026-09-25', '3번방'), ('2026-09-25', 'OR 5')])
 
-    def test_upload_message_lists_columns_and_force_ai(self):
+    def test_upload_message_lists_columns_and_table_always_wins(self):
         from unittest import mock
         from django.core.files.uploadedfile import SimpleUploadedFile
         user = get_user_model().objects.create_user('doc', password='x')
@@ -926,11 +926,11 @@ class HeaderVariantTests(TestCase):
         self.assertIn('1건을 표 형식으로', msg)
         self.assertIn('환자성명→환자명', msg)
         self.assertIn('사용하지 않은 열: 병실', msg)
-        # 'AI로 분석' 을 고르면 표로 읽지 않음
-        with mock.patch('schedule.views.extract_schedules', return_value=[rec('9', '1', 'X', 'Op')]) as ai, \
-                mock.patch('schedule.views.start_background', side_effect=lambda f, *a: f(*a)):
+        # 'AI로 분석' 선택지는 없앰: 예전 화면이 force_ai 를 보내도 표로 읽을 수 있으면 AI 를 부르지 않음
+        with mock.patch('schedule.views.extract_schedules') as ai:
             self.client.post(reverse('schedule_dashboard'), {'file': SimpleUploadedFile('s.csv', csv_bytes), 'force_ai': '1'})
-        ai.assert_called_once()
+        ai.assert_not_called()
+        self.assertNotContains(self.client.get(reverse('schedule_dashboard')), 'force_ai')
 
 
 class ManualRoomOrderTests(TestCase):

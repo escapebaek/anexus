@@ -26,6 +26,7 @@
         <span class="lg lg-oncall"><span class="fa fa-moon"></span>당직 <b id="countOnCall">{{ board.counts.on_call }}</b></span>
         <span class="lg lg-hold"><span class="fa fa-pause-circle"></span>Hold <b id="countHold">{{ board.counts.hold }}</b></span>
       </div>
+      <div class="orb-oncall-sum" id="oncallSummary" hidden></div>
       <div class="orb-legend orb-anes-legend" id="anesLegend"></div>
       <div class="orb-progress" id="progressBox">
         <div class="orb-progress-bar"><span id="progressFill"></span></div>
@@ -133,9 +134,6 @@
               <span class="file-type-hint">.xlsx .xls .csv .txt</span>
             </label>
           </div>
-          <label class="force-ai" title="표 인식 결과가 이상할 때 사용 (느리고 AI 키 필요)">
-            <input type="checkbox" name="force_ai" value="1" /> 표 인식 대신 AI로 분석
-          </label>
           <div class="upload-actions">
             <button type="submit" value="update" class="btn-upload btn-update" title="등록 환자의 메모를 유지하며 갱신">
               <i class="fas fa-sync-alt"></i> 업데이트
@@ -358,8 +356,15 @@
     const otherFlags = (hidden.some(c => c.on_call) && !cur.on_call ? '<span class="flag-pill fp-oncall is-other" title="이 방의 다음 수술 중 당직으로 넘길 수술 있음"><i class="fas fa-moon"></i>당직</span>' : "") +
       (hidden.some(c => c.hold) && !cur.hold ? '<span class="flag-pill fp-hold is-other" title="이 방의 다음 수술 중 Hold 있음"><i class="fas fa-pause"></i>HOLD</span>' : "");
     const flags = flagIcons(cur) + otherFlags;
-    const roomOnCall = r.cases.some(c => c.on_call && c.group !== "finished");
-    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}${roomOnCall ? " has-oncall" : ""}" data-room="${esc(r.room)}">
+    const onCallCases = r.cases.filter(c => c.on_call && c.group !== "finished");
+    const roomOnCall = onCallCases.length > 0;
+    let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}${roomOnCall ? " has-oncall" : ""}" data-room="${esc(r.room)}">`;
+    // 펼쳤을 때(또는 '남은 것 펼치기') 당직으로 넘어가는 방은 맨 위에 띠로 표시
+    if (roomOnCall && (open || remainingOnly)) {
+      const list = onCallCases.map(c => esc([c.time_slot, c.surgery_name].filter(Boolean).join(" "))).join(", ");
+      html += `<tr class="oncall-banner"><td colspan="${compact ? 5 : 6}" title="${list}"><i class="fas fa-moon"></i> <b>${esc(r.room)} 당직으로 넘김</b> <span>${onCallCases.length}건 · ${list}</span></td></tr>`;
+    }
+    html += `
       <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
         <th class="c-room" data-case-menu="${cur.id}" title="수술 메뉴: 완료·진행중 / 당직·Hold / 방킵"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}${keeperChips(r.room)}</th>${caseCells(cur, more)}
       </tr>`;
@@ -474,6 +479,13 @@
     const set = (id, v) => { document.getElementById(id).textContent = v; };
     set("countOngoing", C.ongoing); set("countPending", C.pending); set("countFinished", C.finished);
     set("countOnCall", C.on_call); set("countHold", C.hold);
+    // 당직으로 넘길 수술이 남은 방: 몇 방인지 한눈에
+    const onCallRooms = BOARD.rooms.filter(r => r.cases.some(c => c.on_call && c.group !== "finished")).map(r => r.room);
+    const sum = document.getElementById("oncallSummary");
+    sum.hidden = !onCallRooms.length;
+    sum.innerHTML = onCallRooms.length
+      ? `<i class="fas fa-moon"></i> 당직 넘김 <b>${onCallRooms.length}방</b><span class="sum-rooms">${onCallRooms.map(esc).join(" · ")}</span><small>${C.on_call}건</small>`
+      : "";
     set("countRemaining", BOARD.remaining); set("countTotal", BOARD.total);
     const anes = BOARD.anesthesia_counts || {};
     const known = ANES_TYPES.filter(([code]) => anes[code]).map(([code, label]) =>
