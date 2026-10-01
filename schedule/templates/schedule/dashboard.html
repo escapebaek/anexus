@@ -23,7 +23,6 @@
         <span class="lg lg-ongoing"><i></i>진행중 <b id="countOngoing">{{ board.counts.ongoing }}</b></span>
         <span class="lg lg-pending"><i></i>예정 <b id="countPending">{{ board.counts.pending }}</b></span>
         <span class="lg lg-finished"><i></i>완료 <b id="countFinished">{{ board.counts.finished }}</b></span>
-        <span class="lg lg-oncall"><span class="fa fa-moon"></span>당직 <b id="countOnCall">{{ board.counts.on_call }}</b></span>
         <span class="lg lg-hold"><span class="fa fa-pause-circle"></span>Hold <b id="countHold">{{ board.counts.hold }}</b></span>
       </div>
       <div class="orb-oncall-sum" id="oncallSummary" hidden></div>
@@ -79,20 +78,6 @@
                   placeholder="전체 공지나 오늘의 메모를 적어두세요. (자동 저장)&#10;예) 11시 전체 회의 / 3번 방 초음파 기계 점검 중">{{ notice.content|default:"" }}</textarea>
       </section>
 
-      <!-- ===== 마취의 명단 (수술별 마취의 칸에 끌어다 놓기) ===== -->
-      <section class="side-card side-anes" id="anesBar" aria-label="마취의 명단">
-        <h4 class="side-head"><i class="fas fa-user-md"></i> 마취의 <small id="anesDate"></small></h4>
-        <div class="staff-body">
-          <div class="staff-chips" id="anesChips"></div>
-          <form class="staff-add" id="anesAddForm" autocomplete="off">
-            <input type="text" id="anesInput" maxlength="300" placeholder="마취의 추가 (쉼표로 여러 명)" />
-            <button type="button" id="anesAddBtn" title="마취의 추가"><i class="fas fa-plus"></i></button>
-          </form>
-          <button type="button" class="staff-recent" id="anesRecent" hidden></button>
-          <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요.</p>
-        </div>
-      </section>
-
       <!-- ===== 근무자 명단 · 방킵 배정 ===== -->
       <section class="side-card side-staff" id="staffBar" aria-label="근무자 명단">
         <h4 class="side-head"><i class="fas fa-user-md"></i> 근무자 · 방킵 <small id="staffDate"></small></h4>
@@ -105,6 +90,20 @@
           </form>
           <button type="button" class="staff-recent" id="staffRecent" hidden></button>
           <p class="staff-hint">이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 한 사람은 한 방만 — 다른 방으로 끌면 옮겨지고, 이 칸으로 끌어오면 해제돼요. 방 번호를 눌러 메뉴에서 골라도 돼요.</p>
+        </div>
+      </section>
+
+      <!-- ===== 마취의 명단 (수술별 마취의 칸에 끌어다 놓기) ===== -->
+      <section class="side-card side-anes" id="anesBar" aria-label="마취의 명단">
+        <h4 class="side-head"><i class="fas fa-user-md"></i> 마취의 <small id="anesDate"></small></h4>
+        <div class="staff-body">
+          <div class="staff-chips" id="anesChips"></div>
+          <form class="staff-add" id="anesAddForm" autocomplete="off">
+            <input type="text" id="anesInput" maxlength="300" placeholder="마취의 추가 (쉼표로 여러 명)" />
+            <button type="button" id="anesAddBtn" title="마취의 추가"><i class="fas fa-plus"></i></button>
+          </form>
+          <button type="button" class="staff-recent" id="anesRecent" hidden></button>
+          <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요.</p>
         </div>
       </section>
 
@@ -256,7 +255,8 @@
   };
 
   function caseCells(c, extraTime) {
-    const sub = [c.department, c.surgeon, c.duration ? c.duration + "분" : ""].filter(Boolean).join(" · ");
+    // 예상 시간이 가장 중요해서 맨 앞 (좁은 칸에서 잘려도 보이게): 예상 시간 · 집도의 · 진료과
+    const sub = [c.duration ? c.duration + "분" : "", c.surgeon, c.department].filter(Boolean).join(" · ");
     // 좁은 화면: 종료 예정은 수술명 아래 줄에 (오른쪽 칸을 차지하지 않게 해 수술명이 덜 잘림)
     // 마취 방법 배지도 아래 줄로 옮겨 수술명이 칸 너비를 다 쓰게 함
     const etaLine = compact && c.group === "ongoing";
@@ -392,7 +392,7 @@
       if (!rooms.length) continue;
       html += `<table class="orb-table${compact ? " is-compact" : ""}">
         <colgroup><col class="w-room"><col class="w-time"><col><col class="w-anes">${compact ? "" : '<col class="w-pt">'}<col class="w-memo"></colgroup>
-        <thead><tr><th>방</th><th>시간</th><th>수술명 <small>과 · 집도의</small></th><th>마취의</th>${compact ? "" : "<th>환자</th>"}<th></th></tr></thead>
+        <thead><tr><th>방</th><th>시간</th><th>수술명 <small>예상 시간 · 집도의 · 과</small></th><th>마취의</th>${compact ? "" : "<th>환자</th>"}<th></th></tr></thead>
         ${rooms.map(roomBody).join("")}
       </table>`;
     }
@@ -478,7 +478,7 @@
     const C = BOARD.counts;
     const set = (id, v) => { document.getElementById(id).textContent = v; };
     set("countOngoing", C.ongoing); set("countPending", C.pending); set("countFinished", C.finished);
-    set("countOnCall", C.on_call); set("countHold", C.hold);
+    set("countHold", C.hold);
     // 당직으로 넘길 수술이 남은 방: 몇 방인지 한눈에
     const onCallRooms = BOARD.rooms.filter(r => r.cases.some(c => c.on_call && c.group !== "finished")).map(r => r.room);
     const sum = document.getElementById("oncallSummary");
