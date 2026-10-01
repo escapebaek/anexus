@@ -895,6 +895,24 @@ tbody.room.is-drop .c-room { box-shadow: inset 0 0 0 3px #0f766e; }
   .staff-add input { font-size: 14px; }
 }
 
+/* ---------- 마취의 명단 (파랑: 근무자·방킵의 청록과 구분) ---------- */
+.side-anes .side-head { border-left-color: #1d4ed8; color: #1d4ed8; background: #e8eefc; }
+.side-anes .side-head small { color: var(--orb-muted); font-weight: 600; margin-left: 2px; }
+.side-anes.is-drop { background: #fdecea; border-color: #f5c2bd; }
+.side-anes.is-drop .staff-body::before { content: "여기에 놓으면 마취의 지움"; font-size: 12px; font-weight: 700; color: #b3261e; }
+.anes-chip { border-color: #1d4ed8; color: #1d4ed8; }
+.anes-chip.is-assigned { background: #e8eefc; }
+.anes-chip.is-assigned small { color: #1d4ed8; }
+#anesAddBtn { background: #1d4ed8; border-color: #1d4ed8; }
+#anesInput:focus { border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12); }
+#anesRecent { color: #1d4ed8; border-color: #1d4ed8; }
+/* 수술의 마취의 칸 */
+.anes-name { cursor: grab; touch-action: none; user-select: none; }
+td.c-anes.is-drop { background: #e8eefc !important; box-shadow: inset 0 0 0 2px #1d4ed8; }
+.drag-ghost.is-anes { background: #1d4ed8; box-shadow: 0 6px 18px rgba(29, 78, 216, 0.35); }
+.rm-an { border-color: #1d4ed8; color: #1d4ed8; }
+.rm-an.is-on { background: #1d4ed8; color: #fff; }
+
 /* ---------- 메모 모달 ---------- */
 .memo-modal {
   display: none;

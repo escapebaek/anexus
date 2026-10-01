@@ -157,12 +157,15 @@ class UpdateKeepsMemoTests(TestCase):
         self.update([rec('101', '08:00', '김민준', 'Op', '22222222 (M/5)')])
         self.assertEqual(self.memos(), {('101', '08:00', 'Op'): None})
 
-    def test_manual_anesthesiologist_kept_when_file_has_none(self):
+    def test_anesthesiologist_never_taken_from_file(self):
+        # 마취의는 현황판에서 직접 입력: 파일에 있어도 가져오지 않고, 업데이트해도 직접 넣은 값 유지
         make(self.user, '101', '08:00', name='홍길동', surgery='Op', info='', anesthesiologist='이마취')
         self.update([rec('102', '09:00', '홍길동', 'Op')])
         self.assertEqual(SurgerySchedule.objects.get(user=self.user).anesthesiologist, '이마취')
         self.update([rec('102', '09:00', '홍길동', 'Op', anesthesiologist='박마취')])
-        self.assertEqual(SurgerySchedule.objects.get(user=self.user).anesthesiologist, '박마취')
+        self.assertEqual(SurgerySchedule.objects.get(user=self.user).anesthesiologist, '이마취')
+        self.update([rec('103', '10:00', '김새로', 'Op', anesthesiologist='박마취')])
+        self.assertEqual(SurgerySchedule.objects.get(user=self.user, patient_name='김새로').anesthesiologist, '')
 
     def test_cancelled_case_removed(self):
         make(self.user, '101', '08:00', name='홍길동', surgery='Op', info='')
@@ -1255,3 +1258,40 @@ class RoomKeeperTests(TestCase):
         staff = res.context['staff']
         self.assertEqual((staff['date'], staff['keepers']), (self.day, {'101': ['김철수']}))
         self.assertContains(res, 'id="staffBar"')
+
+
+
+class AnesRosterTests(TestCase):
+    """마취의 명단 (근무자 명단과 따로)."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def state(self, **body):
+        body.setdefault('date', '2026-08-27')
+        res = self.client.post(reverse('schedule_staff'), json.dumps(body), content_type='application/json')
+        self.assertEqual(res.status_code, 200, res.content)
+        return res.json()['staff']
+
+    def test_anes_roster_is_separate_from_keepers(self):
+        s = self.state(action='add', role='anes', names=['이마취', '박마취', '이마취'])
+        self.assertEqual((s['anes'], s['roster']), (['이마취', '박마취'], []))
+        s = self.state(action='add', names=['이마취'])                      # 같은 이름이 근무자에도 있어도 됨
+        self.assertEqual([p['name'] for p in s['roster']], ['이마취'])
+        s = self.state(action='remove', role='anes', name='박마취')
+        self.assertEqual((s['anes'], [p['name'] for p in s['roster']]), (['이마취'], ['이마취']))
+        s = self.state(date='2026-08-28', action='add', role='anes', names=[])
+        self.assertEqual(s['anes_recent'], {'date': '2026-08-27', 'count': 1})
+        s = self.state(date='2026-08-28', action='load_recent', role='anes')
+        self.assertEqual((s['anes'], s['roster']), (['이마취'], []))
+
+    def test_table_report_lists_anesthesiologist_as_manual(self):
+        from .table_parser import parse_table_rows
+        report = {}
+        recs = parse_table_rows([['방', '시간', '수술명', '환자명', '마취의'], ['101', '08:00', 'Op', '홍길동', '이마취']], report=report)
+        self.assertEqual(len(recs), 1)
+        self.assertIn('마취의(현황판에서 직접 입력)', report['unused'])
+        self.assertNotIn('마취의', report['used'])
