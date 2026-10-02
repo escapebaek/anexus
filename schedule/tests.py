@@ -733,6 +733,34 @@ class TableFormatVariantTests(TestCase):
         header = ["Actual In", "OR", "Start", "Operation", "Name", "Chart No", "나이", "성별", "Expected Time", "End"]
         self.expect(self.parse(header, self.ROWS))
 
+    def durations(self, values):
+        header = ["수술실", "시간", "수술명", "환자명", "예상시간"]
+        rows = [[f"{i + 1}번방", "08:00", "Op", f"환자{i}", v] for i, v in enumerate(values)]
+        return [r["duration"] for r in self.parse(header, rows)]
+
+    def test_hhmm_duration_column(self):
+        # 0500 = 5시간 (500분 아님): 앞자리 0 이 있으면 시·분
+        self.assertEqual(self.durations(["0500", "0130", "0045"]), [300, 90, 45])
+        # 앞자리 0 없이 숫자로 와도 15분 단위로 떨어지는 쪽 (130/200/500 -> 90/120/300)
+        self.assertEqual(self.durations([130, 200, 500]), [90, 120, 300])
+
+    def test_minute_duration_column_stays_minutes(self):
+        self.assertEqual(self.durations([120, 150, 240, 30]), [120, 150, 240, 30])
+        self.assertEqual(self.durations(["90", "180", "300"]), [90, 180, 300])  # 90·180 은 시·분일 수 없음
+        self.assertEqual(self.durations([300, 600]), [300, 600])                # 애매하면 분
+        self.assertEqual(self.durations(["1:30", "0200", "45분"]), [90, 120, 45])
+
+    def test_workbook_zero_padded_number_format(self):
+        import openpyxl
+        from .table_parser import parse_workbook
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["수술실", "시간", "수술명", "환자명", "예상시간"])
+        for i, minutes in enumerate([500, 300]):  # 숫자 500 이 '0000' 서식으로 0500 처럼 보이는 셀
+            ws.append([f"{i + 1}번방", "08:00", "Op", f"환자{i}", minutes])
+            ws.cell(row=i + 2, column=5).number_format = "0000"
+        self.assertEqual([r["duration"] for r in parse_workbook(wb)], [300, 180])
+
 
 class UploadJobTests(TestCase):
     def setUp(self):
