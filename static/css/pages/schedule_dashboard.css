@@ -1032,3 +1032,20 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 }
 .btn-save:hover { opacity: 0.9; }
 .btn-save:disabled { opacity: 0.6; }
+
+/* 수술이 모두 끝난 방: 회색 사선 + '수술 종료' 한 줄 */
+.room-closed .closed-row > td, .room-closed .closed-row > th.c-room {
+  background: repeating-linear-gradient(-45deg, #f4f6f9 0 7px, #eaeef3 7px 14px);
+}
+.room-closed .closed-row .c-room { color: #8a96a8; }
+.room-closed .closed-row .room-no { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: rgba(138, 150, 168, 0.6); }
+.room-closed .closed-row { cursor: pointer; }
+.room-closed .closed-row .c-time { color: #8a96a8; font-weight: 800; }
+.orb-table td.c-closed { text-align: left; padding: 4px 10px; color: #6b7686; font-size: 12.5px; }
+.c-closed .fa-check-circle { color: var(--st-finished); }
+.c-closed b { font-weight: 800; letter-spacing: 0.02em; }
+.c-closed small { margin-left: 4px; color: #8a96a8; }
+.c-closed .closed-caret { float: right; margin-top: 3px; font-size: 10px; color: #a3adbb; }
+/* 앞 수술에서 이어받은 마취의: 흐린 기울임 */
+.anes-inherited { color: #7d8ba0; font-style: italic; font-weight: 500; }
+.anes-inherited::before { content: "↳"; margin-right: 1px; font-style: normal; opacity: 0.7; }

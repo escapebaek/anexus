@@ -252,6 +252,18 @@
     if (!res.ok || data.status !== "success") throw new Error(data.message || `HTTP ${res.status}`);
     return data;
   }
+  // 마취의 기본값: 비어 있는 수술은 같은 방 앞 수술의 마취의를 이어받음 (화면 표시용, 저장은 안 함)
+  //   c._anes = 실제 표시할 마취의, c._anesInherited = 앞 수술에서 이어받은 것인지
+  function applyAnesDefaults() {
+    for (const r of BOARD.rooms) {
+      let prev = "";
+      for (const c of r.cases) {
+        c._anesInherited = !c.anesthesiologist && !!prev;
+        c._anes = c.anesthesiologist || prev;
+        prev = c._anes;
+      }
+    }
+  }
   const findCase = (id) => {
     for (const r of BOARD.rooms) for (const c of r.cases) if (String(c.id) === String(id)) return c;
     return null;
@@ -273,8 +285,9 @@
       <td class="c-op"><div class="op-bar op-${c.group}"${c.group === "ongoing" ? ` data-eta="${c.id}"` : ""} title="${esc(c.surgery_name)}${sub ? "\n" + esc(sub) : ""}\n상태: ${esc(c.status)}">
         ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
         ${compact ? "" : anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${c.hold ? '<span class="op-tag tag-hold">HOLD</span>' : ""}${c.on_call ? '<span class="op-tag tag-oncall">당직</span>' : ""}${esc(c.surgery_name) || "-"}</span>${small}</div>${c.group === "ongoing" && !etaLine ? '<span class="eta"></span>' : ""}</div></td>
-      <td class="c-anes" data-anes="${c.id}" title="클릭해서 입력 · 마취의 명단에서 끌어다 놓기">${c.anesthesiologist
+      <td class="c-anes" data-anes="${c.id}" title="${c._anesInherited ? "앞 수술 마취의를 이어받음 · 클릭하거나 끌어다 놓아 바꾸기" : "클릭해서 입력 · 마취의 명단에서 끌어다 놓기"}">${c.anesthesiologist
         ? `<span class="anes-name" data-anes-name="${esc(c.anesthesiologist)}" data-from-case="${c.id}">${esc(c.anesthesiologist)}</span>`
+        : c._anesInherited ? `<span class="anes-inherited">${esc(c._anes)}</span>`
         : '<span class="anes-empty">+ 입력</span>'}</td>
       ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
       <td class="c-memo"><button type="button" class="memo-btn${c.memo ? " has-memo" : ""}" data-memo="${c.id}"
@@ -305,7 +318,7 @@
     document.getElementById("anesDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
     const count = {};
     for (const r of BOARD.rooms) for (const c of r.cases)
-      if (c.anesthesiologist && c.group !== "finished") count[c.anesthesiologist] = (count[c.anesthesiologist] || 0) + 1;
+      if (c._anes && c.group !== "finished") count[c._anes] = (count[c._anes] || 0) + 1;
     document.getElementById("anesChips").innerHTML = (STAFF.anes || []).map(n => `
       <span class="staff-chip anes-chip${count[n] ? " is-assigned" : ""}" data-anes-person="${esc(n)}" title="끌어서 수술의 마취의 칸에 놓기">
         <b>${esc(n)}</b><small>${count[n] ? `${count[n]}건` : "미배정"}</small>
@@ -347,7 +360,26 @@
     if (menuCaseId) { renderMenuKeepers(); renderMenuAnes(); }
   }
 
+  // 수술이 모두 끝난 방: 마지막 수술 대신 '종료' 행 (펼치면 완료된 수술 전체)
+  function closedRoomBody(r) {
+    const open = expanded.has(r.room);
+    const last = r.cases[r.cases.length - 1];
+    let html = `<tbody class="room room-finished room-closed${open ? " is-open" : ""}" data-room="${esc(r.room)}">
+      <tr class="main-row closed-row" title="${open ? "클릭하면 접습니다" : "클릭하면 끝난 수술을 펼칩니다"}">
+        <th class="c-room" data-case-menu="${last.id}" title="수술 메뉴: 완료·진행중 / 방킵"><span class="room-no">${esc(r.room) || "-"}</span>${keeperChips(r.room)}</th>
+        <td class="c-time"><span>종료</span></td>
+        <td class="c-closed" colspan="${compact ? 3 : 4}"><i class="fas fa-check-circle"></i> <b>수술 종료</b> <small>${r.cases.length}건 완료</small>
+          <i class="fas fa-chevron-${open ? "up" : "down"} closed-caret"></i></td>
+      </tr>`;
+    if (open) r.cases.forEach((c, i) => {
+      html += `<tr class="sub-row" data-idx="${i}" data-case-menu="${c.id}" title="클릭: 수술 메뉴">
+        <th class="c-room"><span class="dot dot-${c.group}" title="${esc(c.status)}"></span></th>${caseCells(c)}</tr>`;
+    });
+    return html + "</tbody>";
+  }
+
   function roomBody(r) {
+    if (r.state === "finished" && !reorderMode) return closedRoomBody(r);
     // 순서 변경 중에는 실제 순서 그대로(맨 위 = 첫 수술) 모두 펼침
     const curIdx = reorderMode ? 0 : r.current;
     const cur = r.cases[curIdx];
@@ -384,6 +416,7 @@
   }
 
   function renderBoard() {
+    applyAnesDefaults();
     renderAnes();
     const board = document.getElementById("board");
     if (!BOARD.rooms.length) return;
@@ -476,7 +509,7 @@
         <span class="side-room">${esc(r.room)}</span>
         <div class="side-main">
           <span class="side-op" title="${esc(c.surgery_name)}">${esc(c.time_slot)} ${esc(c.surgery_name)}</span>
-          <span class="side-sub">${esc([c.patient_name, c.surgeon, c.anesthesiologist && "마취 " + c.anesthesiologist].filter(Boolean).join(" · "))}</span>
+          <span class="side-sub">${esc([c.patient_name, c.surgeon, c._anes && "마취 " + c._anes].filter(Boolean).join(" · "))}</span>
         </div>
         <button type="button" class="side-release" data-release="${c.id}" title="Hold 해제"><i class="fas fa-play"></i></button>
       </li>`).join("") || '<li class="side-empty">Hold된 수술이 없습니다.<br><small>방 번호나 펼친 일정 행을 눌러 Hold를 지정하세요.</small></li>';
@@ -848,7 +881,7 @@
   function editAnesthesiologist(td) {
     const c = findCase(td.dataset.anes);
     if (!c || td.querySelector("input")) return;
-    td.innerHTML = `<input type="text" class="anes-input" maxlength="50" value="${esc(c.anesthesiologist)}" placeholder="마취의" />`;
+    td.innerHTML = `<input type="text" class="anes-input" maxlength="50" value="${esc(c.anesthesiologist)}" placeholder="${esc(c._anesInherited ? c._anes : "마취의")}" />`;
     const input = td.querySelector("input");
     input.focus();
     input.select();
@@ -881,7 +914,7 @@
     if (!row) return;
     const room = row.parentElement.dataset.room;
     const data = BOARD.rooms.find(r => r.room === room);
-    if (!data || data.cases.length < 2) return;
+    if (!data || (data.cases.length < 2 && data.state !== "finished")) return;
     expanded.has(room) ? expanded.delete(room) : expanded.add(room);
     renderBoard();
   });
