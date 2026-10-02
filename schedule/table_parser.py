@@ -293,6 +293,51 @@ def _parse_duration(value):
     return int(float(text)) if match else 0
 
 
+def _parse_duration_hhmm(value):
+    """시·분 4자리로 적힌 열의 값: 0500 -> 300분 (다른 형식이면 보통처럼)."""
+    digits = _digits(value)
+    if digits is not None:
+        return _hhmm_minutes(digits) or 0
+    return _parse_duration(value)
+
+
+def _digits(value):
+    """정수 셀 / 숫자만 있는 글자 셀 -> 그 숫자 글자 ('0500', '130'), 아니면 None."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) or (isinstance(value, float) and value.is_integer()):
+        return str(int(value))
+    text = _cell_text(value)
+    return text if re.fullmatch(r"\d{1,4}", text) else None
+
+
+def _hhmm_minutes(digits):
+    """'0500' / '130' 을 시·분(HHMM)으로 읽은 분. 시·분으로 볼 수 없으면 None."""
+    if len(digits) < 3:
+        return int(digits)  # '30' -> 00:30
+    hours, minutes = int(digits[:-2]), int(digits[-2:])
+    return hours * 60 + minutes if minutes < 60 and hours <= 23 else None
+
+
+def duration_is_hhmm(values):
+    """예상 시간 열이 분(300)이 아니라 시·분 4자리(0500 = 5시간)로 적혀 있는지 열 전체로 판단.
+    - 시·분으로 못 읽는 값(190 처럼 끝 두 자리가 60 이상)이 하나라도 있으면 분
+    - '0500' 처럼 앞에 0 이 붙은 값이 있으면 시·분
+    - 아니면 15분 단위로 떨어지는 값이 어느 쪽으로 읽을 때 더 많은지로 고름
+      (시·분 130/200/500 -> 90/120/300분, 분 120/150/240 은 그대로 15분 단위) - 같으면 분"""
+    digits = [d for d in map(_digits, values) if d is not None and int(d) > 0]
+    if not digits or not any(len(d) >= 3 for d in digits):
+        return False
+    as_hhmm = [_hhmm_minutes(d) for d in digits]
+    if None in as_hhmm:
+        return False
+    if any(len(d) >= 3 and d.startswith("0") for d in digits):
+        return True
+    round_hhmm = sum(m % 15 == 0 for m in as_hhmm)
+    round_minutes = sum(int(d) % 15 == 0 for d in digits)
+    return round_hhmm > round_minutes
+
+
 def clock_minutes(value):
     """'09:30' / '9시 30분' / '8A' / '1:30P' / '2 PM' / time cell -> minutes after midnight, or None."""
     if value is None or isinstance(value, (int, float)):
@@ -335,7 +380,8 @@ def plausible_duration_column(values, kind, starts=()):
     if not filled:
         return False
     if kind == "duration":
-        ok = [i for i in filled if 5 <= _parse_duration(values[i]) <= 24 * 60]
+        parse = _parse_duration_hhmm if duration_is_hhmm(values) else _parse_duration
+        ok = [i for i in filled if 5 <= parse(values[i]) <= 24 * 60]
     else:
         starts = list(starts)
         ok = [i for i in filled if i < len(starts) and duration_from_times(starts[i], values[i]) >= 5]
@@ -471,6 +517,9 @@ def parse_table_rows(rows, filename="", default_date=None, report=None, resolve_
 
     sheet_date = _find_sheet_date(rows, header_index, filename) or default_date
     get = lambda row, field: row[mapping[field]] if field in mapping and mapping[field] < len(row) else None
+    # 예상 시간이 '0500'(5시간) 처럼 시·분 4자리로 적힌 병원도 있어 열 전체를 보고 읽는 법을 정함
+    durations = [get(row, "duration") for row in rows[header_index + 1:]]
+    parse_duration = _parse_duration_hhmm if duration_is_hhmm(durations) else _parse_duration
 
     records = []
     last_room, last_date = "", sheet_date
@@ -534,7 +583,7 @@ def parse_table_rows(rows, filename="", default_date=None, report=None, resolve_
             "surgeon": surgeon,
             "anesthesiologist": anesthesiologist,
             "anesthesia_type": anesthesia_type,
-            "duration": _parse_duration(get(row, "duration"))
+            "duration": parse_duration(get(row, "duration"))
                         or duration_from_times(get(row, "time_slot"), get(row, "end_time")),
             "patient_name": patient,
             "patient_info": patient_info,
@@ -545,12 +594,28 @@ def parse_table_rows(rows, filename="", default_date=None, report=None, resolve_
     return records or None
 
 
+def _cell_value(cell):
+    """셀 값. 숫자에 '0000' 서식(앞자리 0 채움)이 걸려 있으면 보이는 그대로 '0500' 글자로
+    (500 이 아니라 0500 으로 보여야 시·분 4자리임을 알 수 있어서)."""
+    value = cell.value
+    fmt = getattr(cell, "number_format", "") or ""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and re.fullmatch(r"0{3,4}", fmt) \
+            and float(value).is_integer() and 0 <= value < 10 ** len(fmt):
+        return str(int(value)).zfill(len(fmt))
+    return value
+
+
+def _sheet_values(sheet):
+    for row in sheet.iter_rows():
+        yield [_cell_value(cell) for cell in row]
+
+
 def parse_workbook(workbook, filename="", default_date=None, report=None, resolve_duration=None):
     """First sheet with a recognizable table wins; returns None if none has one."""
     report = report if report is not None else {}
     for sheet in workbook.worksheets:
         sheet_report = {}
-        records = parse_table_rows(sheet.iter_rows(values_only=True), filename, default_date, sheet_report,
+        records = parse_table_rows(_sheet_values(sheet), filename, default_date, sheet_report,
                                    resolve_duration)
         report.clear()
         report.update(sheet_report)

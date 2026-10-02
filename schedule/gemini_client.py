@@ -114,7 +114,8 @@ order than expected.
 - "date" must be YYYY-MM-DD. If the source only has a single date for the whole sheet (e.g. in \
 a title), apply it to every row.
 - "time_slot" must be HH:MM in 24-hour time.
-- "duration" is in minutes as an integer (convert if source gives e.g. "1시간 30분" -> 90).
+- "duration" is in minutes as an integer (convert if source gives e.g. "1시간 30분" -> 90). \
+A zero-padded 4-digit value like "0500" / "0130" is hours+minutes (HHMM) -> 300 / 90.
 - "status" must be exactly one of 예정, 진행중, 완료 - map synonyms (e.g. "대기"->예정, \
 "수술중"->진행중, "종료"/"완료"->완료) to the closest one, default 예정 if not stated.
 - Leave a field as an empty string ("") rather than guessing if it truly isn't present.
