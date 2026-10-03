@@ -1141,3 +1141,11 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
   .orb-actions { flex-wrap: wrap; }
 }
 .add-case-content { max-height: calc(100vh - 24px); overflow-y: auto; }
+
+/* 근무자·마취의 인원 배지 (접어도 보임) · 고정 명단 */
+.side-count.staff-count { background: #0f766e; }
+.side-count.anes-count { background: #1d4ed8; }
+.side-toggle .side-count + small { margin-left: 4px; }
+.staff-pin { margin-left: 3px; font-size: 9px; color: #b45309; transform: rotate(30deg); }
+.staff-save-all { font-size: 11.5px; }
+.staff-pop button.sp-save em { font-style: normal; }

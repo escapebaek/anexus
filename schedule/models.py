@@ -115,3 +115,28 @@ class RoomKeeper(models.Model):
 
     def __str__(self):
         return f"{self.date} {self.room}: {self.name}"
+
+
+class SavedStaff(models.Model):
+    """고정 명단: 저장해 둔 근무자·마취의는 날마다 그날 명단에 자동으로 들어감 (오늘만 빼도 저장은 유지)."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saved_staff')
+    role = models.CharField(max_length=10, choices=DutyStaff.ROLE_CHOICES, default="keeper")
+    name = models.CharField(max_length=50)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = [("user", "role", "name")]
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.role}: {self.name}"
+
+
+class RosterSeed(models.Model):
+    """그날 그 명단에 고정 명단을 이미 채웠다는 표시 (오늘만 뺀 사람이 다시 들어오지 않게)."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='roster_seeds')
+    date = models.DateField()
+    role = models.CharField(max_length=10, choices=DutyStaff.ROLE_CHOICES, default="keeper")
+
+    class Meta:
+        unique_together = [("user", "date", "role")]

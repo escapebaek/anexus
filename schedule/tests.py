@@ -1300,6 +1300,28 @@ class RoomKeeperTests(TestCase):
         self.assertEqual(s['marks']['keeper'], {})
         self.assertEqual(self.act(action='mark', name='A').status_code, 400)
 
+    def test_saved_roster_fills_new_days_and_remove_is_today_only(self):
+        self.state(action='add', names=['A', 'B', 'C'])
+        s = self.state(action='save', name='A')
+        s = self.state(action='save_all')                                             # B, C 도 고정
+        self.assertEqual(s['saved']['keeper'], ['A', 'B', 'C'])
+        s = self.state(action='unsave', name='C')                                     # 저장 삭제
+        self.assertEqual((s['saved']['keeper'], len(s['roster'])), (['A', 'B'], 3))   # 오늘 명단은 그대로
+        # 다음 날: 고정 명단이 자동으로
+        s = self.state(date='2026-08-28', action='add', names=[])
+        self.assertEqual([p['name'] for p in s['roster']], ['A', 'B'])
+        # 오늘만 빼기: 고정은 유지, 그날 다시 들어오지 않음
+        s = self.state(date='2026-08-28', action='remove', name='A')
+        self.assertEqual(([p['name'] for p in s['roster']], s['saved']['keeper']), (['B'], ['A', 'B']))
+        s = self.state(date='2026-08-28', action='add', names=[])
+        self.assertEqual([p['name'] for p in s['roster']], ['B'])
+        self.assertEqual([p['name'] for p in self.state(date='2026-08-29', action='add', names=[])['roster']], ['A', 'B'])
+        # 마취의 고정은 따로, 새 이름을 바로 고정하면 오늘 명단에도 추가
+        s = self.state(date='2026-08-29', action='save', role='anes', name='이마취')
+        self.assertEqual((s['anes'], s['saved']), (['이마취'], {'keeper': ['A', 'B'], 'anes': ['이마취']}))
+        res = self.client.get(reverse('schedule_dashboard'))
+        self.assertEqual(res.context['staff']['saved']['keeper'], ['A', 'B'])
+
     def test_load_recent_from_previous_day_turns_on_call_into_yesterday(self):
         self.state(action='add', names=['A', 'B'])
         self.state(action='mark', name='A', duty='today')
