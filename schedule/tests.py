@@ -213,15 +213,15 @@ class ApiTests(TestCase):
 
     def test_case_flags_are_per_case(self):
         nxt = make(self.user, '101', '11:00')
-        url = reverse('schedule_update', args=[self.mine.id])
+        url = reverse('schedule_update', args=[nxt.id])          # 당직은 뒤 수술로 번지므로 마지막 수술에
         room = self.post(url, {'on_call': True}).json()['room']
-        room = self.post(reverse('schedule_update', args=[nxt.id]), {'hold': True}).json()['room']
-        self.assertEqual([(c['on_call'], c['hold']) for c in room['cases']], [(True, False), (False, True)])
+        room = self.post(reverse('schedule_update', args=[self.mine.id]), {'hold': True}).json()['room']
+        self.assertEqual([(c['on_call'], c['hold']) for c in room['cases']], [(False, True), (True, False)])
         board = self.client.get(reverse('schedule_dashboard')).context['board']
         self.assertEqual((board['counts']['on_call'], board['counts']['hold']), (1, 1))
         self.post(url, {'on_call': False})
-        self.mine.refresh_from_db()
-        self.assertFalse(self.mine.on_call)
+        nxt.refresh_from_db()
+        self.assertFalse(nxt.on_call)
         self.assertEqual(self.post(reverse('schedule_update', args=[self.theirs.id]), {'hold': True}).status_code, 404)
 
     def test_invalid_status_rejected_without_partial_save(self):
@@ -1386,3 +1386,60 @@ class PlaceCaseTests(TestCase):
         res = self.client.post(reverse('schedule_update', args=[theirs.id]),
                                json.dumps({'place': {'room': '101', 'index': 0}}), content_type='application/json')
         self.assertEqual(res.status_code, 404)
+
+
+class OnCallCascadeAndManualCaseTests(TestCase):
+    """당직은 그 방 뒤 수술까지 함께 / 수술 직접 추가·삭제."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def post(self, case, **body):
+        return self.client.post(reverse('schedule_update', args=[case.id]), json.dumps(body),
+                                content_type='application/json')
+
+    def test_on_call_cascades_to_later_unfinished_cases_in_room(self):
+        done = make(self.user, '101', '07:00', status='완료', name='A')
+        b = make(self.user, '101', '09:00', name='B')
+        c = make(self.user, '101', '11:00', name='C')
+        later_done = make(self.user, '101', '13:00', status='완료', name='D')
+        other = make(self.user, '102', '12:00', name='E')
+        res = self.post(b, on_call=True)
+        flags = {x['patient_name']: x['on_call'] for x in res.json()['room']['cases']}
+        self.assertEqual(flags, {'A': False, 'B': True, 'C': True, 'D': False})   # 앞 수술·끝난 수술은 그대로
+        self.assertFalse(SurgerySchedule.objects.get(id=other.id).on_call)        # 다른 방은 그대로
+        self.post(b, on_call=False)
+        self.assertFalse(SurgerySchedule.objects.filter(id__in=[b.id, c.id], on_call=True).exists())
+        self.assertFalse(SurgerySchedule.objects.get(id=done.id).on_call or SurgerySchedule.objects.get(id=later_done.id).on_call)
+
+    def create(self, **body):
+        return self.client.post(reverse('schedule_create'), json.dumps(body), content_type='application/json')
+
+    def test_create_manual_case_kept_on_update_and_deletable(self):
+        from .views import update_schedules_from_records
+        make(self.user, '101', '08:00', name='A')
+        res = self.create(room=' 101 ', time_slot='930', surgery_name='Lap chole', duration='90', patient_name='신환자')
+        self.assertEqual(res.status_code, 200, res.content)
+        case = SurgerySchedule.objects.get(id=res.json()['id'])
+        self.assertEqual((case.room, case.time_slot, case.duration, case.manual, case.date),
+                         ('101', '09:30', 90, True, date(2026, 8, 27)))              # 현황판 날짜
+        self.assertEqual(self.create(room='101', surgery_name='').status_code, 400)
+        self.assertEqual(self.create(room='101', surgery_name='Op', duration='9999').status_code, 400)
+        # 파일로 업데이트: 파일에 없는 직접 추가 수술은 유지, 파일의 일반 수술은 그대로 동기화
+        update_schedules_from_records([rec('101', '08:00', 'A', 'Op')], self.user, list(SurgerySchedule.objects.filter(user=self.user)))
+        self.assertTrue(SurgerySchedule.objects.filter(id=case.id).exists())
+        # 파일 수술은 삭제 불가, 직접 추가한 수술은 삭제 가능
+        self.assertEqual(self.post(SurgerySchedule.objects.get(patient_name='A'), delete=True).status_code, 400)
+        res = self.post(case, delete=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(SurgerySchedule.objects.filter(id=case.id).exists())
+
+    def test_manual_case_matched_by_file_becomes_regular(self):
+        from .views import update_schedules_from_records
+        case = SurgerySchedule.objects.get(id=self.create(room='103', surgery_name='Op', patient_name='홍길동').json()['id'])
+        update_schedules_from_records([rec('103', '10:00', '홍길동', 'Op')], self.user, list(SurgerySchedule.objects.filter(user=self.user)))
+        case.refresh_from_db()
+        self.assertEqual((case.manual, case.time_slot), (False, '10:00'))

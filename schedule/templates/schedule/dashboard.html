@@ -39,6 +39,7 @@
     </div>
 
     <div class="orb-actions">
+      <button type="button" class="orb-btn" id="addCaseBtn" title="수술을 직접 추가 (파일로 업데이트해도 유지)"><i class="fas fa-plus"></i> <span>수술 추가</span></button>
       <button type="button" class="orb-btn" id="reorderBtn" title="잠금을 풀면 수술을 끌어다 놓아 순서·방을 바꿀 수 있어요"><i class="fas fa-lock"></i> <span>순서 변경</span></button>
       <button type="button" class="orb-btn" id="expandRemainBtn" title="각 방의 남은(완료 안 된) 수술만 펼치기"><i class="fas fa-stream"></i> <span>남은 것 펼치기</span></button>
       <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기 (완료 포함)"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
@@ -68,13 +69,13 @@
 
     <!-- ===== 사이드바 ===== -->
     <aside class="orb-side">
-      <section class="side-card side-hold">
-        <h4 class="side-head"><i class="fas fa-pause-circle"></i> Hold 수술 <span class="side-count" id="holdCount"></span></h4>
+      <section class="side-card side-hold" id="holdCard">
+        <h4 class="side-head side-toggle" data-collapse="holdCard" role="button" tabindex="0" aria-expanded="true" title="접기/펼치기"><i class="fas fa-pause-circle"></i> Hold 수술 <span class="side-count" id="holdCount"></span><i class="fas fa-chevron-up side-caret"></i></h4>
         <ul class="side-list" id="holdList"></ul>
       </section>
 
-      <section class="side-card side-notice">
-        <h4 class="side-head"><i class="fas fa-bullhorn"></i> 공지 · 메모 <span class="notice-status" id="noticeStatus"></span></h4>
+      <section class="side-card side-notice" id="noticeCard">
+        <h4 class="side-head side-toggle" data-collapse="noticeCard" role="button" tabindex="0" aria-expanded="true" title="접기/펼치기"><i class="fas fa-bullhorn"></i> 공지 · 메모 <span class="notice-status" id="noticeStatus"></span><i class="fas fa-chevron-up side-caret"></i></h4>
         <textarea id="noticeText" class="notice-text" maxlength="20000"
                   placeholder="전체 공지나 오늘의 메모를 적어두세요. (자동 저장)&#10;예) 11시 전체 회의 / 3번 방 초음파 기계 점검 중">{{ notice.content|default:"" }}</textarea>
       </section>
@@ -111,7 +112,7 @@
       </section>
 
       <section class="side-card" id="uploadCard">
-        <h4 class="side-head"><i class="fas fa-file-upload"></i> 일정 업로드</h4>
+        <h4 class="side-head side-toggle" data-collapse="uploadCard" role="button" tabindex="0" aria-expanded="true" title="접기/펼치기"><i class="fas fa-file-upload"></i> 일정 업로드<i class="fas fa-chevron-up side-caret"></i></h4>
         {% if error_message %}
           <div class="upload-error"><i class="fas fa-exclamation-triangle"></i> {{ error_message }}</div>
         {% endif %}
@@ -190,9 +191,40 @@
     <datalist id="roomChoices"></datalist>
   </form>
   <div class="rm-group">표시</div>
-  <button type="button" class="rm-opt" data-flag="on_call"><i class="fas fa-moon"></i> 당직으로 넘김</button>
+  <button type="button" class="rm-opt" data-flag="on_call"><i class="fas fa-moon"></i> 당직 <small class="rm-note">이 방 뒤 수술도 함께</small></button>
   <button type="button" class="rm-opt" data-flag="hold"><i class="fas fa-pause-circle"></i> Hold</button>
   <button type="button" class="rm-opt rm-expand" data-expand><i class="fas fa-list"></i> 전체 일정 보기</button>
+  <button type="button" class="rm-opt" data-add-here><i class="fas fa-plus"></i> 이 방에 수술 추가</button>
+  <button type="button" class="rm-opt rm-danger" data-delete-case hidden><i class="fas fa-trash-alt"></i> 직접 추가한 수술 삭제</button>
+</div>
+
+<!-- 수술 직접 추가 -->
+<div id="addCaseModal" class="memo-modal" role="dialog" aria-labelledby="addCaseTitle">
+  <div class="memo-modal-content add-case-content">
+    <div class="memo-modal-header">
+      <div class="memo-header-content">
+        <h3 id="addCaseTitle">수술 추가</h3>
+        <span class="memo-subtitle">직접 추가한 수술은 파일로 '업데이트' 해도 지워지지 않아요</span>
+      </div>
+      <button type="button" class="close-modal" data-add-close><i class="fas fa-times"></i></button>
+    </div>
+    <form class="memo-modal-body add-case-form" id="addCaseForm" autocomplete="off">
+      <label><span>방 <b>*</b></span><input name="room" list="addRoomChoices" maxlength="10" required placeholder="예: 105" /></label>
+      <datalist id="addRoomChoices"></datalist>
+      <label>시간<input name="time_slot" maxlength="10" placeholder="예: 14:30" /></label>
+      <label class="wide"><span>수술명 <b>*</b></span><input name="surgery_name" maxlength="200" required placeholder="예: Lap cholecystectomy" /></label>
+      <label>집도의<input name="surgeon" maxlength="50" /></label>
+      <label>진료과<input name="department" maxlength="50" /></label>
+      <label>예상 시간(분)<input name="duration" type="number" min="0" max="1440" inputmode="numeric" placeholder="예: 90" /></label>
+      <label>마취 방법<select name="anesthesia_type"><option value="">-</option></select></label>
+      <label>환자 이름<input name="patient_name" maxlength="50" /></label>
+      <label>환자 정보<input name="patient_info" maxlength="20" placeholder="등록번호 · 나이/성별" /></label>
+      <p class="add-case-error" id="addCaseError" hidden></p>
+      <div class="memo-modal-footer wide">
+        <button type="submit" class="btn-save"><i class="fas fa-plus"></i> 추가하기</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Memo Modal -->
@@ -299,7 +331,7 @@
   }
 
   // 당직·Hold: 방 칸에 글자 배지 (아이콘만으로는 잘 안 보여서)
-  const PILL_ONCALL = '<span class="flag-pill fp-oncall" title="당직으로 넘김"><i class="fas fa-moon"></i>당직</span>';
+  const PILL_ONCALL = '<span class="flag-pill fp-oncall" title="당직"><i class="fas fa-moon"></i>당직</span>';
   const PILL_HOLD = '<span class="flag-pill fp-hold" title="Hold"><i class="fas fa-pause"></i>HOLD</span>';
   const flagIcons = (c) => (c.on_call ? PILL_ONCALL : "") + (c.hold ? PILL_HOLD : "");
 
@@ -357,7 +389,7 @@
   function renderStaff() {
     const d = new Date(STAFF.date + "T00:00:00");
     document.getElementById("staffDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
-    document.getElementById("staffSum").textContent = staffSummary("keeper", STAFF.roster.map(p => p.name));
+    document.getElementById("staffSum").textContent = STAFF.roster.length ? `${STAFF.roster.length}명` : "";
     const chips = STAFF.roster.map(p => `
       <span class="staff-chip${p.rooms.length ? " is-assigned" : ""}${offClass("keeper", p.name)}" data-name="${esc(p.name)}" title="누르면 당직·퇴근 표시 · 끌어서 방에 배정 (다른 방으로 끌면 옮겨짐)">
         <b>${dutyEmoji("keeper", p.name)}${esc(p.name)}</b><small>${markOf("keeper", p.name).off ? "퇴근" : p.rooms.length ? p.rooms.map(esc).join("·") : "미배정"}</small>
@@ -413,16 +445,16 @@
     const more = remaining && !reorderMode ? `<span class="more" title="이 방에 남은 다른 수술 ${remaining}건">+${remaining}</span>` : "";
     // 방 칸: 지금 보이는 수술의 표시 + (접혀 있을 때) 다른 남은 수술에 걸린 표시는 흐리게
     const hidden = open ? [] : r.cases.filter((c, i) => i !== curIdx && c.group !== "finished");
-    const otherFlags = (hidden.some(c => c.on_call) && !cur.on_call ? '<span class="flag-pill fp-oncall is-other" title="이 방의 다음 수술 중 당직으로 넘길 수술 있음"><i class="fas fa-moon"></i>당직</span>' : "") +
+    const otherFlags = (hidden.some(c => c.on_call) && !cur.on_call ? '<span class="flag-pill fp-oncall is-other" title="이 방의 다음 수술 중 당직 수술 있음"><i class="fas fa-moon"></i>당직</span>' : "") +
       (hidden.some(c => c.hold) && !cur.hold ? '<span class="flag-pill fp-hold is-other" title="이 방의 다음 수술 중 Hold 있음"><i class="fas fa-pause"></i>HOLD</span>' : "");
     const flags = flagIcons(cur) + otherFlags;
     const onCallCases = r.cases.filter(c => c.on_call && c.group !== "finished");
     const roomOnCall = onCallCases.length > 0;
     let html = `<tbody class="room room-${r.state}${open ? " is-open" : ""}${roomOnCall ? " has-oncall" : ""}" data-room="${esc(r.room)}">`;
-    // 펼쳤을 때(또는 '남은 것 펼치기') 당직으로 넘어가는 방은 맨 위에 띠로 표시
+    // 펼쳤을 때(또는 '남은 것 펼치기') 당직 수술이 있는 방은 맨 위에 띠로 표시: '방 당직 N건' (수술 목록은 툴팁)
     if (roomOnCall && (open || remainingOnly) && !reorderMode) {
       const list = onCallCases.map(c => esc([c.time_slot, c.surgery_name].filter(Boolean).join(" "))).join(", ");
-      html += `<tr class="oncall-banner"><td colspan="${compact ? 5 : 6}" title="${list}"><i class="fas fa-moon"></i> <b>${esc(r.room)} 당직으로 넘김</b> <span>${onCallCases.length}건 · ${list}</span></td></tr>`;
+      html += `<tr class="oncall-banner"><td colspan="${compact ? 5 : 6}" title="${list}"><i class="fas fa-moon"></i> <b>${esc(r.room)} 당직</b> <span>${onCallCases.length}건</span></td></tr>`;
     }
     html += `
       <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}" data-idx="${curIdx}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
@@ -540,12 +572,12 @@
     const set = (id, v) => { document.getElementById(id).textContent = v; };
     set("countOngoing", C.ongoing); set("countPending", C.pending); set("countFinished", C.finished);
     set("countHold", C.hold);
-    // 당직으로 넘길 수술이 남은 방: 몇 방인지 한눈에
+    // 당직 수술이 남은 방: 몇 방인지 한눈에
     const onCallRooms = BOARD.rooms.filter(r => r.cases.some(c => c.on_call && c.group !== "finished")).map(r => r.room);
     const sum = document.getElementById("oncallSummary");
     sum.hidden = !onCallRooms.length;
     sum.innerHTML = onCallRooms.length
-      ? `<i class="fas fa-moon"></i> 당직 넘김 <b>${onCallRooms.length}방</b><span class="sum-rooms">${onCallRooms.map(esc).join(" · ")}</span><small>${C.on_call}건</small>`
+      ? `<i class="fas fa-moon"></i> 당직 <b>${onCallRooms.length}방</b><span class="sum-rooms">${onCallRooms.map(esc).join(" · ")}</span><small>${C.on_call}건</small>`
       : "";
     set("countRemaining", BOARD.remaining); set("countTotal", BOARD.total);
     const anes = BOARD.anesthesia_counts || {};
@@ -568,7 +600,7 @@
     document.getElementById("orbTime").textContent = `${parts.hour}:${parts.minute}:${parts.second}`;
   }
 
-  // ----- 수술 메뉴: 상태(진행중/완료/예정) · 당직 넘김 · Hold -----
+  // ----- 수술 메뉴: 상태(진행중/완료/예정) · 당직 · Hold -----
   const menu = document.getElementById("roomMenu");
   let menuCaseId = null;
   const roomOfCase = (id) => BOARD.rooms.find(r => r.cases.some(c => String(c.id) === String(id)));
@@ -622,6 +654,7 @@
     document.getElementById("roomMoveInput").value = "";
     document.getElementById("roomChoices").innerHTML = BOARD.rooms.filter(x => x.room !== r.room)
       .map(x => `<option value="${esc(x.room)}"></option>`).join("");
+    menu.querySelector("[data-delete-case]").hidden = !c.manual;
     const exp = menu.querySelector("[data-expand]");
     exp.hidden = r.cases.length < 2;
     exp.innerHTML = expanded.has(r.room) ? '<i class="fas fa-compress-alt"></i> 일정 접기' : '<i class="fas fa-list"></i> 전체 일정 보기';
@@ -700,6 +733,17 @@
       closeRoomMenu();
       return updateCase(id, { [flag.dataset.flag]: !c[flag.dataset.flag] });
     }
+    if (e.target.closest("[data-add-here]")) {
+      closeRoomMenu();
+      return openAddCase(r.room);
+    }
+    if (e.target.closest("[data-delete-case]")) {
+      if (!confirm(`${c.time_slot || ""} ${c.surgery_name} 수술을 지울까요? (메모도 함께 지워집니다)`.trim())) return;
+      closeRoomMenu();
+      return postJSON(SCHEDULE_URL(id), { delete: true })
+        .then(res => { BOARD.rooms = res.board.rooms; renderBoard(); renderSide(); })
+        .catch(err => alert("지우지 못했습니다: " + err.message));
+    }
     if (e.target.closest("[data-expand]")) {
       closeRoomMenu();
       expanded.has(r.room) ? expanded.delete(r.room) : expanded.add(r.room);
@@ -709,6 +753,44 @@
   document.addEventListener("click", (e) => {
     if (!menu.hidden && !menu.contains(e.target) && !e.target.closest("[data-case-menu]")) closeRoomMenu();
   });
+  // ----- 수술 직접 추가 -----
+  const CREATE_URL = "{% url 'schedule_create' %}";
+  const addModal = document.getElementById("addCaseModal"), addForm = document.getElementById("addCaseForm");
+  addForm.anesthesia_type.insertAdjacentHTML("beforeend",
+    ANES_TYPES.map(([code, label]) => `<option value="${code}">${code} · ${esc(label)}</option>`).join(""));
+  function openAddCase(room) {
+    addForm.reset();
+    document.getElementById("addCaseError").hidden = true;
+    document.getElementById("addRoomChoices").innerHTML = BOARD.rooms.map(x => `<option value="${esc(x.room)}"></option>`).join("");
+    addForm.room.value = room || "";
+    addModal.classList.add("active");
+    (room ? addForm.time_slot : addForm.room).focus();
+  }
+  const closeAddCase = () => addModal.classList.remove("active");
+  document.getElementById("addCaseBtn").addEventListener("click", () => openAddCase(""));
+  addModal.addEventListener("click", (e) => { if (e.target === addModal || e.target.closest("[data-add-close]")) closeAddCase(); });
+  addForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(addForm).entries());
+    const btn = addForm.querySelector("[type=submit]");
+    btn.disabled = true;
+    try {
+      const wasEmpty = !BOARD.rooms.length;
+      const res = await postJSON(CREATE_URL, body);
+      if (wasEmpty) return location.reload();   // 빈 현황판 안내 화면에서 처음 추가
+      BOARD.rooms = res.board.rooms;
+      expanded.add(body.room.trim());
+      closeAddCase();
+      renderBoard(); renderSide();
+    } catch (err) {
+      const box = document.getElementById("addCaseError");
+      box.textContent = err.message;
+      box.hidden = false;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   document.getElementById("roomMoveForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const id = menuCaseId, room = document.getElementById("roomMoveInput").value.trim();
@@ -1134,7 +1216,7 @@
     if (e.target === document.getElementById("memoModal")) closeMemoModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeMemoModal(); closeRoomMenu(); closeStaffPop(); }
+    if (e.key === "Escape") { closeMemoModal(); closeRoomMenu(); closeStaffPop(); closeAddCase(); }
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && currentScheduleId) saveMemoAndClose();
   });
 

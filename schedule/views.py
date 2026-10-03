@@ -133,6 +133,7 @@ def build_board(schedules, memos=None):
                 "on_call": s.on_call,
                 "hold": s.hold,
                 "memo": memos.get(s.id, ""),
+                "manual": s.manual,
             })
             if group != "finished":
                 counts["on_call"] += s.on_call
@@ -683,6 +684,7 @@ def update_schedules_from_records(records, user, existing_schedules):
         if schedule.status_locked:
             # 현황판에서 수동으로 바꾼 상태(완료/진행중 등)는 파일 상태로 되돌리지 않음
             data["status"] = schedule.status
+        data["manual"] = False  # 직접 추가했던 수술도 파일에 나오면 이제 파일 기준
         if any(getattr(schedule, field) != value for field, value in data.items()):
             for field, value in data.items():
                 setattr(schedule, field, value)
@@ -693,7 +695,8 @@ def update_schedules_from_records(records, user, existing_schedules):
 
     # Whatever wasn't claimed wasn't matched by anything in this upload - the case is no
     # longer part of the schedule, so remove it (and its memo along with it).
-    stale = [schedule for schedule in existing_schedules if schedule.id not in claimed_ids]
+    # (현황판에서 직접 추가한 수술은 파일에 없어도 유지)
+    stale = [schedule for schedule in existing_schedules if schedule.id not in claimed_ids and not schedule.manual]
     if stale:
         logger.warning(
             "update_schedules_from_records: deleting %d unmatched schedule(s) for user=%s: %s",
@@ -724,6 +727,13 @@ def update_schedule(request, schedule_id):
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
     if not isinstance(data, dict):
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    if data.get("delete"):
+        # 현황판에서 직접 추가한 수술만 지울 수 있음 (파일에서 온 수술은 파일로 관리)
+        if not schedule.manual:
+            return JsonResponse({"status": "error", "message": "직접 추가한 수술만 지울 수 있습니다."}, status=400)
+        schedule.delete()
+        board = build_board(SurgerySchedule.objects.filter(user=request.user), _memo_map(request.user))
+        return JsonResponse({"status": "success", "board": board})
     if "status" in data and data["status"] not in MANUAL_STATUS:
         return JsonResponse({"status": "error", "message": "Invalid status"}, status=400)
     if "move" in data and data["move"] not in ("up", "down"):
@@ -787,6 +797,12 @@ def update_schedule(request, schedule_id):
             fields.append(field)
         if fields:
             schedule.save(update_fields=fields)
+        if "on_call" in data:
+            # 당직 표시는 그 방에서 이 수술 뒤로(끝나지 않은 수술) 모두 같이 켜고 끔
+            cases = _room_schedules(request.user, schedule.room)
+            index = next(i for i, c in enumerate(cases) if c.id == schedule.id)
+            later = [c.id for c in cases[index + 1:] if status_group(c.status) != "finished"]
+            SurgerySchedule.objects.filter(id__in=later).update(on_call=schedule.on_call)
         if "status" in data:
             apply_manual_status(schedule, data["status"])
         if "move" in data:
@@ -804,6 +820,48 @@ def update_schedule(request, schedule_id):
     room_cases = _room_schedules(request.user, schedule.room)
     board = build_board(room_cases, _memo_map(request.user, [c.id for c in room_cases]))
     return JsonResponse({"status": "success", "room": board["rooms"][0]})
+
+
+@login_required
+@user_is_specially_approved
+@require_POST
+def create_schedule(request):
+    """현황판에서 수술을 직접 추가. room·surgery_name 필수, 날짜는 현황판 날짜.
+    파일로 '업데이트' 해도 지워지지 않음 (manual). 응답으로 현황판 전체를 돌려줌."""
+    try:
+        data = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    clean = lambda key: re.sub(r"\s+", " ", str(data.get(key) or "")).strip()[:FIELD_MAX_LENGTHS[key]]
+    room, surgery_name = clean("room"), clean("surgery_name")
+    if not room or not surgery_name:
+        return JsonResponse({"status": "error", "message": "방과 수술명을 입력하세요."}, status=400)
+    try:
+        duration = int(data.get("duration") or 0)
+    except (TypeError, ValueError):
+        duration = -1
+    if not 0 <= duration <= MAX_DURATION_MINUTES:
+        return JsonResponse({"status": "error", "message": "예상 시간은 0~1440분으로 입력하세요."}, status=400)
+    user = request.user
+    day = board_date(build_board(SurgerySchedule.objects.filter(user=user)))
+    with transaction.atomic():
+        schedule = SurgerySchedule.objects.create(
+            user=user, date=day, room=room, time_slot=normalize_time_slot(data.get("time_slot")),
+            surgery_name=surgery_name, department=clean("department"), surgeon=clean("surgeon"),
+            anesthesia_type=table_parser.normalize_anesthesia(data.get("anesthesia_type"))[:FIELD_MAX_LENGTHS["anesthesia_type"]],
+            duration=duration, patient_name=clean("patient_name"), patient_info=clean("patient_info"),
+            status="예정", manual=True)
+        # 같은 방에 직접 정한 순서가 있으면 맨 뒤에 붙임 (없으면 시간 순)
+        if SurgerySchedule.objects.filter(user=user, room=room).exclude(position=0).exists():
+            cases = [c for c in _room_schedules(user, room) if c.id != schedule.id] + [schedule]
+            for position, case in enumerate(cases, start=1):
+                if case.position != position:
+                    case.position = position
+                    case.save(update_fields=["position"])
+    board = build_board(SurgerySchedule.objects.filter(user=user), _memo_map(user))
+    return JsonResponse({"status": "success", "id": schedule.id, "board": board})
 
 
 @login_required
