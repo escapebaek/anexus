@@ -209,7 +209,7 @@
     <div class="memo-modal-header">
       <div class="memo-header-content">
         <h3 id="trashTitle">삭제된 수술</h3>
-        <span class="memo-subtitle">복원하면 메모·표시와 함께 현황판으로 돌아가요 · 14일 지나면 자동으로 비워져요</span>
+        <span class="memo-subtitle">복원하면 메모·표시와 함께 현황판으로 돌아가요 · 삭제하고 24시간이 지나면 자동으로 비워져요</span>
       </div>
       <button type="button" class="close-modal" data-trash-close><i class="fas fa-times"></i></button>
     </div>
@@ -650,12 +650,16 @@
     document.getElementById("holdTile").classList.toggle("is-zero", !C.hold);
     set("countRemaining", BOARD.remaining); set("countTotal", BOARD.total);
     const anes = BOARD.anesthesia_counts || {};
-    // 마취 방법별 건수: 배지 + 숫자만 (이름은 툴팁)
-    const known = ANES_TYPES.filter(([code]) => anes[code]).map(([code, label]) =>
-      `<span class="al" title="${esc(label)} ${anes[code]}건"><span class="at at-${code}">${code}</span><b>${anes[code]}</b></span>`);
+    // 마취 방법별 건수: 진행 막대와 같은 모양의 비율 막대 + 작은 칸 (색 점 · 코드 · 건수, 이름은 툴팁)
+    const kinds = ANES_TYPES.filter(([code]) => anes[code]).map(([code, label]) => [code, label, anes[code]]);
     const others = Object.keys(anes).filter(k => !ANES_LABEL[k]).reduce((n, k) => n + anes[k], 0);
-    if (others) known.push(`<span class="al" title="기타 ${others}건"><span class="at at-etc">기타</span><b>${others}</b></span>`);
-    document.getElementById("anesLegend").innerHTML = known.length ? `<span class="al-label">마취</span>${known.join("")}` : "";
+    if (others) kinds.push(["etc", "기타", others]);
+    const anesTotal = kinds.reduce((n, k) => n + k[2], 0);
+    document.getElementById("anesLegend").innerHTML = anesTotal ? `
+      <div class="al-bar" title="마취 방법 비율">${kinds.map(([code, label, n]) =>
+        `<span class="at-${code}" style="flex:${n}" title="${esc(label)} ${n}건 (${Math.round(n / anesTotal * 100)}%)"></span>`).join("")}</div>
+      <div class="al-items">${kinds.map(([code, label, n]) =>
+        `<span class="al" title="${esc(label)} ${n}건"><i class="al-dot at-${code}"></i>${code === "etc" ? "기타" : code}<b>${n}</b></span>`).join("")}</div>` : "";
     document.getElementById("progressBox").title = `완료 ${C.finished} / 전체 ${BOARD.total}`;
     document.getElementById("progressFill").style.width =
       (BOARD.total ? Math.round(C.finished / BOARD.total * 100) : 0) + "%";

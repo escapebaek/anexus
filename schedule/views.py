@@ -354,7 +354,7 @@ def schedule_dashboard(request):
         "build_version": BUILD_VERSION,
         "job": job,
         "notice": BoardNotice.objects.filter(user=request.user).first(),
-        "trash_count": SurgerySchedule.all_objects.filter(user=request.user, deleted_at__isnull=False).count(),
+        "trash_count": len(trash_list(request.user)),   # 24시간 지난 것은 정리한 뒤 셈
     })
 
 
@@ -868,13 +868,12 @@ def create_schedule(request):
     return JsonResponse({"status": "success", "id": schedule.id, "board": board})
 
 
-TRASH_KEEP_DAYS = 14
+TRASH_KEEP = timedelta(hours=24)
 
 
 def trash_list(user):
-    """휴지통 목록 (최근 삭제 순). 오래된 것(TRASH_KEEP_DAYS 일 지남)은 여기서 정리."""
-    SurgerySchedule.all_objects.filter(
-        user=user, deleted_at__lt=timezone.now() - timedelta(days=TRASH_KEEP_DAYS)).delete()
+    """휴지통 목록 (최근 삭제 순). 삭제하고 24시간(TRASH_KEEP) 지난 것은 여기서 영구 삭제."""
+    SurgerySchedule.all_objects.filter(user=user, deleted_at__lt=timezone.now() - TRASH_KEEP).delete()
     rows = SurgerySchedule.all_objects.filter(user=user, deleted_at__isnull=False).order_by("-deleted_at", "-id")
     return [{
         "id": s.id, "date": s.date.isoformat(), "room": s.room, "time_slot": s.time_slot,
