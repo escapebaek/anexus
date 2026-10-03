@@ -1,6 +1,12 @@
 from django.db import models
 from django.conf import settings
 
+class ActiveScheduleManager(models.Manager):
+    """삭제(휴지통)한 수술은 기본으로 빼고 봄 - 현황판·업로드 동기화·랜딩 요약이 모두 이걸 씀."""
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
 class SurgerySchedule(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -35,6 +41,11 @@ class SurgerySchedule(models.Model):
     finished_at = models.DateTimeField(null=True, blank=True)
     # 현황판에서 직접 추가한 수술: 파일로 '업데이트' 할 때 파일에 없어도 지우지 않음 (파일의 같은 환자와 맞춰지면 해제)
     manual = models.BooleanField(default=False)
+    # 현황판에서 삭제한 시각 (휴지통). 비어 있으면 현황판에 보임. '삭제된 수술'에서 복원하면 다시 비움 (메모도 그대로)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = ActiveScheduleManager()
+    all_objects = models.Manager()
 
     def __str__(self):
         return f"{self.date} - {self.room} - {self.surgery_name} ({self.status})"

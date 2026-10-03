@@ -41,6 +41,7 @@
 
     <div class="orb-actions">
       <button type="button" class="orb-btn" id="addCaseBtn" title="수술을 직접 추가 (파일로 업데이트해도 유지)"><i class="fas fa-plus"></i> <span>수술 추가</span></button>
+      <button type="button" class="orb-btn" id="trashBtn" title="삭제한 수술 보기 · 복원"><i class="fas fa-trash-restore"></i> <span>삭제된 수술</span><b class="orb-btn-count" id="trashCount">{% if trash_count %}{{ trash_count }}{% endif %}</b></button>
       <button type="button" class="orb-btn" id="reorderBtn" title="잠금을 풀면 수술을 끌어다 놓아 순서·방을 바꿀 수 있어요"><i class="fas fa-lock"></i> <span>순서 변경</span></button>
       <button type="button" class="orb-btn" id="expandRemainBtn" title="각 방의 남은(완료 안 된) 수술만 펼치기"><i class="fas fa-stream"></i> <span>남은 것 펼치기</span></button>
       <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기 (완료 포함)"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
@@ -199,7 +200,23 @@
   <button type="button" class="rm-opt" data-flag="hold"><i class="fas fa-pause-circle"></i> Hold</button>
   <button type="button" class="rm-opt rm-expand" data-expand><i class="fas fa-list"></i> 전체 일정 보기</button>
   <button type="button" class="rm-opt" data-add-here><i class="fas fa-plus"></i> 이 방에 수술 추가</button>
-  <button type="button" class="rm-opt rm-danger" data-delete-case hidden><i class="fas fa-trash-alt"></i> 직접 추가한 수술 삭제</button>
+  <button type="button" class="rm-opt rm-danger" data-delete-case><i class="fas fa-trash-alt"></i> 이 수술 삭제 <small class="rm-note">'삭제된 수술'에서 복원</small></button>
+</div>
+
+<!-- 삭제된 수술 (휴지통) -->
+<div id="trashModal" class="memo-modal" role="dialog" aria-labelledby="trashTitle">
+  <div class="memo-modal-content trash-content">
+    <div class="memo-modal-header">
+      <div class="memo-header-content">
+        <h3 id="trashTitle">삭제된 수술</h3>
+        <span class="memo-subtitle">복원하면 메모·표시와 함께 현황판으로 돌아가요 · 14일 지나면 자동으로 비워져요</span>
+      </div>
+      <button type="button" class="close-modal" data-trash-close><i class="fas fa-times"></i></button>
+    </div>
+    <div class="memo-modal-body">
+      <ul class="trash-list" id="trashList"></ul>
+    </div>
+  </div>
 </div>
 
 <!-- 수술 직접 추가 -->
@@ -271,6 +288,7 @@
   const ANES_LABEL = Object.fromEntries(ANES_TYPES);
   const anesBadge = (code) => code
     ? `<span class="at at-${ANES_LABEL[code] ? code : "etc"}" title="마취: ${esc(ANES_LABEL[code] || code)}">${esc(code)}</span>` : "";
+  const orb = document.getElementById("orb");
   const expanded = new Set();
   let remainingOnly = false;
   let reorderMode = false;     // '순서 변경' 잠금 해제: 모든 수술을 실제 순서대로 펼치고 끌어다 놓기 손잡이 표시   // '남은 것 펼치기': 펼친 방에서 완료된 수술은 숨김
@@ -488,22 +506,59 @@
     renderAnes();
     const board = document.getElementById("board");
     if (!BOARD.rooms.length) return;
+    board.style.transform = board.style.width = board.style.marginBottom = "";
     const width = board.clientWidth;
     compact = width < 600;
-    const cols = Math.max(1, Math.min(4, Math.floor(width / 480), BOARD.rooms.length));
-    const perCol = Math.ceil(BOARD.rooms.length / cols);
-    let html = "";
-    for (let i = 0; i < cols; i++) {
-      const rooms = BOARD.rooms.slice(i * perCol, (i + 1) * perCol);
-      if (!rooms.length) continue;
-      html += `<table class="orb-table${compact ? " is-compact" : ""}">
+    const bodies = BOARD.rooms.map(roomBody);
+    const weights = bodies.map(h => (h.match(/<tr/g) || []).length);   // 방마다 줄 수 (펼친 방은 큼)
+    const draw = (cols) => {
+      // 열마다 줄 수가 비슷하도록 방을 순서대로 나눔 (방 수가 아니라 줄 수 기준)
+      const target = weights.reduce((a, b) => a + b, 0) / cols;
+      const groups = [[]];
+      let sum = 0;
+      bodies.forEach((h, i) => {
+        if (sum >= target * groups.length - weights[i] / 2 && groups.length < cols && groups[groups.length - 1].length) groups.push([]);
+        groups[groups.length - 1].push(h);
+        sum += weights[i];
+      });
+      board.innerHTML = groups.map(g => `<table class="orb-table${compact ? " is-compact" : ""}">
         <colgroup><col class="w-room"><col class="w-time"><col><col class="w-anes">${compact ? "" : '<col class="w-pt">'}<col class="w-memo"></colgroup>
         <thead><tr><th>방</th><th>시간</th><th>수술명 <small>예상 시간 · 집도의 · 과</small></th><th>마취의</th>${compact ? "" : "<th>환자</th>"}<th></th></tr></thead>
-        ${rooms.map(roomBody).join("")}
-      </table>`;
+        ${g.join("")}
+      </table>`).join("");
+      board.style.setProperty("--cols", groups.length);
+    };
+    let cols = Math.max(1, Math.min(4, Math.floor(width / 480), BOARD.rooms.length));
+    draw(cols);
+    const side = document.querySelector(".orb-side");
+    side.style.maxHeight = "";
+    if (document.fullscreenElement === orb) {
+      // 오른쪽 칸은 화면 높이 안에서 따로 스크롤 (현황판 높이를 밀어내지 않게)
+      side.style.maxHeight = `${window.innerHeight - side.getBoundingClientRect().top - 12}px`;
+      // 전체화면: 한 화면에 모두 보이게. 열을 하나씩 늘려 보며(열 하나가 MIN_COL px 은 되게, 모자라면 그만큼 축소)
+      // 화면 높이에 들어가는 첫 배치를 고름 → 글자를 최대한 크게 유지. 끝까지 안 들어가면 높이에 맞춰 더 축소
+      const top = board.getBoundingClientRect().top;
+      const avail = window.innerHeight - top - 12;
+      // 축소는 transform: 원래 크기로 (폭 ÷ 배율) 배치한 뒤 왼쪽 위 기준으로 줄임 → 칸 폭을 그대로 채움
+      const setZoom = (z) => {
+        board.style.transform = z === 1 ? "" : `scale(${z})`;
+        board.style.width = z === 1 ? "" : `${100 / z}%`;
+        board.style.marginBottom = "";
+      };
+      const visualHeight = () => board.getBoundingClientRect().bottom - top;
+      const MIN_COL = 440;   // 방·시간·마취의·환자·메모 칸을 빼고도 수술명이 읽히는 최소 폭
+      let zoom = 1;
+      while (visualHeight() > avail && cols < Math.min(BOARD.rooms.length, 10)) {
+        cols += 1;
+        zoom = Math.min(1, width / (cols * MIN_COL));
+        if (zoom < 0.55) { cols -= 1; zoom = Math.min(1, width / (cols * MIN_COL)); setZoom(zoom); draw(cols); break; }
+        setZoom(zoom);
+        draw(cols);
+      }
+      if (visualHeight() > avail) setZoom(Math.max(0.45, zoom * avail / visualHeight()));
+      // transform 은 자리 크기를 줄이지 않으므로 줄어든 만큼 아래 여백을 당겨 빈 스크롤이 생기지 않게
+      if (board.style.transform) board.style.marginBottom = `${visualHeight() - board.offsetHeight}px`;
     }
-    board.innerHTML = html;
-    board.style.setProperty("--cols", cols);
     updateEtas();
   }
 
@@ -669,7 +724,6 @@
     document.getElementById("roomMoveInput").value = "";
     document.getElementById("roomChoices").innerHTML = BOARD.rooms.filter(x => x.room !== r.room)
       .map(x => `<option value="${esc(x.room)}"></option>`).join("");
-    menu.querySelector("[data-delete-case]").hidden = !c.manual;
     const exp = menu.querySelector("[data-expand]");
     exp.hidden = r.cases.length < 2;
     exp.innerHTML = expanded.has(r.room) ? '<i class="fas fa-compress-alt"></i> 일정 접기' : '<i class="fas fa-list"></i> 전체 일정 보기';
@@ -753,11 +807,11 @@
       return openAddCase(r.room);
     }
     if (e.target.closest("[data-delete-case]")) {
-      if (!confirm(`${c.time_slot || ""} ${c.surgery_name} 수술을 지울까요? (메모도 함께 지워집니다)`.trim())) return;
+      if (!confirm(`${r.room} ${c.time_slot || ""} ${c.surgery_name} 수술을 삭제할까요?\n(위쪽 '삭제된 수술'에서 메모와 함께 복원할 수 있어요)`)) return;
       closeRoomMenu();
       return postJSON(SCHEDULE_URL(id), { delete: true })
-        .then(res => { BOARD.rooms = res.board.rooms; renderBoard(); renderSide(); })
-        .catch(err => alert("지우지 못했습니다: " + err.message));
+        .then(res => { BOARD.rooms = res.board.rooms; setTrashCount(res.trash.length); renderBoard(); renderSide(); })
+        .catch(err => alert("삭제하지 못했습니다: " + err.message));
     }
     if (e.target.closest("[data-expand]")) {
       closeRoomMenu();
@@ -768,6 +822,54 @@
   document.addEventListener("click", (e) => {
     if (!menu.hidden && !menu.contains(e.target) && !e.target.closest("[data-case-menu]")) closeRoomMenu();
   });
+  // ----- 삭제된 수술 (휴지통): 복원 / 영구 삭제 -----
+  const TRASH_URL = "{% url 'schedule_trash' %}";
+  const trashModal = document.getElementById("trashModal");
+  function setTrashCount(n) { document.getElementById("trashCount").textContent = n || ""; }
+  function renderTrash(items) {
+    setTrashCount(items.length);
+    document.getElementById("trashList").innerHTML = items.map(t => `<li>
+        <span class="trash-room">${esc(t.room) || "-"}</span>
+        <div class="trash-main">
+          <b>${esc(t.time_slot)} ${esc(t.surgery_name)}</b>
+          <small>${esc([t.patient_name, t.surgeon].filter(Boolean).join(" · "))} · 삭제 ${esc(t.deleted_at)}</small>
+        </div>
+        <button type="button" class="trash-restore" data-restore="${t.id}"><i class="fas fa-undo"></i> 복원</button>
+        <button type="button" class="trash-purge" data-purge="${t.id}" title="영구 삭제 (되돌릴 수 없음)"><i class="fas fa-times"></i></button>
+      </li>`).join("") || '<li class="trash-empty">삭제된 수술이 없습니다.</li>';
+  }
+  async function openTrash() {
+    trashModal.classList.add("active");
+    document.getElementById("trashList").innerHTML = '<li class="trash-empty">불러오는 중…</li>';
+    try {
+      const res = await fetch(TRASH_URL, { credentials: "same-origin" }).then(r => r.json());
+      renderTrash(res.trash || []);
+    } catch (err) {
+      document.getElementById("trashList").innerHTML = `<li class="trash-empty">불러오지 못했습니다: ${esc(err.message)}</li>`;
+    }
+  }
+  const closeTrash = () => trashModal.classList.remove("active");
+  document.getElementById("trashBtn").addEventListener("click", openTrash);
+  trashModal.addEventListener("click", async (e) => {
+    if (e.target === trashModal || e.target.closest("[data-trash-close]")) return closeTrash();
+    const btn = e.target.closest("[data-restore], [data-purge]");
+    if (!btn) return;
+    const restore = !!btn.dataset.restore;
+    if (!restore && !confirm("영구 삭제하면 되돌릴 수 없습니다. 삭제할까요?")) return;
+    btn.disabled = true;
+    try {
+      const res = await postJSON(TRASH_URL, { action: restore ? "restore" : "purge", id: Number(btn.dataset.restore || btn.dataset.purge) });
+      const wasEmpty = !BOARD.rooms.length;
+      renderTrash(res.trash);
+      if (wasEmpty && res.board.rooms.length) return location.reload();   // 빈 현황판 안내 화면에서 처음 복원
+      BOARD.rooms = res.board.rooms;
+      renderBoard(); renderSide();
+    } catch (err) {
+      btn.disabled = false;
+      alert("처리하지 못했습니다: " + err.message);
+    }
+  });
+
   // ----- 수술 직접 추가 -----
   const CREATE_URL = "{% url 'schedule_create' %}";
   const addModal = document.getElementById("addCaseModal"), addForm = document.getElementById("addCaseForm");
@@ -1131,7 +1233,6 @@
   });
   remainBtn.addEventListener("click", () => setExpandMode("remaining"));
 
-  const orb = document.getElementById("orb");
   document.getElementById("fullscreenBtn").addEventListener("click", () => {
     if (document.fullscreenElement) document.exitFullscreen();
     else if (orb.requestFullscreen) orb.requestFullscreen();
@@ -1143,6 +1244,8 @@
     const host = document.fullscreenElement || document.body;
     host.appendChild(menu);
     host.appendChild(document.getElementById("memoModal"));
+    host.appendChild(addModal);
+    host.appendChild(trashModal);
     closeRoomMenu();
     renderBoard();
   });
@@ -1235,7 +1338,7 @@
     if (e.target === document.getElementById("memoModal")) closeMemoModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeMemoModal(); closeRoomMenu(); closeStaffPop(); closeAddCase(); }
+    if (e.key === "Escape") { closeMemoModal(); closeRoomMenu(); closeStaffPop(); closeAddCase(); closeTrash(); }
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && currentScheduleId) saveMemoAndClose();
   });
 

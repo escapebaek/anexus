@@ -354,6 +354,7 @@ def schedule_dashboard(request):
         "build_version": BUILD_VERSION,
         "job": job,
         "notice": BoardNotice.objects.filter(user=request.user).first(),
+        "trash_count": SurgerySchedule.all_objects.filter(user=request.user, deleted_at__isnull=False).count(),
     })
 
 
@@ -423,10 +424,11 @@ def apply_records(records, user, action):
         raise ScheduleExtractionError("파일에서 수술 일정을 찾지 못했습니다.")
     with transaction.atomic():
         if action == 'replace':
-            SurgerySchedule.objects.filter(user=user).delete()
+            SurgerySchedule.all_objects.filter(user=user).delete()   # 전체 교체: 휴지통까지 비움
             create_schedules_from_records(records, user)
         else:
-            update_schedules_from_records(records, user, list(SurgerySchedule.objects.filter(user=user)))
+            # 휴지통의 수술도 함께 맞춰 봄: 파일에 다시 나와도 일부러 지운 수술은 지운 채로 둠
+            update_schedules_from_records(records, user, list(SurgerySchedule.all_objects.filter(user=user)))
     return len(records)
 
 
@@ -645,9 +647,11 @@ def update_schedules_from_records(records, user, existing_schedules):
         for schedule in existing_schedules:
             score = _match_score(data, schedule)
             if score is not None:
-                pairs.append((score, i, schedule.id))
-    # 점수 높은 쌍부터 배정 (동점이면 파일 순서 / 기존 id 순)
-    pairs.sort(key=lambda p: (-p[0], p[1], p[2]))
+                pairs.append((schedule.deleted_at is not None, score, i, schedule.id))
+    # 현황판에 있는 수술부터, 점수 높은 쌍부터 배정 (동점이면 파일 순서 / 기존 id 순).
+    # 휴지통의 수술은 남은 줄하고만 짝지음 - 같은 환자의 살아 있는 수술이 휴지통 쪽에 밀려 지워지지 않게
+    pairs.sort(key=lambda p: (p[0], -p[1], p[2], p[3]))
+    pairs = [(score, i, schedule_id) for _, score, i, schedule_id in pairs]
 
     by_id = {schedule.id: schedule for schedule in existing_schedules}
     assigned = {}
@@ -659,7 +663,7 @@ def update_schedules_from_records(records, user, existing_schedules):
         claimed_ids.add(schedule_id)
 
     by_slot = {}
-    for schedule in existing_schedules:
+    for schedule in sorted(existing_schedules, key=lambda c: c.deleted_at is not None):  # 살아 있는 수술 먼저
         if not schedule.patient_name:
             by_slot.setdefault(_slot_key(schedule.date, schedule.room, schedule.time_slot), schedule)
     for i, data in enumerate(datas):
@@ -691,19 +695,20 @@ def update_schedules_from_records(records, user, existing_schedules):
             schedule.save()
 
     # 방·순서는 업로드한 파일이 기준: 현황판에서 직접 옮기거나 정렬한 순서는 여기서 초기화
-    SurgerySchedule.objects.filter(user=user).exclude(position=0).update(position=0)
+    SurgerySchedule.all_objects.filter(user=user).exclude(position=0).update(position=0)
 
     # Whatever wasn't claimed wasn't matched by anything in this upload - the case is no
     # longer part of the schedule, so remove it (and its memo along with it).
-    # (현황판에서 직접 추가한 수술은 파일에 없어도 유지)
-    stale = [schedule for schedule in existing_schedules if schedule.id not in claimed_ids and not schedule.manual]
+    # (현황판에서 직접 추가한 수술은 파일에 없어도 유지, 휴지통의 수술은 휴지통에 그대로)
+    stale = [schedule for schedule in existing_schedules
+             if schedule.id not in claimed_ids and not schedule.manual and schedule.deleted_at is None]
     if stale:
         logger.warning(
             "update_schedules_from_records: deleting %d unmatched schedule(s) for user=%s: %s",
             len(stale), user,
             [(s.id, s.patient_name, s.surgery_name, s.surgeon, s.patient_info) for s in stale],
         )
-        SurgerySchedule.objects.filter(id__in=[schedule.id for schedule in stale]).delete()
+        SurgerySchedule.all_objects.filter(id__in=[schedule.id for schedule in stale]).delete()
 
     logger.info(
         "update_schedules_from_records: user=%s matched=%d created=%d deleted=%d",
@@ -728,12 +733,11 @@ def update_schedule(request, schedule_id):
     if not isinstance(data, dict):
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
     if data.get("delete"):
-        # 현황판에서 직접 추가한 수술만 지울 수 있음 (파일에서 온 수술은 파일로 관리)
-        if not schedule.manual:
-            return JsonResponse({"status": "error", "message": "직접 추가한 수술만 지울 수 있습니다."}, status=400)
-        schedule.delete()
+        # 휴지통으로 (메모 포함 그대로 보관) - '삭제된 수술'에서 복원
+        schedule.deleted_at = timezone.now()
+        schedule.save(update_fields=["deleted_at"])
         board = build_board(SurgerySchedule.objects.filter(user=request.user), _memo_map(request.user))
-        return JsonResponse({"status": "success", "board": board})
+        return JsonResponse({"status": "success", "board": board, "trash": trash_list(request.user)})
     if "status" in data and data["status"] not in MANUAL_STATUS:
         return JsonResponse({"status": "error", "message": "Invalid status"}, status=400)
     if "move" in data and data["move"] not in ("up", "down"):
@@ -862,6 +866,49 @@ def create_schedule(request):
                     case.save(update_fields=["position"])
     board = build_board(SurgerySchedule.objects.filter(user=user), _memo_map(user))
     return JsonResponse({"status": "success", "id": schedule.id, "board": board})
+
+
+TRASH_KEEP_DAYS = 14
+
+
+def trash_list(user):
+    """휴지통 목록 (최근 삭제 순). 오래된 것(TRASH_KEEP_DAYS 일 지남)은 여기서 정리."""
+    SurgerySchedule.all_objects.filter(
+        user=user, deleted_at__lt=timezone.now() - timedelta(days=TRASH_KEEP_DAYS)).delete()
+    rows = SurgerySchedule.all_objects.filter(user=user, deleted_at__isnull=False).order_by("-deleted_at", "-id")
+    return [{
+        "id": s.id, "date": s.date.isoformat(), "room": s.room, "time_slot": s.time_slot,
+        "surgery_name": s.surgery_name, "patient_name": s.patient_name, "surgeon": s.surgeon,
+        "deleted_at": timezone.localtime(s.deleted_at).strftime("%m/%d %H:%M"),
+    } for s in rows]
+
+
+@login_required
+@user_is_specially_approved
+@require_http_methods(["GET", "POST"])
+def schedule_trash(request):
+    """삭제된 수술(휴지통). GET: 목록 / POST {action: restore|purge, id}: 복원 또는 영구 삭제.
+    응답: {trash, board?}"""
+    user = request.user
+    if request.method == "GET":
+        return JsonResponse({"status": "success", "trash": trash_list(user)})
+    try:
+        data = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    data = data if isinstance(data, dict) else {}
+    schedule = SurgerySchedule.all_objects.filter(user=user, id=data.get("id"), deleted_at__isnull=False).first()
+    if schedule is None:
+        return JsonResponse({"status": "error", "message": "삭제된 수술을 찾지 못했습니다."}, status=404)
+    if data.get("action") == "restore":
+        schedule.deleted_at = None
+        schedule.save(update_fields=["deleted_at"])
+    elif data.get("action") == "purge":
+        schedule.delete()
+    else:
+        return JsonResponse({"status": "error", "message": "요청을 이해하지 못했습니다."}, status=400)
+    board = build_board(SurgerySchedule.objects.filter(user=user), _memo_map(user))
+    return JsonResponse({"status": "success", "trash": trash_list(user), "board": board})
 
 
 @login_required

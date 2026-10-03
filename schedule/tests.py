@@ -1453,11 +1453,11 @@ class OnCallCascadeAndManualCaseTests(TestCase):
         # 파일로 업데이트: 파일에 없는 직접 추가 수술은 유지, 파일의 일반 수술은 그대로 동기화
         update_schedules_from_records([rec('101', '08:00', 'A', 'Op')], self.user, list(SurgerySchedule.objects.filter(user=self.user)))
         self.assertTrue(SurgerySchedule.objects.filter(id=case.id).exists())
-        # 파일 수술은 삭제 불가, 직접 추가한 수술은 삭제 가능
-        self.assertEqual(self.post(SurgerySchedule.objects.get(patient_name='A'), delete=True).status_code, 400)
+        # 직접 추가한 수술도 삭제하면 휴지통으로
         res = self.post(case, delete=True)
         self.assertEqual(res.status_code, 200)
         self.assertFalse(SurgerySchedule.objects.filter(id=case.id).exists())
+        self.assertTrue(SurgerySchedule.all_objects.filter(id=case.id, deleted_at__isnull=False).exists())
 
     def test_manual_case_matched_by_file_becomes_regular(self):
         from .views import update_schedules_from_records
@@ -1465,3 +1465,69 @@ class OnCallCascadeAndManualCaseTests(TestCase):
         update_schedules_from_records([rec('103', '10:00', '홍길동', 'Op')], self.user, list(SurgerySchedule.objects.filter(user=self.user)))
         case.refresh_from_db()
         self.assertEqual((case.manual, case.time_slot), (False, '10:00'))
+
+
+class ScheduleTrashTests(TestCase):
+    """잘못 들어간 수술 삭제(휴지통) · 복원."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+        self.a = make(self.user, '101', '08:00', name='A')
+        self.b = make(self.user, '101', '10:00', name='B')
+
+    def delete(self, case):
+        return self.client.post(reverse('schedule_update', args=[case.id]), json.dumps({'delete': True}),
+                                content_type='application/json')
+
+    def trash(self, **body):
+        if body:
+            return self.client.post(reverse('schedule_trash'), json.dumps(body), content_type='application/json')
+        return self.client.get(reverse('schedule_trash'))
+
+    def test_delete_moves_to_trash_and_restore_brings_back_with_memo(self):
+        from .models import PatientMemo
+        PatientMemo.objects.create(schedule=self.b, content='알레르기')
+        res = self.delete(self.b).json()
+        self.assertEqual([c['patient_name'] for r in res['board']['rooms'] for c in r['cases']], ['A'])
+        self.assertEqual([t['patient_name'] for t in res['trash']], ['B'])
+        board = self.client.get(reverse('schedule_dashboard')).context['board']
+        self.assertEqual(board['total'], 1)                                   # 현황판·건수에서 빠짐
+        res = self.trash(action='restore', id=self.b.id).json()
+        self.assertEqual((res['trash'], len(res['board']['rooms'][0]['cases'])), ([], 2))
+        self.assertEqual(res['board']['rooms'][0]['cases'][1]['memo'], '알레르기')   # 메모도 그대로
+
+    def test_purge_other_users_and_bad_requests(self):
+        self.delete(self.a)
+        self.assertEqual(self.trash(action='bogus', id=self.a.id).status_code, 400)
+        self.assertEqual(self.trash(action='restore', id=self.b.id).status_code, 404)   # 휴지통에 없는 수술
+        other = get_user_model().objects.create_user('o', password='x', is_specially_approved=True)
+        self.client.force_login(other)
+        self.assertEqual(self.trash().json()['trash'], [])
+        self.assertEqual(self.trash(action='restore', id=self.a.id).status_code, 404)
+        self.client.force_login(self.user)
+        self.assertEqual(self.trash(action='purge', id=self.a.id).json()['trash'], [])
+        self.assertFalse(SurgerySchedule.all_objects.filter(id=self.a.id).exists())
+
+    def test_upload_update_keeps_deleted_case_deleted_and_replace_empties_trash(self):
+        from .views import apply_records
+        self.delete(self.b)
+        # 다시 올린 파일에 B 가 있어도 지운 채로, 살아 있는 A 는 그대로 맞춰짐
+        apply_records([rec('101', '08:00', 'A', 'Op'), rec('101', '10:30', 'B', 'Op')], self.user, 'update')
+        self.assertEqual(list(SurgerySchedule.objects.values_list('patient_name', flat=True)), ['A'])
+        self.assertEqual(SurgerySchedule.all_objects.get(id=self.b.id).time_slot, '10:30')
+        self.assertEqual(SurgerySchedule.objects.get(patient_name='A').id, self.a.id)
+        # 파일에 없으면 휴지통에 그대로 (업데이트가 휴지통을 비우지 않음)
+        apply_records([rec('101', '08:00', 'A', 'Op')], self.user, 'update')
+        self.assertTrue(SurgerySchedule.all_objects.filter(id=self.b.id).exists())
+        apply_records([rec('102', '09:00', 'C', 'Op')], self.user, 'replace')
+        self.assertEqual(list(SurgerySchedule.all_objects.values_list('patient_name', flat=True)), ['C'])
+
+    def test_old_trash_is_cleaned_up(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        SurgerySchedule.objects.filter(id=self.a.id).update(deleted_at=timezone.now() - timedelta(days=30))
+        self.assertEqual(self.trash().json()['trash'], [])
+        self.assertFalse(SurgerySchedule.all_objects.filter(id=self.a.id).exists())
