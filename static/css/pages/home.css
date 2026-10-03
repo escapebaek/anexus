@@ -581,3 +581,14 @@ a.lp-card:hover .lp-go {
     border-color: #2b5876;
   }
 }
+
+/* 넓은 화면: 히어로·기능 섹션 배경을 화면 끝까지 (사이트 공통 1400px 틀 밖으로), 내용은 조금 더 넓게 */
+html, body { overflow-x: clip; }   /* 100vw 가 세로 스크롤바 폭만큼 넘쳐 가로 스크롤이 생기지 않게 */
+.hero-section,
+.features-section {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+.features-section > .container-xxl { max-width: 1600px; margin: 0 auto; padding: 0 24px; }
+@media (max-width: 576px) { .features-section > .container-xxl { padding: 0 12px; } }
