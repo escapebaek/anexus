@@ -950,7 +950,8 @@ def _recent_roster(user, day, role):
 def staff_state(user, day):
     """-> {date,
            roster: [{name, rooms}] (근무자), keepers: {room: [names]}, recent: {date, count} | None,
-           anes: [names] (마취의 명단), anes_recent: {date, count} | None}
+           anes: [names] (마취의 명단), anes_recent: {date, count} | None,
+           marks: {keeper|anes: {name: {off, duty}}} (퇴근·당직 표시가 있는 사람만)}
     마취의를 맡은 수술 수는 화면이 현황판 데이터로 셈."""
     keepers = defaultdict(list)
     rooms_of = defaultdict(list)
@@ -961,9 +962,14 @@ def staff_state(user, day):
     roster = [{"name": s.name, "rooms": sorted(rooms_of.get(s.name, []), key=_room_sort_key)}
               for s in people if s.role == "keeper"]
     anes = [s.name for s in people if s.role == "anes"]
+    marks = {"keeper": {}, "anes": {}}
+    for s in people:
+        if s.off or s.duty:
+            marks[s.role][s.name] = {"off": s.off, "duty": s.duty}
     return {"date": day.isoformat(), "roster": roster, "keepers": dict(keepers),
             "recent": None if roster else _recent_roster(user, day, "keeper"),
-            "anes": anes, "anes_recent": None if anes else _recent_roster(user, day, "anes")}
+            "anes": anes, "anes_recent": None if anes else _recent_roster(user, day, "anes"),
+            "marks": marks}
 
 
 def _add_staff(user, day, names, role="keeper"):
@@ -982,6 +988,7 @@ def _add_staff(user, day, names, role="keeper"):
 def staff_api(request):
     """근무자·마취의 명단과 방킵 변경. action:
     add(names) · remove(name) · load_recent  - role: keeper(근무자, 기본) | anes(마취의)
+    mark(name, off?: bool, duty?: "today" | "yesterday" | "") - 퇴근·당직 표시
     assign(name, room) · unassign(name, room) - 방킵. 한 사람은 하루에 한 방만 (다른 방으로 배정하면 옮겨짐).
     (수술별 마취의 자체는 schedule_update 의 anesthesiologist 로 저장)
     응답으로 그날의 명단·배정 전체를 돌려줌."""
@@ -1009,10 +1016,25 @@ def staff_api(request):
             if last:
                 names = DutyStaff.objects.filter(user=user, role=role, date=last["date"]).values_list("name", flat=True)
                 _add_staff(user, day, list(names), role)
+                # 바로 전날 명단이면 그날의 '오늘 당직' 은 오늘의 '어제 당직' 으로
+                if date_parser.isoparse(last["date"]).date() == day - timedelta(days=1):
+                    on_call = DutyStaff.objects.filter(user=user, role=role, date=last["date"], duty="today") \
+                        .values_list("name", flat=True)
+                    DutyStaff.objects.filter(user=user, role=role, date=day, name__in=list(on_call), duty="") \
+                        .update(duty="yesterday")
         elif action == "assign" and name and room:
             _add_staff(user, day, [name])
             RoomKeeper.objects.filter(user=user, date=day, name=name).exclude(room=room).delete()
             RoomKeeper.objects.get_or_create(user=user, date=day, room=room, name=name)
+        elif action == "mark" and name:
+            fields = {}
+            if "off" in data:
+                fields["off"] = bool(data.get("off"))
+            if "duty" in data:
+                fields["duty"] = data.get("duty") if data.get("duty") in ("today", "yesterday") else ""
+            if not fields:
+                return JsonResponse({"status": "error", "message": "요청을 이해하지 못했습니다."}, status=400)
+            DutyStaff.objects.filter(user=user, date=day, role=role, name=name).update(**fields)
         elif action == "unassign" and name and room:
             RoomKeeper.objects.filter(user=user, date=day, room=room, name=name).delete()
         else:

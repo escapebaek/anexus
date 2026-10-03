@@ -79,13 +79,17 @@ class BoardNotice(models.Model):
 
 
 class DutyStaff(models.Model):
-    """현황판 명단 (사용자·날짜별). role: keeper = 근무자(방킵 배정), anes = 마취의(수술별 마취의 칸)."""
+    """현황판 명단 (사용자·날짜별). role: keeper = 근무자(방킵 배정), anes = 마취의(수술별 마취의 칸).
+    off = 퇴근 (이름에 줄), duty = 그날 표시할 당직: today(오늘 당직) | yesterday(어제 당직)."""
     ROLE_CHOICES = [("keeper", "근무자"), ("anes", "마취의")]
+    DUTY_CHOICES = [("", "-"), ("today", "오늘 당직"), ("yesterday", "어제 당직")]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='duty_staff')
     date = models.DateField()
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="keeper")
     name = models.CharField(max_length=50)
     order = models.PositiveIntegerField(default=0)
+    off = models.BooleanField(default=False)
+    duty = models.CharField(max_length=10, choices=DUTY_CHOICES, blank=True, default="")
 
     class Meta:
         unique_together = [("user", "date", "role", "name")]

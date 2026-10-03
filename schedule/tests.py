@@ -1287,6 +1287,28 @@ class RoomKeeperTests(TestCase):
         self.assertEqual((staff['date'], staff['keepers']), (self.day, {'101': ['김철수']}))
         self.assertContains(res, 'id="staffBar"')
 
+    def test_mark_off_and_duty(self):
+        self.state(action='add', names=['A', 'B'])
+        self.state(action='add', role='anes', names=['A'])
+        s = self.state(action='mark', name='A', off=True)
+        s = self.state(action='mark', name='B', duty='today')
+        s = self.state(action='mark', role='anes', name='A', duty='yesterday')
+        self.assertEqual(s['marks'], {'keeper': {'A': {'off': True, 'duty': ''}, 'B': {'off': False, 'duty': 'today'}},
+                                      'anes': {'A': {'off': False, 'duty': 'yesterday'}}})   # 근무자·마취의 따로
+        s = self.state(action='mark', name='A', off=False)
+        s = self.state(action='mark', name='B', duty='bogus')                                   # 모르는 값은 해제
+        self.assertEqual(s['marks']['keeper'], {})
+        self.assertEqual(self.act(action='mark', name='A').status_code, 400)
+
+    def test_load_recent_from_previous_day_turns_on_call_into_yesterday(self):
+        self.state(action='add', names=['A', 'B'])
+        self.state(action='mark', name='A', duty='today')
+        self.state(action='mark', name='B', off=True)
+        s = self.state(date='2026-08-28', action='load_recent')
+        self.assertEqual(s['marks']['keeper'], {'A': {'off': False, 'duty': 'yesterday'}})     # 퇴근은 날마다 새로
+        self.state(date='2026-08-30', action='load_recent')                                     # 이틀 뒤면 그대로 안 옮김
+        self.assertEqual(self.state(date='2026-08-30', action='add', names=[])['marks']['keeper'], {})
+
 
 
 class AnesRosterTests(TestCase):
