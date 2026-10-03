@@ -1,0 +1,644 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Drug Calculator · ANExuS{% endblock %}
+{% block custom_css %}
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="{% static 'css/pages/calculator.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block page_content %}
+<div class="calc" data-img-base="{% static 'img/drugs/' %}">
+  <div class="cx-layout">
+    <!-- Left Sidebar - Patient Info -->
+    <aside class="cx-panel">
+      <div class="cx-panel-head">
+        <h1><i class="fas fa-stethoscope"></i> Drug Calculator</h1>
+        <p>Anesthesia Dosage</p>
+        <a class="cx-switch" href="{% url 'calculator_pediatric' %}"><i class="fas fa-child"></i> Pediatric Calculator</a>
+      </div>
+      <form class="cx-form" onsubmit="event.preventDefault(); calculateAll();">
+        <div class="cx-field">
+          <label for="age">Age (years)</label>
+          <input type="number" id="age" placeholder="Age" />
+        </div>
+        <div class="cx-field">
+          <label for="height">Height (cm)</label>
+          <input type="number" id="height" placeholder="Height" />
+        </div>
+        <div class="cx-field">
+          <label for="weight">Weight (kg) *</label>
+          <input type="number" id="weight" placeholder="Weight" step="0.1" required />
+        </div>
+        <!-- type=button: 사이트 공통 스크립트가 submit 버튼을 10초간 'Loading...' 으로 바꾸지 않게 (입력하면 자동 계산) -->
+        <button type="button" class="cx-btn-calc" onclick="calculateAll()">
+          <i class="fas fa-calculator"></i> Calculate
+        </button>
+      </form>
+    </aside>
+
+    <!-- Main Content - Drug Cards -->
+    <main class="cx-main">
+      <div class="cx-grid">
+        <!-- NEP Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-syringe"></i></div>
+            <h3 onclick="openDrugModal('nep')">Norepinephrine (NEP)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mcg/ml)</label>
+              <input type="number" id="nep_conc" value="20" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mcg/kg/min)</label>
+              <input type="number" id="nep_dr" value="0.01" step="0.001" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="nep_conc_mix"></div></details>
+          <p class="cx-info">Range: 0.01–0.2 mcg/kg/min (필요 시 ↑) · 중심정맥 권장</p>
+          <div class="cx-results">
+            <div class="cx-res" id="nep_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="nep_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EPI Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-heartbeat"></i></div>
+            <h3 onclick="openDrugModal('epi')">Epinephrine (EPI)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mcg/ml)</label>
+              <input type="number" id="epi_conc" value="20" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mcg/kg/min)</label>
+              <input type="number" id="epi_dr" value="0.01" step="0.001" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="epi_conc_mix"></div></details>
+          <p class="cx-info">Range: 0.01–0.5 mcg/kg/min</p>
+          <div class="cx-results">
+            <div class="cx-res" id="epi_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="epi_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phenylephrine Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('phen')">Phenylephrine</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mcg/ml)</label>
+              <input type="number" id="phen_conc" value="100" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (mcg)</label>
+              <input type="number" id="phen_bolus" value="50" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mcg/kg/min)</label>
+              <input type="number" id="phen_dr" value="0.1" step="0.01" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="phen_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 50–100mcg | C.I.: 0.1–1 mcg/kg/min</p>
+          <div class="cx-results">
+            <div class="cx-res" id="phen_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="phen_bolus_result">-</div>
+            </div>
+            <div class="cx-res" id="phen_cont_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="phen_cont_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VASO Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('vaso')">Vasopressin (VASO)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (unit/ml)</label>
+              <input type="number" id="vaso_conc" value="1" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (unit/min)</label>
+              <input type="number" id="vaso_dr1" value="0.04" step="0.001" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (unit/kg/hr)</label>
+              <input type="number" id="vaso_dr2" value="0.04" step="0.001" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="vaso_conc_mix"></div></details>
+          <p class="cx-info">성인 표준: 0.01–0.04 unit/min (체중 무관) · unit/kg/hr는 주로 소아</p>
+          <div class="cx-results">
+            <div class="cx-res" id="vaso1_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> unit/min → ml/hr</div>
+              <div class="cx-res-value" id="vaso1_result">-</div>
+            </div>
+            <div class="cx-res" id="vaso2_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> unit/kg/hr → ml/hr</div>
+              <div class="cx-res-value" id="vaso2_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DOPA Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-pills"></i></div>
+            <h3 onclick="openDrugModal('dopa')">Dopamine (DOPA)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="dopa_conc" value="1" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mcg/kg/min)</label>
+              <input type="number" id="dopa_dr" value="5" step="0.1" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="dopa_conc_mix"></div></details>
+          <p class="cx-info">Range: 2–20 mcg/kg/min (&lt;3 신혈류 / 3–10 β / &gt;10 α)</p>
+          <div class="cx-results">
+            <div class="cx-res" id="dopa_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="dopa_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DOBU Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-pump-medical"></i></div>
+            <h3 onclick="openDrugModal('dobu')">Dobutamine (DOBU)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="dobu_conc" value="1" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mcg/kg/min)</label>
+              <input type="number" id="dobu_dr" value="5" step="0.1" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="dobu_conc_mix"></div></details>
+          <p class="cx-info">Range: 2–20 mcg/kg/min</p>
+          <div class="cx-results">
+            <div class="cx-res" id="dobu_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="dobu_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NTG Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-prescription-bottle"></i></div>
+            <h3 onclick="openDrugModal('ntg')">Nitroglycerin (NTG)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="ntg_conc" value="1" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mcg/kg/min)</label>
+              <input type="number" id="ntg_dr" value="0.5" step="0.01" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="ntg_conc_mix"></div></details>
+          <p class="cx-info">Range: 0.1–3 mcg/kg/min (성인 5–200 mcg/min) · non-PVC 라인</p>
+          <div class="cx-results">
+            <div class="cx-res" id="ntg_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="ntg_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Amiodarone Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('amio')">Amiodarone</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-section">Loading (stable VT·AF)</div>
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="amio_load_conc" value="1.5" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Dose (mg)</label>
+              <input type="number" id="amio_load" value="150" step="10" />
+            </div>
+            <div class="cx-input">
+              <label>Over (min)</label>
+              <input type="number" id="amio_load_min" value="10" step="1" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="amio_load_conc_mix"></div></details>
+          <div class="cx-card-body">
+            <div class="cx-section">C.I. (maintenance)</div>
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="amio_conc" value="2" step="0.1" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="amio_conc_mix"></div></details>
+          <p class="cx-info">CPR(VF/pVT): 300mg IV push → 2차 150mg | Load 150mg/10min → 1mg/min×6h → 0.5mg/min×18h · only D5W</p>
+          <div class="cx-results">
+            <div class="cx-res" id="amio_load_vol_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Load (ml)</div>
+              <div class="cx-res-value" id="amio_load_vol_result">-</div>
+            </div>
+            <div class="cx-res" id="amio_load_rate_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Load (ml/hr)</div>
+              <div class="cx-res-value" id="amio_load_rate_result">-</div>
+            </div>
+            <div class="cx-res" id="amio_inf1_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> 1mg/min (ml/hr)</div>
+              <div class="cx-res-value" id="amio_inf1_result">-</div>
+            </div>
+            <div class="cx-res" id="amio_inf2_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> 0.5mg/min (ml/hr)</div>
+              <div class="cx-res-value" id="amio_inf2_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TXA Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-filter"></i></div>
+            <h3 onclick="openDrugModal('txa')">Tranexamic Acid (TXA)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="txa_conc" value="100" step="0.01" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="txa_conc_mix"></div></details>
+          <p class="cx-info">Load: 10mg/kg/20min | Maint: 1mg/kg/hr</p>
+          <div class="cx-results">
+            <div class="cx-res" id="txa1_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Load (ml/hr)</div>
+              <div class="cx-res-value" id="txa1_result">-</div>
+            </div>
+            <div class="cx-res" id="txa2_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Maint (ml/hr)</div>
+              <div class="cx-res-value" id="txa2_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PPF Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-capsules"></i></div>
+            <h3 onclick="openDrugModal('ppf')">Propofol (PPF)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="ppf_conc" value="20" step="0.01" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="ppf_conc_mix"></div></details>
+          <p class="cx-info">Range: 6-12 mg/kg/hr</p>
+          <div class="cx-results">
+            <div class="cx-res" id="ppf1_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> MIN (ml/hr)</div>
+              <div class="cx-res-value" id="ppf1_result">-</div>
+            </div>
+            <div class="cx-res" id="ppf2_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> MAX (ml/hr)</div>
+              <div class="cx-res-value" id="ppf2_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RFTN Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-prescription"></i></div>
+            <h3 onclick="openDrugModal('rftn')">Remifentanil (RFTN)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mcg/ml)</label>
+              <input type="number" id="rftn_conc" value="20" step="0.01" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="rftn_conc_mix"></div></details>
+          <p class="cx-info">Range: 0.1-1 mcg/kg/min</p>
+          <div class="cx-results">
+            <div class="cx-res" id="rftn1_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> MIN (ml/hr)</div>
+              <div class="cx-res-value" id="rftn1_result">-</div>
+            </div>
+            <div class="cx-res" id="rftn2_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> MAX (ml/hr)</div>
+              <div class="cx-res-value" id="rftn2_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SuFTN Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-tablets"></i></div>
+            <h3 onclick="openDrugModal('suftn')">Sufentanil (SuFTN)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mcg/ml)</label>
+              <input type="number" id="suftn_conc" value="5" step="0.01" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="suftn_conc_mix"></div></details>
+          <p class="cx-info">Range: 0.5-1.5 mcg/kg/hr</p>
+          <div class="cx-results">
+            <div class="cx-res" id="suftn1_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> MIN (ml/hr)</div>
+              <div class="cx-res-value" id="suftn1_result">-</div>
+            </div>
+            <div class="cx-res" id="suftn2_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> MAX (ml/hr)</div>
+              <div class="cx-res-value" id="suftn2_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calcium Gluconate Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('ca')">Calcium Gluconate</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="ca_conc" value="100" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (g)</label>
+              <input type="number" id="ca_bolus" value="1.0" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mg/kg/hr)</label>
+              <input type="number" id="ca_dr" value="5" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="ca_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 1–2g (10분 이상) | C.I.: 5–10 mg/kg/hr (gluconate 염 기준) · Bicarbonate와 같은 라인 금지</p>
+          <div class="cx-results">
+            <div class="cx-res" id="ca_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="ca_bolus_result">-</div>
+            </div>
+            <div class="cx-res" id="ca_cont_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="ca_cont_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SNP Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-flask"></i></div>
+            <h3 onclick="openDrugModal('snp')">Nitroprusside (SNP)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="snp_conc" value="1" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mcg/kg/min)</label>
+              <input type="number" id="snp_dr" value="0.5" step="0.01" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="snp_conc_mix"></div></details>
+          <p class="cx-info">Range: 0.3–3 mcg/kg/min (max 10, 10분 이내) · 차광 필수</p>
+          <div class="cx-results">
+            <div class="cx-res" id="snp_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="snp_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Magnesium Sulfate Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('mg')">Magnesium Sulfate</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="mg_conc" value="100" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (g)</label>
+              <input type="number" id="mg_bolus" value="1.0" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Infusion (g/hr)</label>
+              <input type="number" id="mg_infusion" value="1.0" step="0.1" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="mg_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 1–2g over 5–15min (Torsades) | Inf: 1–2 g/hr</p>
+          <div class="cx-results">
+            <div class="cx-res" id="mg_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="mg_bolus_result">-</div>
+            </div>
+            <div class="cx-res" id="mg_infusion_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="mg_infusion_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sodium Bicarbonate Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('sbic')">Sodium Bicarbonate</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mEq/ml)</label>
+              <input type="number" id="sbic_conc" value="1" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (mEq/kg)</label>
+              <input type="number" id="sbic_dr" value="1" step="0.1" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="sbic_conc_mix"></div></details>
+          <p class="cx-info">Typical bolus: 1 mEq/kg</p>
+          <div class="cx-results">
+            <div class="cx-res" id="sbic_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="sbic_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dantrolene Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('dant')">Dantrolene</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="dant_conc" value="0.3333" step="0.0001" />
+            </div>
+            <div class="cx-input">
+              <label>Infusion (mg/kg/hr)</label>
+              <input type="number" id="dant_infusion" value="0.25" step="0.01" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="dant_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 2.5mg/kg 반복 (총 10mg/kg 이상도 가능) | 후속: 1mg/kg q4–6h 또는 0.25mg/kg/hr × 24h</p>
+          <div class="cx-results">
+            <div class="cx-res" id="dant_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="dant_bolus_result">-</div>
+            </div>
+            <div class="cx-res" id="dant_max_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> 10mg/kg (ml)</div>
+              <div class="cx-res-value" id="dant_max_result">-</div>
+            </div>
+            <div class="cx-res" id="dant_vial_result_item">
+              <div class="cx-res-label"><i class="fas fa-vial"></i> Bolus vials</div>
+              <div class="cx-res-value" id="dant_vial_result">-</div>
+            </div>
+            <div class="cx-res" id="dant_infusion_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Inf (ml/hr)</div>
+              <div class="cx-res-value" id="dant_infusion_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lidocaine Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('lido')">Lidocaine</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Bolus conc (mg/ml)</label>
+              <input type="number" id="lido_conc" value="20" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (mg/kg)</label>
+              <input type="number" id="lido_bolus" value="1.0" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>C.I. conc (mg/ml)</label>
+              <input type="number" id="lido_inf_conc" value="4" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Infusion (mg/min)</label>
+              <input type="number" id="lido_infusion" value="1" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="lido_conc_mix"></div></details>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="lido_inf_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 1–1.5mg/kg | C.I.: 1–4 mg/min (체중 무관)</p>
+          <div class="cx-results">
+            <div class="cx-res" id="lido_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="lido_bolus_result">-</div>
+            </div>
+            <div class="cx-res" id="lido_infusion_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Inf (ml/hr)</div>
+              <div class="cx-res-value" id="lido_infusion_result">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Atropine Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-vial"></i></div>
+            <h3 onclick="openDrugModal('atropine')">Atropine</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="atropine_conc" value="0.5" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (mg)</label>
+              <input type="number" id="atropine_bolus" value="0.5" step="0.1" />
+            </div>
+          </div>
+          <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="atropine_conc_mix"></div></details>
+          <p class="cx-info">ACLS 서맥: 1mg q3–5min (max 3mg) · 마취 중 vagal: 0.4–0.5mg</p>
+          <div class="cx-results">
+            <div class="cx-res" id="atropine_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="atropine_bolus_result">-</div>
+            </div>
+            <div class="cx-res" id="atropine_max_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Max (ml)</div>
+              <div class="cx-res-value" id="atropine_max_result">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Drug Image Modal -->
+  <div class="cx-modal" id="drugModal" onclick="closeDrugModalOnOverlay(event)">
+    <div class="cx-modal-box">
+      <div class="cx-modal-head cx-modal-head-band">
+        <h2 id="drugModalTitle">Drug Name</h2>
+        <button class="cx-modal-x" onclick="closeDrugModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="cx-modal-body" id="drugModalBody">
+        <!-- Image or placeholder will be inserted here -->
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/calculator/drug.js' %}"></script>
+{% endblock extra_js %}

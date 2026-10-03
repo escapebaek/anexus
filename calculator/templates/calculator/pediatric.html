@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Pediatric Calculator · ANExuS{% endblock %}
+{% block custom_css %}
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="{% static 'css/pages/calculator.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block page_content %}
+<div class="calc">
+  <div class="cx-layout">
+    <!-- Left Sidebar - Patient Info -->
+    <aside class="cx-panel">
+      <div class="cx-panel-head">
+        <h1><i class="fas fa-child"></i> Ped Calculator</h1>
+        <p>Pediatric Anesthesia Dosage</p>
+        <a class="cx-switch" href="{% url 'calculator_drug' %}"><i class="fas fa-stethoscope"></i> Adult Drug Calculator</a>
+      </div>
+      <form class="cx-form" onsubmit="event.preventDefault(); calculateAll();">
+        <div class="cx-field">
+          <label for="age">Age (years)</label>
+          <input type="number" id="age" placeholder="Age" step="0.1" min="0" max="18" />
+        </div>
+        <div class="cx-field">
+          <label for="height">Height (cm)</label>
+          <input type="number" id="height" placeholder="Height" min="30" max="200" />
+        </div>
+        <div class="cx-field">
+          <label for="weight">Weight (kg) *</label>
+          <input type="number" id="weight" placeholder="Weight" step="0.1" min="1" max="120" required />
+        </div>
+        <!-- type=button: 사이트 공통 스크립트가 submit 버튼을 10초간 'Loading...' 으로 바꾸지 않게 (입력하면 자동 계산) -->
+        <button type="button" class="cx-btn-calc" onclick="calculateAll()">
+          <i class="fas fa-calculator"></i> Calculate
+        </button>
+        <button type="button" class="cx-btn-set" onclick="openSettings()">
+          <i class="fas fa-cog"></i> Concentrations
+        </button>
+      </form>
+
+      <!-- Airway Info Section -->
+      <div class="cx-airway">
+        <div class="cx-airway-head">
+          <i class="fas fa-lungs"></i> Airway Management
+        </div>
+        <div class="cx-airway-item">
+          <span class="cx-airway-label">ETT cuffed</span>
+          <span class="cx-airway-value" id="ett_cuffed">-</span>
+        </div>
+        <div class="cx-airway-item">
+          <span class="cx-airway-label">ETT uncuffed</span>
+          <span class="cx-airway-value" id="ett_uncuffed">-</span>
+        </div>
+        <div class="cx-airway-item">
+          <span class="cx-airway-label">ETT Depth (oral)</span>
+          <span class="cx-airway-value" id="ett_depth">-</span>
+        </div>
+        <div class="cx-airway-item">
+          <span class="cx-airway-label">C-Line (Rt IJ)</span>
+          <span class="cx-airway-value" id="c_line">-</span>
+        </div>
+        <p class="cx-airway-note" id="airway_note"></p>
+      </div>
+    </aside>
+
+    <!-- Main Content - Drug Cards (DRUGS 배열에서 자동 생성) -->
+    <main class="cx-main">
+      <div class="cx-grid" id="drugGrid"></div>
+    </main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="cx-modal">
+    <div class="cx-modal-box">
+      <div class="cx-modal-head">
+        <h2 class="cx-modal-title">Drug Concentrations</h2>
+        <button type="button" class="cx-modal-x" onclick="closeSettings()" aria-label="닫기">&times;</button>
+      </div>
+      <div id="concentrationSettings">
+        <!-- Concentrations will be populated by JavaScript -->
+      </div>
+      <button type="button" class="cx-modal-save" onclick="saveSettings()">
+        <i class="fas fa-save"></i> Save & Recalculate
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/calculator/pediatric.js' %}"></script>
+{% endblock extra_js %}

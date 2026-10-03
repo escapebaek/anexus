@@ -1,0 +1,342 @@
+/* 마취 약물 계산기 · 소아 계산기 (예전 github.io 별도 사이트를 옮겨 온 것)
+   클래스는 모두 cx- 로 시작: main.css·Bootstrap 의 .calculator-card · .card-icon · .result-item · .modal · .close 와 겹치지 않게 */
+
+.calc {
+  --cx-gradient: var(--primary-gradient, linear-gradient(135deg, #2b5876, #4e4376));
+  --cx-dark: #2b5876;
+  --cx-text: #2c3e50;
+  --cx-muted: #66707c;
+  --cx-alpha: rgba(43, 88, 118, 0.1);
+  --cx-bg: #f8f9fa;
+  --cx-radius: 12px;
+  --cx-fast: all 0.2s ease;
+
+  /* 사이트 본문 폭(1400px)을 넘어 화면 너비를 씀 — transform 대신 margin 으로 (안의 fixed 모달이 화면 기준이 되도록) */
+  width: min(1920px, calc(100vw - 32px));
+  margin: 0.75rem calc(50% - min(960px, 50vw - 16px)) 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(43, 88, 118, 0.14);
+  box-shadow: 0 8px 30px rgba(43, 88, 118, 0.12);
+  background: linear-gradient(135deg, #f5f7fa 0%, #dfe6f0 100%);
+  overflow: clip;  /* hidden 이면 왼쪽 패널 sticky 가 동작하지 않음 */
+  color: var(--cx-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.calc *, .calc *::before, .calc *::after { box-sizing: border-box; }
+.calc h1, .calc h2, .calc h3, .calc p { margin: 0; }
+
+.cx-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 70vh; }
+
+/* ---------- 왼쪽 환자 정보 패널 ---------- */
+.cx-panel {
+  position: sticky;
+  top: calc(var(--navbar-height, 70px) + 12px);
+  align-self: start;
+  max-height: calc(100vh - var(--navbar-height, 70px) - 24px);
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--cx-gradient);
+  color: #fff;
+  border-radius: 0 0 14px 0;
+}
+.cx-panel-head { text-align: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2); }
+.cx-panel-head h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.2rem; color: #fff; }
+.cx-panel-head p { font-size: 0.72rem; opacity: 0.8; }
+.cx-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 0.55rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.cx-switch:hover { background: rgba(255, 255, 255, 0.26); color: #fff; text-decoration: none; }
+
+.cx-form { display: flex; flex-direction: column; gap: 0.75rem; }
+.cx-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.cx-field label { font-size: 0.72rem; font-weight: 600; opacity: 0.9; margin: 0; }
+.cx-field input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: var(--cx-fast);
+}
+.cx-field input::placeholder { color: rgba(255, 255, 255, 0.55); }
+.cx-field input:focus { outline: none; background: rgba(255, 255, 255, 0.25); border-color: rgba(255, 255, 255, 0.55); }
+
+.cx-btn-calc,
+.cx-btn-set {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: var(--cx-fast);
+}
+.cx-btn-calc { margin-top: 0.4rem; padding: 0.6rem 1rem; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.32); font-weight: 600; font-size: 0.82rem; }
+.cx-btn-calc:hover { background: rgba(255, 255, 255, 0.3); }
+.cx-btn-set { padding: 0.5rem 0.8rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); font-weight: 500; font-size: 0.76rem; }
+.cx-btn-set:hover { background: rgba(255, 255, 255, 0.2); }
+
+/* 소아: 기도 정보 */
+.cx-airway { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.2); }
+.cx-airway-head { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; font-size: 0.76rem; font-weight: 600; opacity: 0.9; }
+.cx-airway-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; padding: 0.35rem 0.5rem; border-radius: 6px; background: rgba(255, 255, 255, 0.1); }
+.cx-airway-label { font-size: 0.7rem; opacity: 0.9; }
+.cx-airway-value { font-family: "Roboto Mono", monospace; font-size: 0.82rem; font-weight: 700; }
+.cx-airway-note { font-size: 0.62rem; opacity: 0.8; line-height: 1.35; }
+
+/* ---------- 약물 카드 ---------- */
+.cx-main { padding: 0.75rem; min-width: 0; }
+.cx-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 900px) { .cx-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .cx-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1500px) { .cx-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1800px) { .cx-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+.cx-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0.65rem;
+  border-radius: var(--cx-radius);
+  background: #fff;
+  border: 1px solid rgba(43, 88, 118, 0.1);
+  box-shadow: 0 2px 8px rgba(43, 88, 118, 0.05);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.cx-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--cx-gradient);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease;
+}
+.cx-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(43, 88, 118, 0.12); }
+.cx-card:hover::before { transform: scaleX(1); }
+
+.cx-card-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+.cx-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 7px; background: var(--cx-gradient); }
+.cx-icon i { font-size: 0.75rem; color: #fff; }
+/* 소아: 약물 분류별 아이콘 색 (사이트 톤에 맞춘 차분한 색) */
+.cx-icon.c-induction { background: linear-gradient(135deg, #2b5876, #1a365d); }
+.cx-icon.c-muscle { background: linear-gradient(135deg, #4e4376, #3a2d58); }
+.cx-icon.c-analgesic { background: linear-gradient(135deg, #0f766e, #0b5a54); }
+.cx-icon.c-sedation { background: linear-gradient(135deg, #6d4aa6, #52367e); }
+.cx-icon.c-emergency { background: linear-gradient(135deg, #b7791f, #946016); }
+
+.cx-card h3 { margin: 0; font-size: 0.76rem; font-weight: 700; line-height: 1.2; color: var(--cx-dark); }
+/* 성인 계산기: 약물 이름을 누르면 앰플 사진 */
+.cx-card h3[onclick] { cursor: pointer; }
+.cx-card h3[onclick]:hover { color: #3b6a8c; text-decoration: underline; }
+.cx-card h3[onclick]::after {
+  content: "\f03e";
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  font-size: 0.58rem;
+  margin-left: 0.3rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.cx-card h3[onclick]:hover::after { opacity: 0.7; }
+
+.cx-card-body { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.4rem; }
+.cx-input { display: flex; align-items: center; gap: 0.4rem; }
+.cx-input label { flex-shrink: 0; min-width: 70px; margin: 0; font-size: 0.68rem; color: var(--cx-muted); }
+.cx-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background: var(--cx-bg);
+  font-size: 0.78rem;
+  font-family: inherit;
+  transition: var(--cx-fast);
+}
+.cx-input input:focus { outline: none; border-color: var(--cx-dark); background: #fff; box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.1); }
+
+.cx-section { margin-top: 0.15rem; font-size: 0.64rem; font-weight: 700; color: var(--cx-dark); }
+.cx-info {
+  margin-bottom: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 5px;
+  border-left: 2px solid var(--cx-dark);
+  background: var(--cx-alpha);
+  font-size: 0.64rem;
+  line-height: 1.35;
+  color: var(--cx-muted);
+}
+
+/* MIX 조제법: 농도를 바꾸면 조제 방법도 함께 바뀜 */
+.cx-mix {
+  margin-bottom: 0.4rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(183, 121, 31, 0.3);
+  background: #fffaf0;
+  font-size: 0.64rem;
+  line-height: 1.4;
+  color: var(--cx-text);
+}
+.cx-mix summary { cursor: pointer; font-weight: 700; color: #b7791f; user-select: none; }
+.cx-mix[open] summary { margin-bottom: 0.2rem; }
+.cx-mix .cx-mix-h { margin-right: 0.25rem; font-weight: 700; color: #b7791f; }
+.cx-mix b { color: var(--cx-dark); }
+.cx-mix .cx-mix-sub { display: block; color: var(--cx-muted); }
+.cx-mix .cx-mix-warn { display: block; font-weight: 600; color: #b3261e; }
+
+/* 소아: 주의·연령 */
+.cx-caution { margin-bottom: 0.4rem; font-size: 0.62rem; line-height: 1.35; color: var(--cx-muted); }
+.cx-caution summary { cursor: pointer; font-weight: 600; color: var(--cx-dark); }
+.cx-caution p { margin-top: 0.2rem; }
+.cx-caution b { color: var(--cx-text); }
+.cx-age { display: none; margin-bottom: 0.4rem; padding: 0.2rem 0.4rem; border-radius: 5px; background: #fdecea; font-size: 0.62rem; font-weight: 600; color: #b3261e; }
+.cx-age.is-show { display: block; }
+.cx-cap { margin-left: 0.2rem; font-size: 0.56rem; font-weight: 700; opacity: 0.85; }
+
+/* 결과 */
+.cx-results { margin-top: auto; padding: 0.35rem; border-radius: 8px; border: 1px solid rgba(43, 88, 118, 0.08); background: #fafbfc; }
+.cx-res { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; padding: 0.25rem 0.35rem; border-radius: 6px; }
+.cx-res + .cx-res { margin-top: 0.2rem; }
+.cx-res-label { display: flex; align-items: center; font-size: 0.68rem; font-weight: 600; color: var(--cx-text); }
+.cx-res-label i { width: 14px; margin-right: 0.4rem; text-align: center; font-size: 0.7rem; color: var(--cx-dark); }
+.cx-res-value,
+.cx-dual {
+  min-width: 58px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px dashed #cbd5e0;
+  background: #f1f5f9;
+  text-align: center;
+  font-weight: 600;
+  color: #64748b;
+  font-size: 0.72rem;
+  transition: var(--cx-fast);
+}
+.cx-dual { display: flex; flex-direction: column; gap: 0.1rem; min-width: 72px; }
+.cx-dual .cx-dose { font-size: 0.72rem; font-weight: 700; color: #64748b; }
+.cx-dual .cx-vol { font-size: 0.62rem; color: #94a3b8; }
+.cx-res.is-result .cx-res-value,
+.cx-res.is-result .cx-dual { border: none; background: var(--cx-gradient); color: #fff; box-shadow: 0 3px 10px rgba(43, 88, 118, 0.25); }
+.cx-res.is-result .cx-res-value { font-family: "Roboto Mono", monospace; font-weight: 700; font-size: 0.78rem; }
+.cx-res.is-result .cx-dual .cx-dose { color: #fff; font-family: "Roboto Mono", monospace; }
+.cx-res.is-result .cx-dual .cx-vol { color: rgba(255, 255, 255, 0.82); }
+
+/* ---------- 모달 (성인: 앰플 사진 / 소아: 농도 설정) ---------- */
+.cx-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.55);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.cx-modal.is-open { opacity: 1; visibility: visible; }
+.cx-modal-box {
+  position: relative;
+  width: min(600px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  transform: translateY(12px);
+  transition: transform 0.2s ease;
+}
+.cx-modal.is-open .cx-modal-box { transform: none; }
+.cx-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.9rem 1.25rem;
+  background: var(--cx-gradient);
+  color: #fff;
+}
+.cx-modal-head h2 { font-size: 1.05rem; font-weight: 600; color: #fff; }
+.cx-modal-x {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.cx-modal-x:hover { background: rgba(255, 255, 255, 0.32); }
+.cx-modal-body { padding: 1.25rem; text-align: center; }
+.cx-modal-body img { max-width: 100%; max-height: 60vh; border-radius: var(--cx-radius); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+.cx-placeholder { display: flex; flex-direction: column; align-items: center; padding: 2.5rem 1rem; color: var(--cx-muted); }
+.cx-placeholder i { margin-bottom: 1rem; font-size: 3.5rem; opacity: 0.3; color: var(--cx-dark); }
+
+/* 소아 농도 설정 */
+#concentrationSettings { padding: 1rem 1.25rem 0; }
+.cx-conc-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.8rem; align-items: center; margin-bottom: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--cx-bg); }
+.cx-conc-label { font-size: 0.85rem; font-weight: 500; }
+.cx-conc-input { padding: 0.4rem; border: 1px solid #dee2e6; border-radius: 6px; text-align: center; font-size: 0.85rem; }
+.cx-conc-unit { font-size: 0.8rem; color: var(--cx-muted); }
+.cx-modal-save {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem auto 1.25rem;
+  padding: 0.7rem 1.6rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--cx-gradient);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cx-modal-save:hover { box-shadow: 0 8px 22px rgba(43, 88, 118, 0.35); }
+
+/* ---------- 좁은 화면 ---------- */
+@media (max-width: 768px) {
+  .calc { width: calc(100vw - 16px); margin: 0.25rem calc(50% - 50vw + 8px) 1rem; border-radius: 12px; }
+  .cx-layout { grid-template-columns: 1fr; }
+  .cx-panel { position: static; max-height: none; padding: 0.75rem; border-radius: 0; }
+  .cx-form { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
+  .cx-field { flex: 1; min-width: 80px; }
+  .cx-btn-calc, .cx-btn-set { flex: 1; min-width: 110px; margin-top: 0; }
+  .cx-airway { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; }
+  .cx-airway-head { width: 100%; margin-bottom: 0.25rem; }
+  .cx-airway-item { flex: 1; min-width: 120px; margin-bottom: 0; }
+  .cx-main { padding: 0.5rem; }
+  .cx-grid { gap: 0.5rem; }
+}
+@media (max-width: 480px) {
+  .cx-grid { grid-template-columns: 1fr; }
+  .cx-field { min-width: calc(33% - 0.5rem); }
+  .cx-conc-row { grid-template-columns: 1fr 1fr; }
+  .cx-conc-label { grid-column: 1 / -1; }
+}

@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'schedule.apps.ScheduleConfig',
     'record.apps.RecordConfig',
     'journal.apps.JournalConfig',
+    'calculator.apps.CalculatorConfig',
     # django default
     'django.contrib.admin',
     'django.contrib.auth',

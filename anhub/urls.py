@@ -58,6 +58,7 @@ urlpatterns = [
     path('schedule/', include('schedule.urls')),
     path('record/', include('record.urls')),
     path('journal/', include('journal.urls')),
+    path('calculator/', include('calculator.urls')),
     # 게시판 사진 업로드는 승인 회원만 (기본 설정은 로그인만 확인한다)
     path('ckeditor5/image_upload/', user_is_approved(ckeditor_upload_file), name='ck_editor_5_upload_file'),
     path('ckeditor5/', include('django_ckeditor_5.urls')),
