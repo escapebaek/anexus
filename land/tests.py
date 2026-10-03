@@ -16,9 +16,16 @@ class HomeTests(TestCase):
         cards = [c for s in res.context['sections'] for c in s['cards']]
         self.assertEqual(len(cards), 17)
         self.assertNotIn('Trends in Anesthesia', [c['title'] for c in cards])   # 추후 개발 후 다시 추가
-        # 내부 기능은 첫 섹션에만, 외부 링크는 external 로 표시
-        self.assertFalse(any(c['external'] for c in res.context['sections'][0]['cards']))
-        self.assertTrue(all(c['external'] for s in res.context['sections'][1:] for c in s['cards']))
+        # 섹션별 순서 (요청한 순서), 외부 링크는 external 로 표시 (새 탭)
+        order = [[c['title'] for c in s['cards']] for s in res.context['sections'][:2]]
+        self.assertEqual(order, [
+            ['Board', 'Schedule', 'Record', 'Anes Chat', 'Questions', 'Journal Stand'],
+            ['Drug Calculator', 'Pediatric Calculator', 'Coagulation Guideline', 'Drug Dictionary', 'Virtual TEE', 'Virtual FOB'],
+        ])
+        external = {c['title'] for c in cards if c['external']}
+        self.assertIn('Anes Chat', external)
+        self.assertFalse({'Board', 'Schedule', 'Coagulation Guideline', 'Drug Dictionary'} & external)
+        self.assertTrue(all(c['external'] for c in res.context['sections'][2]['cards']))
 
     def test_anonymous_cards_go_to_login(self):
         res = self.client.get(reverse('home'))

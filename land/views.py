@@ -45,28 +45,28 @@ def home(request):
     sections = [
         {
             'id': 'anexus',
-            'cols': 4,  # 넓은 화면에서 한 줄 카드 수 (끝줄이 한두 장만 남지 않게)
+            'cols': 3,  # 넓은 화면에서 한 줄 카드 수 (6장 = 3장씩 두 줄)
             'title': 'ANExuS',
             'subtitle': 'Built-in tools for daily practice and study.',
             'cards': [
                 _card('Board', 'Join discussions and share knowledge.', reverse('board_index'), 'fas fa-comments'),
-                _card('Questions', 'Practice questions for the board exam.', reverse('question_home'), 'fas fa-question-circle'),
                 _card('Schedule', 'Surgery schedule for today.', reverse('schedule_dashboard'), 'fas fa-calendar-alt'),
                 _card('Record', 'Anesthesia record for today.', reverse('anesthesia_record'), 'fas fa-pencil-alt'),
+                _card('Anes Chat', 'Chat with other anesthesiologists.', 'https://escapebaek.github.io/chat/', 'fas fa-user-friends'),
+                _card('Questions', 'Practice questions for the board exam.', reverse('question_home'), 'fas fa-question-circle'),
                 _card('Journal Stand', 'Read the latest issues from our curated journals.', reverse('journal:journal_stand'), 'fas fa-book-open'),
-                _card('Drug Dictionary', 'Find the latest drug information.', reverse('drugdictionary:drug_info'), 'fas fa-pills'),
-                _card('Coagulation Guideline', 'Find the latest coagulation guidelines.', reverse('coag_index'), 'fas fa-vial'),
             ],
         },
         {
             'id': 'tools',
-            'cols': 5,  # 넓은 화면에서 한 줄 카드 수 (끝줄이 한두 장만 남지 않게)
+            'cols': 3,  # 넓은 화면에서 한 줄 카드 수 (6장 = 3장씩 두 줄)
             'title': 'Calculators & Simulators',
             'subtitle': 'Quick calculations and hands-on learning.',
             'cards': [
                 _card('Drug Calculator', 'Accurate drug dosage calculations.', 'https://escapebaek.github.io/anesthesia-calculator/', 'fas fa-calculator'),
                 _card('Pediatric Calculator', 'Accurate calculations for pediatric anesthesia.', 'https://escapebaek.github.io/pediatric-anesthesia-calculator/', 'fas fa-baby'),
-                _card('Anes Chat', 'Chat with other anesthesiologists.', 'https://escapebaek.github.io/chat/', 'fas fa-user-friends'),
+                _card('Coagulation Guideline', 'Find the latest coagulation guidelines.', reverse('coag_index'), 'fas fa-vial'),
+                _card('Drug Dictionary', 'Find the latest drug information.', reverse('drugdictionary:drug_info'), 'fas fa-pills'),
                 _card('Virtual TEE', 'Virtual TEE for education.', 'https://pie.med.utoronto.ca/TEE/TEE_content/TEE_standardViews_intro.html', 'fas fa-heartbeat'),
                 _card('Virtual FOB', 'Virtual FOB for education.', 'https://pie.med.utoronto.ca/VB/VB_content/simulation.html', 'fas fa-lungs'),
             ],
