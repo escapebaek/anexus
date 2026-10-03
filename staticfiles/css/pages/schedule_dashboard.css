@@ -152,29 +152,38 @@
 .at-LA { background: #fff; color: #5b6b7d; box-shadow: inset 0 0 0 1px #b8c3d1; }  /* 국소 */
 .at-etc { background: #8a97a8; }
 .op-finished .at { opacity: 0.55; }
-.orb-anes-legend { margin-top: -1px; }
-.orb-anes-legend:empty { display: none; }
-.orb-anes-legend .lg { gap: 4px; }
-/* 헤더: 당직으로 넘길 방 요약 */
-.orb-oncall-sum {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-self: flex-start;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: var(--st-oncall);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+/* 헤더 숫자 칸: 큰 숫자 + 작은 이름, 위쪽 색 띠로 상태 구분 */
+.orb-tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 62px;
+  padding: 5px 11px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 3px 0 var(--tile-c, rgba(255, 255, 255, 0.4));
+  line-height: 1.1;
 }
-.orb-oncall-sum[hidden] { display: none; }
-.orb-oncall-sum b { font-size: 15px; font-weight: 800; }
-.orb-oncall-sum .sum-rooms { font-weight: 800; letter-spacing: 0.02em; }
-.orb-oncall-sum small { opacity: 0.8; font-size: 11.5px; }
-.orb-anes-legend .at { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.tile b { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.tile span { margin-top: 1px; font-size: 11px; font-weight: 600; opacity: 0.85; white-space: nowrap; }
+.t-ongoing { --tile-c: #8fd3ff; background: rgba(143, 211, 255, 0.16); }
+.t-pending { --tile-c: #cfc6ec; }
+.t-finished { --tile-c: rgba(255, 255, 255, 0.45); }
+.t-finished b { opacity: 0.8; }
+.t-hold { --tile-c: #ffd38a; }
+.t-hold.is-zero { opacity: 0.55; }
+.t-oncall { --tile-c: #ffb8c9; background: var(--st-oncall); max-width: 220px; }
+.t-oncall[hidden] { display: none; }
+.t-oncall span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; opacity: 0.95; }
+/* 마취 방법별 건수: 배지 + 숫자 한 줄 */
+.orb-anes-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; }
+.orb-anes-legend:empty { display: none; }
+.al-label { font-size: 11px; font-weight: 600; opacity: 0.7; }
+.al { display: inline-flex; align-items: center; gap: 4px; }
+.al b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.orb-anes-legend .at { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
 
 /* ---------- 업로드 작업 안내 ---------- */
 .orb-job {
@@ -1137,8 +1146,14 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 }
 /* 헤더 버튼: 글자가 두 줄로 꺾이지 않게 (좁은 화면은 버튼 줄을 감싸서 다음 줄로) */
 .orb-btn { white-space: nowrap; }
-@media (max-width: 600px) {
-  .orb-actions { flex-wrap: wrap; }
+/* 헤더 버튼: 2줄 (수술 추가·순서 변경 / 남은 것·모두 펼치기) + 오른쪽 전체화면 */
+.orb-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+.orb-actions .orb-btn { justify-content: center; }
+.orb-btn-icon { grid-column: 3; grid-row: 1 / span 2; padding: 6px 10px; }
+@media (max-width: 700px) {
+  .orb-actions { width: 100%; }
+  .tile { min-width: 54px; padding: 4px 9px 5px; }
+  .tile b { font-size: 18px; }
 }
 .add-case-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 

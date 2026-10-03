@@ -260,6 +260,8 @@
 
 /* ---------- 수술 현황 요약 ---------- */
 .lp-or {
+  position: relative;  /* 섹션 배경 무늬(::before) 위로 - 안 그러면 눌러도 현황판으로 안 넘어감 */
+  z-index: 1;
   display: block;
   margin-bottom: 2rem;
   padding: 14px 18px;
