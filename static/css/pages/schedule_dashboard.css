@@ -1049,3 +1049,47 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 /* 앞 수술에서 이어받은 마취의: 흐린 기울임 */
 .anes-inherited { color: #7d8ba0; font-style: italic; font-weight: 500; }
 .anes-inherited::before { content: "↳"; margin-right: 1px; font-style: normal; opacity: 0.7; }
+
+/* 명단 이름 누르기 메뉴: 오늘 당직 / 어제 당직 / 퇴근 */
+.staff-pop {
+  position: fixed;
+  z-index: 2500;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--orb-border, #dfe4ec);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(20, 30, 50, 0.18);
+}
+.staff-pop[hidden] { display: none; }
+.sp-name { padding: 2px 8px 4px; font-size: 12px; font-weight: 800; color: var(--orb-muted, #6b7686); border-bottom: 1px solid #eef1f5; margin-bottom: 2px; }
+.staff-pop button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3a4f;
+  text-align: left;
+  cursor: pointer;
+}
+.staff-pop button:hover { background: #f1f4f8; }
+.staff-pop button.is-on { background: #eaf0fb; color: #1d4ed8; }
+.staff-pop button.is-on::after { content: "✓"; margin-left: auto; font-weight: 800; }
+/* 당직 이모지 (이름 앞) */
+.duty-emo { margin-right: 2px; font-style: normal; font-size: 0.95em; text-decoration: none; display: inline-block; }
+/* 퇴근: 이름에 줄 + 흐리게 */
+.is-off { opacity: 0.55; }
+.staff-chip.is-off { border-style: dashed; background: #f4f5f7; }
+.staff-chip.is-off b, .keeper.is-off, .anes-name.is-off, .anes-inherited.is-off, .rm-kp.is-off {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+.staff-chip.is-off small { color: #8a96a8; }

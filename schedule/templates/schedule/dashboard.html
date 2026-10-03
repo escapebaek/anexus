@@ -90,7 +90,7 @@
             <button type="button" id="staffAddBtn" title="근무자 추가"><i class="fas fa-plus"></i></button>
           </form>
           <button type="button" class="staff-recent" id="staffRecent" hidden></button>
-          <p class="staff-hint">이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 한 사람은 한 방만 — 다른 방으로 끌면 옮겨지고, 이 칸으로 끌어오면 해제돼요. 방 번호를 눌러 메뉴에서 골라도 돼요.</p>
+          <p class="staff-hint">이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 한 사람은 한 방만 — 다른 방으로 끌면 옮겨지고, 이 칸으로 끌어오면 해제돼요. 방 번호를 눌러 메뉴에서 골라도 돼요. 이름을 <b>누르면</b> 🌙 오늘 당직 · 💤 어제 당직 · 퇴근을 표시해요.</p>
         </div>
       </section>
 
@@ -104,7 +104,7 @@
             <button type="button" id="anesAddBtn" title="마취의 추가"><i class="fas fa-plus"></i></button>
           </form>
           <button type="button" class="staff-recent" id="anesRecent" hidden></button>
-          <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요.</p>
+          <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요. 이름을 <b>누르면</b> 🌙 오늘 당직 · 💤 어제 당직 · 퇴근을 표시해요.</p>
         </div>
       </section>
 
@@ -150,6 +150,14 @@
 </div>
 
 <!-- 수술 메뉴 (방 번호 / 펼친 일정 행 클릭) -->
+<!-- 명단 이름을 눌렀을 때: 당직·퇴근 표시 -->
+<div class="staff-pop" id="staffPop" hidden role="menu">
+  <div class="sp-name" id="staffPopName"></div>
+  <button type="button" data-mark="today"><span>🌙</span> 오늘 당직</button>
+  <button type="button" data-mark="yesterday"><span>💤</span> 어제 당직</button>
+  <button type="button" data-mark="off"><span>🏠</span> 퇴근</button>
+</div>
+
 <div class="room-menu" id="roomMenu" hidden>
   <div class="rm-title" id="roomMenuTitle"></div>
   <div class="rm-sub" id="roomMenuSub"></div>
@@ -286,8 +294,8 @@
         ${c.group === "finished" ? '<i class="fas fa-check"></i>' : ""}
         ${compact ? "" : anesBadge(c.anesthesia_type)}<div class="op-text"><span class="op-name">${c.hold ? '<span class="op-tag tag-hold">HOLD</span>' : ""}${c.on_call ? '<span class="op-tag tag-oncall">당직</span>' : ""}${esc(c.surgery_name) || "-"}</span>${small}</div>${c.group === "ongoing" && !etaLine ? '<span class="eta"></span>' : ""}</div></td>
       <td class="c-anes" data-anes="${c.id}" title="${c._anesInherited ? "앞 수술 마취의를 이어받음 · 클릭하거나 끌어다 놓아 바꾸기" : "클릭해서 입력 · 마취의 명단에서 끌어다 놓기"}">${c.anesthesiologist
-        ? `<span class="anes-name" data-anes-name="${esc(c.anesthesiologist)}" data-from-case="${c.id}">${esc(c.anesthesiologist)}</span>`
-        : c._anesInherited ? `<span class="anes-inherited">${esc(c._anes)}</span>`
+        ? `<span class="anes-name${offClass("anes", c.anesthesiologist)}" data-anes-name="${esc(c.anesthesiologist)}" data-from-case="${c.id}">${dutyEmoji("anes", c.anesthesiologist)}${esc(c.anesthesiologist)}</span>`
+        : c._anesInherited ? `<span class="anes-inherited${offClass("anes", c._anes)}">${dutyEmoji("anes", c._anes)}${esc(c._anes)}</span>`
         : '<span class="anes-empty">+ 입력</span>'}</td>
       ${compact ? "" : `<td class="c-pt" title="${esc(patient)}">${esc(c.patient_name) || "-"}${c.patient_info ? `<small>${esc(c.patient_info)}</small>` : ""}</td>`}
       <td class="c-memo"><button type="button" class="memo-btn${c.memo ? " has-memo" : ""}" data-memo="${c.id}"
@@ -303,12 +311,24 @@
   let STAFF = JSON.parse(document.getElementById("staff-data").textContent);
   const STAFF_URL = "{% url 'schedule_staff' %}";
   const keepersOf = (room) => (STAFF.keepers || {})[room] || [];
+  // 퇴근(이름에 줄)·당직 표시: 색 대신 이름 앞 이모지
+  const DUTY = { today: ["🌙", "오늘 당직"], yesterday: ["💤", "어제 당직"] };
+  const markOf = (role, name) => ((STAFF.marks || {})[role] || {})[name] || {};
+  const dutyEmoji = (role, name) => {
+    const d = DUTY[markOf(role, name).duty];
+    return d ? `<span class="duty-emo" title="${d[1]}">${d[0]}</span>` : "";
+  };
+  const offClass = (role, name) => markOf(role, name).off ? " is-off" : "";
+  const markTitle = (role, name) => {
+    const m = markOf(role, name);
+    return [DUTY[m.duty] && DUTY[m.duty][1], m.off && "퇴근"].filter(Boolean).join(" · ");
+  };
 
   function keeperChips(room) {
     const names = keepersOf(room);
     if (!names.length) return "";
     const shown = names.slice(0, 2).map(n =>
-      `<span class="keeper" data-keeper="${esc(n)}" data-from="${esc(room)}" title="방킵 ${esc(n)} · 끌어서 다른 방으로">${esc(n)}</span>`).join("");
+      `<span class="keeper${offClass("keeper", n)}" data-keeper="${esc(n)}" data-from="${esc(room)}" title="방킵 ${esc(n)}${markTitle("keeper", n) ? " (" + markTitle("keeper", n) + ")" : ""} · 끌어서 다른 방으로">${dutyEmoji("keeper", n)}${esc(n)}</span>`).join("");
     return `<span class="keepers">${shown}${names.length > 2 ? `<span class="keeper-more" title="${esc(names.join(", "))}">+${names.length - 2}</span>` : ""}</span>`;
   }
 
@@ -320,8 +340,8 @@
     for (const r of BOARD.rooms) for (const c of r.cases)
       if (c._anes && c.group !== "finished") count[c._anes] = (count[c._anes] || 0) + 1;
     document.getElementById("anesChips").innerHTML = (STAFF.anes || []).map(n => `
-      <span class="staff-chip anes-chip${count[n] ? " is-assigned" : ""}" data-anes-person="${esc(n)}" title="끌어서 수술의 마취의 칸에 놓기">
-        <b>${esc(n)}</b><small>${count[n] ? `${count[n]}건` : "미배정"}</small>
+      <span class="staff-chip anes-chip${count[n] ? " is-assigned" : ""}${offClass("anes", n)}" data-anes-person="${esc(n)}" title="누르면 당직·퇴근 표시 · 끌어서 수술의 마취의 칸에 놓기">
+        <b>${dutyEmoji("anes", n)}${esc(n)}</b><small>${markOf("anes", n).off ? "퇴근" : count[n] ? `${count[n]}건` : "미배정"}</small>
         <button type="button" class="staff-x" data-remove-anes="${esc(n)}" title="명단에서 빼기">&times;</button>
       </span>`).join("") || '<span class="staff-empty">오늘 마취의를 추가하세요</span>';
     const recent = document.getElementById("anesRecent");
@@ -336,8 +356,8 @@
     const d = new Date(STAFF.date + "T00:00:00");
     document.getElementById("staffDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
     const chips = STAFF.roster.map(p => `
-      <span class="staff-chip${p.rooms.length ? " is-assigned" : ""}" data-name="${esc(p.name)}" title="끌어서 방에 배정 (다른 방으로 끌면 옮겨짐)">
-        <b>${esc(p.name)}</b><small>${p.rooms.length ? p.rooms.map(esc).join("·") : "미배정"}</small>
+      <span class="staff-chip${p.rooms.length ? " is-assigned" : ""}${offClass("keeper", p.name)}" data-name="${esc(p.name)}" title="누르면 당직·퇴근 표시 · 끌어서 방에 배정 (다른 방으로 끌면 옮겨짐)">
+        <b>${dutyEmoji("keeper", p.name)}${esc(p.name)}</b><small>${markOf("keeper", p.name).off ? "퇴근" : p.rooms.length ? p.rooms.map(esc).join("·") : "미배정"}</small>
         <button type="button" class="staff-x" data-remove="${esc(p.name)}" title="명단에서 빼기">&times;</button>
       </span>`).join("");
     document.getElementById("staffChips").innerHTML = chips || '<span class="staff-empty">오늘 근무자를 추가하세요</span>';
@@ -556,7 +576,7 @@
     if (!r) return;
     const on = new Set(keepersOf(r.room));
     box.innerHTML = STAFF.roster.length
-      ? STAFF.roster.map(p => `<button type="button" class="rm-kp${on.has(p.name) ? " is-on" : ""}" data-keeper-toggle="${esc(p.name)}">${esc(p.name)}</button>`).join("")
+      ? STAFF.roster.map(p => `<button type="button" class="rm-kp${on.has(p.name) ? " is-on" : ""}${offClass("keeper", p.name)}" data-keeper-toggle="${esc(p.name)}">${dutyEmoji("keeper", p.name)}${esc(p.name)}</button>`).join("")
       : '<span class="rm-kp-empty">위 근무자 줄에 이름을 먼저 추가하세요</span>';
   }
 
@@ -565,7 +585,7 @@
     const box = document.getElementById("roomMenuAnesList");
     if (!c) return;
     box.innerHTML = (STAFF.anes || []).length
-      ? STAFF.anes.map(n => `<button type="button" class="rm-kp rm-an${c.anesthesiologist === n ? " is-on" : ""}" data-anes-pick="${esc(n)}">${esc(n)}</button>`).join("")
+      ? STAFF.anes.map(n => `<button type="button" class="rm-kp rm-an${c.anesthesiologist === n ? " is-on" : ""}${offClass("anes", n)}" data-anes-pick="${esc(n)}">${dutyEmoji("anes", n)}${esc(n)}</button>`).join("")
       : '<span class="rm-kp-empty">사이드바 마취의 칸에 이름을 먼저 추가하세요</span>';
   }
 
@@ -750,15 +770,58 @@
   document.getElementById("anesRecent").addEventListener("click", () => staffAction({ action: "load_recent", role: "anes" }));
   document.getElementById("anesChips").addEventListener("click", (e) => {
     const x = e.target.closest("[data-remove-anes]");
-    if (x) staffAction({ action: "remove", role: "anes", name: x.dataset.removeAnes });
+    if (x) return staffAction({ action: "remove", role: "anes", name: x.dataset.removeAnes });
+    const chip = e.target.closest("[data-anes-person]");
+    if (chip) openStaffPop("anes", chip.dataset.anesPerson, chip);
   });
   document.getElementById("staffChips").addEventListener("click", (e) => {
     const x = e.target.closest("[data-remove]");
-    if (!x) return;
+    if (!x) {
+      const chip = e.target.closest(".staff-chip[data-name]");
+      if (chip) openStaffPop("keeper", chip.dataset.name, chip);
+      return;
+    }
     const person = STAFF.roster.find(p => p.name === x.dataset.remove);
     if (person && person.rooms.length && !confirm(`${person.name} 님을 명단에서 빼면 ${person.rooms.join(", ")} 방킵 배정도 해제됩니다.`)) return;
     staffAction({ action: "remove", name: x.dataset.remove });
   });
+
+  // ----- 명단 이름 누르기: 오늘 당직 / 어제 당직 / 퇴근 (끌기는 아래 끌어다 놓기) -----
+  const staffPop = document.getElementById("staffPop");
+  let popFor = null;  // { role, name }
+  function renderStaffPop() {
+    const m = markOf(popFor.role, popFor.name);
+    document.getElementById("staffPopName").textContent = popFor.name;
+    staffPop.querySelectorAll("[data-mark]").forEach(b => {
+      const k = b.dataset.mark;
+      b.classList.toggle("is-on", k === "off" ? !!m.off : m.duty === k);
+    });
+  }
+  function openStaffPop(role, name, chip) {
+    if (popFor && popFor.role === role && popFor.name === name && !staffPop.hidden) return closeStaffPop();
+    popFor = { role, name };
+    renderStaffPop();
+    staffPop.hidden = false;
+    const r = chip.getBoundingClientRect(), w = staffPop.offsetWidth, h = staffPop.offsetHeight;
+    const left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+    const top = r.bottom + 6 + h > window.innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6;
+    staffPop.style.left = left + "px";
+    staffPop.style.top = top + "px";
+  }
+  function closeStaffPop() { staffPop.hidden = true; popFor = null; }
+  staffPop.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-mark]");
+    if (!b || !popFor) return;
+    const m = markOf(popFor.role, popFor.name), k = b.dataset.mark;
+    const body = { action: "mark", role: popFor.role, name: popFor.name };
+    if (k === "off") body.off = !m.off; else body.duty = m.duty === k ? "" : k;
+    closeStaffPop();
+    staffAction(body);
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (!staffPop.hidden && !e.target.closest("#staffPop, .staff-chip")) closeStaffPop();
+  });
+  window.addEventListener("scroll", () => { if (!staffPop.hidden) closeStaffPop(); }, { passive: true });
 
   // ----- 끌어다 놓기 (마우스·터치 공통: pointer 이벤트) -----
   // 명단의 이름 → 방: 배정 (한 사람이 여러 방 가능) / 방의 이름 → 다른 방: 이동 / 방의 이름 → 근무자 줄: 해제
@@ -1053,7 +1116,7 @@
     if (e.target === document.getElementById("memoModal")) closeMemoModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeMemoModal(); closeRoomMenu(); }
+    if (e.key === "Escape") { closeMemoModal(); closeRoomMenu(); closeStaffPop(); }
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && currentScheduleId) saveMemoAndClose();
   });
 
