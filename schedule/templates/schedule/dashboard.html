@@ -19,18 +19,19 @@
     </div>
 
     <div class="orb-stats">
-      <div class="orb-legend">
-        <span class="lg lg-ongoing"><i></i>진행중 <b id="countOngoing">{{ board.counts.ongoing }}</b></span>
-        <span class="lg lg-pending"><i></i>예정 <b id="countPending">{{ board.counts.pending }}</b></span>
-        <span class="lg lg-finished"><i></i>완료 <b id="countFinished">{{ board.counts.finished }}</b></span>
-        <span class="lg lg-hold"><span class="fa fa-pause-circle"></span>Hold <b id="countHold">{{ board.counts.hold }}</b></span>
+      <!-- 숫자 칸: 큰 숫자 + 작은 이름 (색 띠로 상태 구분) -->
+      <div class="orb-tiles">
+        <div class="tile t-ongoing"><b id="countOngoing">{{ board.counts.ongoing }}</b><span>진행중</span></div>
+        <div class="tile t-pending"><b id="countPending">{{ board.counts.pending }}</b><span>예정</span></div>
+        <div class="tile t-finished"><b id="countFinished">{{ board.counts.finished }}</b><span>완료</span></div>
+        <div class="tile t-hold" id="holdTile"><b id="countHold">{{ board.counts.hold }}</b><span>Hold</span></div>
+        <div class="tile t-oncall" id="oncallSummary" hidden><b id="oncallRooms"></b><span id="oncallText">당직</span></div>
       </div>
-      <div class="orb-oncall-sum" id="oncallSummary" hidden></div>
-      <div class="orb-legend orb-anes-legend" id="anesLegend"></div>
       <div class="orb-progress" id="progressBox">
         <div class="orb-progress-bar"><span id="progressFill"></span></div>
-        <span class="orb-progress-text">남은 <b id="countRemaining">{{ board.remaining }}</b> / 전체 <span id="countTotal">{{ board.total }}</span></span>
+        <span class="orb-progress-text">남은 <b id="countRemaining">{{ board.remaining }}</b> / <span id="countTotal">{{ board.total }}</span></span>
       </div>
+      <div class="orb-anes-legend" id="anesLegend"></div>
     </div>
 
     <div class="orb-clock">
@@ -43,7 +44,7 @@
       <button type="button" class="orb-btn" id="reorderBtn" title="잠금을 풀면 수술을 끌어다 놓아 순서·방을 바꿀 수 있어요"><i class="fas fa-lock"></i> <span>순서 변경</span></button>
       <button type="button" class="orb-btn" id="expandRemainBtn" title="각 방의 남은(완료 안 된) 수술만 펼치기"><i class="fas fa-stream"></i> <span>남은 것 펼치기</span></button>
       <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기 (완료 포함)"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
-      <button type="button" class="orb-btn" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
+      <button type="button" class="orb-btn orb-btn-icon" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
     </div>
   </header>
 
@@ -588,16 +589,18 @@
     const onCallRooms = BOARD.rooms.filter(r => r.cases.some(c => c.on_call && c.group !== "finished")).map(r => r.room);
     const sum = document.getElementById("oncallSummary");
     sum.hidden = !onCallRooms.length;
-    sum.innerHTML = onCallRooms.length
-      ? `<i class="fas fa-moon"></i> 당직 <b>${onCallRooms.length}방</b><span class="sum-rooms">${onCallRooms.map(esc).join(" · ")}</span><small>${C.on_call}건</small>`
-      : "";
+    document.getElementById("oncallRooms").textContent = `${onCallRooms.length}방`;
+    document.getElementById("oncallText").textContent = `당직 · ${onCallRooms.join(", ")}`;
+    sum.title = `당직: ${onCallRooms.join(", ")} (${C.on_call}건)`;
+    document.getElementById("holdTile").classList.toggle("is-zero", !C.hold);
     set("countRemaining", BOARD.remaining); set("countTotal", BOARD.total);
     const anes = BOARD.anesthesia_counts || {};
+    // 마취 방법별 건수: 배지 + 숫자만 (이름은 툴팁)
     const known = ANES_TYPES.filter(([code]) => anes[code]).map(([code, label]) =>
-      `<span class="lg"><span class="at at-${code}">${code}</span>${esc(label)} <b>${anes[code]}</b></span>`);
+      `<span class="al" title="${esc(label)} ${anes[code]}건"><span class="at at-${code}">${code}</span><b>${anes[code]}</b></span>`);
     const others = Object.keys(anes).filter(k => !ANES_LABEL[k]).reduce((n, k) => n + anes[k], 0);
-    if (others) known.push(`<span class="lg"><span class="at at-etc">기타</span><b>${others}</b></span>`);
-    document.getElementById("anesLegend").innerHTML = known.join("");
+    if (others) known.push(`<span class="al" title="기타 ${others}건"><span class="at at-etc">기타</span><b>${others}</b></span>`);
+    document.getElementById("anesLegend").innerHTML = known.length ? `<span class="al-label">마취</span>${known.join("")}` : "";
     document.getElementById("progressBox").title = `완료 ${C.finished} / 전체 ${BOARD.total}`;
     document.getElementById("progressFill").style.width =
       (BOARD.total ? Math.round(C.finished / BOARD.total * 100) : 0) + "%";
