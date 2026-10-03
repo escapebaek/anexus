@@ -1528,6 +1528,10 @@ class ScheduleTrashTests(TestCase):
     def test_old_trash_is_cleaned_up(self):
         from datetime import timedelta
         from django.utils import timezone
-        SurgerySchedule.objects.filter(id=self.a.id).update(deleted_at=timezone.now() - timedelta(days=30))
-        self.assertEqual(self.trash().json()['trash'], [])
+        # 삭제하고 24시간이 지나면 영구 삭제 (그 전에는 복원 가능)
+        SurgerySchedule.objects.filter(id=self.a.id).update(deleted_at=timezone.now() - timedelta(hours=25))
+        SurgerySchedule.objects.filter(id=self.b.id).update(deleted_at=timezone.now() - timedelta(hours=23))
+        self.assertEqual([t['patient_name'] for t in self.trash().json()['trash']], ['B'])
         self.assertFalse(SurgerySchedule.all_objects.filter(id=self.a.id).exists())
+        res = self.client.get(reverse('schedule_dashboard'))
+        self.assertEqual(res.context['trash_count'], 1)

@@ -180,12 +180,36 @@
 .t-oncall[hidden] { display: none; }
 .t-oncall span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; opacity: 0.95; }
 /* 마취 방법별 건수: 배지 + 숫자 한 줄 */
-.orb-anes-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; }
+/* 마취 방법: 진행 막대와 같은 줄 모양 - 비율 막대 + 숫자 칸과 같은 반투명 작은 칸 */
+.orb-anes-legend { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .orb-anes-legend:empty { display: none; }
-.al-label { font-size: 11px; font-weight: 600; opacity: 0.7; }
-.al { display: inline-flex; align-items: center; gap: 4px; }
-.al b { font-size: 13px; font-variant-numeric: tabular-nums; }
-.orb-anes-legend .at { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.al-bar {
+  display: flex;
+  flex: 1;
+  min-width: 140px;
+  height: 8px;
+  gap: 2px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.2);
+}
+.al-bar > span { min-width: 3px; }
+.al-items { display: flex; flex-wrap: wrap; gap: 4px; }
+.al {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.al b { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.al-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.orb-anes-legend .at-LA { box-shadow: none; }   /* 국소: 흰 점·막대 (어두운 바탕이라 테두리 불필요) */
 
 /* ---------- 업로드 작업 안내 ---------- */
 .orb-job {
