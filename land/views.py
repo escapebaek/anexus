@@ -63,8 +63,8 @@ def home(request):
             'title': 'Calculators & Simulators',
             'subtitle': 'Quick calculations and hands-on learning.',
             'cards': [
-                _card('Drug Calculator', 'Accurate drug dosage calculations.', 'https://escapebaek.github.io/anesthesia-calculator/', 'fas fa-calculator'),
-                _card('Pediatric Calculator', 'Accurate calculations for pediatric anesthesia.', 'https://escapebaek.github.io/pediatric-anesthesia-calculator/', 'fas fa-baby'),
+                _card('Drug Calculator', 'Accurate drug dosage calculations.', reverse('calculator_drug'), 'fas fa-calculator'),
+                _card('Pediatric Calculator', 'Accurate calculations for pediatric anesthesia.', reverse('calculator_pediatric'), 'fas fa-baby'),
                 _card('Coagulation Guideline', 'Find the latest coagulation guidelines.', reverse('coag_index'), 'fas fa-vial'),
                 _card('Drug Dictionary', 'Find the latest drug information.', reverse('drugdictionary:drug_info'), 'fas fa-pills'),
                 _card('Virtual TEE', 'Virtual TEE for education.', 'https://pie.med.utoronto.ca/TEE/TEE_content/TEE_standardViews_intro.html', 'fas fa-heartbeat'),
