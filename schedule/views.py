@@ -9,7 +9,7 @@ import os
 import re
 import subprocess
 from io import BytesIO
-from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice, DutyStaff, RoomKeeper
+from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice, DutyStaff, RoomKeeper, SavedStaff, RosterSeed
 from . import table_parser
 from .ai_client import extract_schedules, find_duration_column
 from django.contrib import messages
@@ -1009,8 +1009,10 @@ def staff_state(user, day):
     """-> {date,
            roster: [{name, rooms}] (근무자), keepers: {room: [names]}, recent: {date, count} | None,
            anes: [names] (마취의 명단), anes_recent: {date, count} | None,
-           marks: {keeper|anes: {name: {off, duty}}} (퇴근·당직 표시가 있는 사람만)}
-    마취의를 맡은 수술 수는 화면이 현황판 데이터로 셈."""
+           marks: {keeper|anes: {name: {off, duty}}} (퇴근·당직 표시가 있는 사람만),
+           saved: {keeper|anes: [names]} (고정 명단)}
+    그날 처음 보는 명단이면 고정 명단을 먼저 채움. 마취의를 맡은 수술 수는 화면이 현황판 데이터로 셈."""
+    _seed_saved(user, day)
     keepers = defaultdict(list)
     rooms_of = defaultdict(list)
     for keeper in RoomKeeper.objects.filter(user=user, date=day):
@@ -1027,7 +1029,24 @@ def staff_state(user, day):
     return {"date": day.isoformat(), "roster": roster, "keepers": dict(keepers),
             "recent": None if roster else _recent_roster(user, day, "keeper"),
             "anes": anes, "anes_recent": None if anes else _recent_roster(user, day, "anes"),
-            "marks": marks}
+            "marks": marks, "saved": _saved_names(user)}
+
+
+def _saved_names(user):
+    saved = {"keeper": [], "anes": []}
+    for s in SavedStaff.objects.filter(user=user):
+        saved[s.role].append(s.name)
+    return saved
+
+
+def _seed_saved(user, day):
+    """그날(역할별) 처음 한 번만 고정 명단을 그날 명단에 넣음. 이후 '오늘만 빼기' 한 사람은 다시 넣지 않음."""
+    for role in ("keeper", "anes"):
+        _, created = RosterSeed.objects.get_or_create(user=user, date=day, role=role)
+        if created:
+            names = list(SavedStaff.objects.filter(user=user, role=role).values_list("name", flat=True))
+            if names:
+                _add_staff(user, day, names, role)
 
 
 def _add_staff(user, day, names, role="keeper"):
@@ -1047,6 +1066,8 @@ def staff_api(request):
     """근무자·마취의 명단과 방킵 변경. action:
     add(names) · remove(name) · load_recent  - role: keeper(근무자, 기본) | anes(마취의)
     mark(name, off?: bool, duty?: "today" | "yesterday" | "") - 퇴근·당직 표시
+    save(name) · unsave(name) · save_all - 고정 명단 (다음 날부터 자동으로 명단에 들어감).
+    remove 는 그날 명단에서만 빼고 고정 명단은 그대로.
     assign(name, room) · unassign(name, room) - 방킵. 한 사람은 하루에 한 방만 (다른 방으로 배정하면 옮겨짐).
     (수술별 마취의 자체는 schedule_update 의 anesthesiologist 로 저장)
     응답으로 그날의 명단·배정 전체를 돌려줌."""
@@ -1084,6 +1105,19 @@ def staff_api(request):
             _add_staff(user, day, [name])
             RoomKeeper.objects.filter(user=user, date=day, name=name).exclude(room=room).delete()
             RoomKeeper.objects.get_or_create(user=user, date=day, room=room, name=name)
+        elif action == "save" and name:
+            _add_staff(user, day, [name], role)
+            if len(_saved_names(user)[role]) < MAX_STAFF:
+                order = SavedStaff.objects.filter(user=user, role=role).count()
+                SavedStaff.objects.get_or_create(user=user, role=role, name=name, defaults={"order": order})
+        elif action == "unsave" and name:
+            SavedStaff.objects.filter(user=user, role=role, name=name).delete()
+        elif action == "save_all":
+            saved = set(_saved_names(user)[role])
+            for person in DutyStaff.objects.filter(user=user, date=day, role=role):
+                if person.name not in saved and len(saved) < MAX_STAFF:
+                    SavedStaff.objects.create(user=user, role=role, name=person.name, order=len(saved))
+                    saved.add(person.name)
         elif action == "mark" and name:
             fields = {}
             if "off" in data:

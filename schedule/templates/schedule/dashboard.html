@@ -83,7 +83,7 @@
       <!-- ===== 근무자 명단 · 방킵 배정 ===== -->
       <section class="side-card side-staff" id="staffBar" aria-label="근무자 명단">
         <h4 class="side-head side-toggle" data-collapse="staffBar" role="button" tabindex="0" aria-expanded="true" title="접기/펼치기">
-          <i class="fas fa-user-md"></i> 근무자 · 방킵 <small id="staffDate"></small><span class="side-sum" id="staffSum"></span><i class="fas fa-chevron-up side-caret"></i></h4>
+          <i class="fas fa-user-md"></i> 근무자 · 방킵 <span class="side-count staff-count" id="staffCount" title="오늘 근무자 수"></span><small id="staffDate"></small><i class="fas fa-chevron-up side-caret"></i></h4>
         <div class="staff-body">
           <div class="staff-chips" id="staffChips"></div>
           <form class="staff-add" id="staffAddForm" autocomplete="off">
@@ -92,14 +92,15 @@
             <button type="button" id="staffAddBtn" title="근무자 추가"><i class="fas fa-plus"></i></button>
           </form>
           <button type="button" class="staff-recent" id="staffRecent" hidden></button>
-          <p class="staff-hint">이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 한 사람은 한 방만 — 다른 방으로 끌면 옮겨지고, 이 칸으로 끌어오면 해제돼요. 방 번호를 눌러 메뉴에서 골라도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근을 표시해요.</p>
+          <button type="button" class="staff-recent staff-save-all" id="staffSaveAll" hidden><i class="fas fa-thumbtack"></i> 오늘 명단 모두 고정</button>
+          <p class="staff-hint">이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 한 사람은 한 방만 — 다른 방으로 끌면 옮겨지고, 이 칸으로 끌어오면 해제돼요. 방 번호를 눌러 메뉴에서 골라도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근 · 📌 고정을 표시해요. <b>고정</b>한 사람은 다음 날에도 자동으로 들어오고, ×는 오늘만 빼요.</p>
         </div>
       </section>
 
       <!-- ===== 마취의 명단 (수술별 마취의 칸에 끌어다 놓기) ===== -->
       <section class="side-card side-anes" id="anesBar" aria-label="마취의 명단">
         <h4 class="side-head side-toggle" data-collapse="anesBar" role="button" tabindex="0" aria-expanded="true" title="접기/펼치기">
-          <i class="fas fa-user-md"></i> 마취의 <small id="anesDate"></small><span class="side-sum" id="anesSum"></span><i class="fas fa-chevron-up side-caret"></i></h4>
+          <i class="fas fa-user-md"></i> 마취의 <span class="side-count anes-count" id="anesCount" title="오늘 마취의 수"></span><small id="anesDate"></small><span class="side-sum" id="anesSum"></span><i class="fas fa-chevron-up side-caret"></i></h4>
         <div class="staff-body">
           <div class="staff-chips" id="anesChips"></div>
           <form class="staff-add" id="anesAddForm" autocomplete="off">
@@ -107,7 +108,8 @@
             <button type="button" id="anesAddBtn" title="마취의 추가"><i class="fas fa-plus"></i></button>
           </form>
           <button type="button" class="staff-recent" id="anesRecent" hidden></button>
-          <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근을 표시해요.</p>
+          <button type="button" class="staff-recent staff-save-all" id="anesSaveAll" hidden><i class="fas fa-thumbtack"></i> 오늘 명단 모두 고정</button>
+          <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근 · 📌 고정을 표시해요. <b>고정</b>한 사람은 다음 날에도 자동으로 들어오고, ×는 오늘만 빼요.</p>
         </div>
       </section>
 
@@ -153,6 +155,7 @@
   <button type="button" data-mark="today"><span>😭</span> 오늘 당직</button>
   <button type="button" data-mark="yesterday"><span>💤</span> 어제 당직</button>
   <button type="button" data-mark="off"><span>🏠</span> 퇴근</button>
+  <button type="button" data-mark="save" class="sp-save"><span>📌</span> <em>고정 명단에 저장</em></button>
 </div>
 
 <div class="room-menu" id="roomMenu" hidden>
@@ -349,7 +352,13 @@
   // 접은 칸 머리글에 보일 요약: 인원 + 당직자
   function staffSummary(role, names) {
     const duty = names.filter(n => DUTY[markOf(role, n).duty]).map(n => DUTY[markOf(role, n).duty][0] + n);
-    return names.length ? [`${names.length}명`, ...duty].join(" · ") : "";
+    return duty.join(" · ");
+  }
+  const isSaved = (role, name) => ((STAFF.saved || {})[role] || []).includes(name);
+  const pinIcon = (role, name) => isSaved(role, name) ? '<i class="fas fa-thumbtack staff-pin" title="고정 명단 (다음 날에도 자동)"></i>' : "";
+  const removeTitle = (role, name) => isSaved(role, name) ? "오늘만 빼기 (고정 명단은 유지)" : "명단에서 빼기";
+  function renderSaveAll(id, role, names) {
+    document.getElementById(id).hidden = !names.length || names.every(n => isSaved(role, n));
   }
   const offClass = (role, name) => markOf(role, name).off ? " is-off" : "";
   const markTitle = (role, name) => {
@@ -370,13 +379,15 @@
     const d = new Date(STAFF.date + "T00:00:00");
     document.getElementById("anesDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
     document.getElementById("anesSum").textContent = staffSummary("anes", STAFF.anes || []);
+    document.getElementById("anesCount").textContent = (STAFF.anes || []).length || "";
+    renderSaveAll("anesSaveAll", "anes", STAFF.anes || []);
     const count = {};
     for (const r of BOARD.rooms) for (const c of r.cases)
       if (c._anes && c.group !== "finished") count[c._anes] = (count[c._anes] || 0) + 1;
     document.getElementById("anesChips").innerHTML = (STAFF.anes || []).map(n => `
       <span class="staff-chip anes-chip${count[n] ? " is-assigned" : ""}${offClass("anes", n)}" data-anes-person="${esc(n)}" title="누르면 당직·퇴근 표시 · 끌어서 수술의 마취의 칸에 놓기">
-        <b>${dutyEmoji("anes", n)}${esc(n)}</b><small>${markOf("anes", n).off ? "퇴근" : count[n] ? `${count[n]}건` : "미배정"}</small>
-        <button type="button" class="staff-x" data-remove-anes="${esc(n)}" title="명단에서 빼기">&times;</button>
+        <b>${dutyEmoji("anes", n)}${esc(n)}${pinIcon("anes", n)}</b><small>${markOf("anes", n).off ? "퇴근" : count[n] ? `${count[n]}건` : "미배정"}</small>
+        <button type="button" class="staff-x" data-remove-anes="${esc(n)}" title="${removeTitle("anes", n)}">&times;</button>
       </span>`).join("") || '<span class="staff-empty">오늘 마취의를 추가하세요</span>';
     const recent = document.getElementById("anesRecent");
     recent.hidden = !(STAFF.anes_recent && !(STAFF.anes || []).length);
@@ -389,11 +400,12 @@
   function renderStaff() {
     const d = new Date(STAFF.date + "T00:00:00");
     document.getElementById("staffDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
-    document.getElementById("staffSum").textContent = STAFF.roster.length ? `${STAFF.roster.length}명` : "";
+    document.getElementById("staffCount").textContent = STAFF.roster.length || "";
+    renderSaveAll("staffSaveAll", "keeper", STAFF.roster.map(p => p.name));
     const chips = STAFF.roster.map(p => `
       <span class="staff-chip${p.rooms.length ? " is-assigned" : ""}${offClass("keeper", p.name)}" data-name="${esc(p.name)}" title="누르면 당직·퇴근 표시 · 끌어서 방에 배정 (다른 방으로 끌면 옮겨짐)">
-        <b>${dutyEmoji("keeper", p.name)}${esc(p.name)}</b><small>${markOf("keeper", p.name).off ? "퇴근" : p.rooms.length ? p.rooms.map(esc).join("·") : "미배정"}</small>
-        <button type="button" class="staff-x" data-remove="${esc(p.name)}" title="명단에서 빼기">&times;</button>
+        <b>${dutyEmoji("keeper", p.name)}${esc(p.name)}${pinIcon("keeper", p.name)}</b><small>${markOf("keeper", p.name).off ? "퇴근" : p.rooms.length ? p.rooms.map(esc).join("·") : "미배정"}</small>
+        <button type="button" class="staff-x" data-remove="${esc(p.name)}" title="${removeTitle("keeper", p.name)}">&times;</button>
       </span>`).join("");
     document.getElementById("staffChips").innerHTML = chips || '<span class="staff-empty">오늘 근무자를 추가하세요</span>';
     const recent = document.getElementById("staffRecent");
@@ -844,6 +856,8 @@
   document.getElementById("staffAddForm").addEventListener("submit", (e) => { e.preventDefault(); addStaffFromInput(); });
   document.getElementById("staffAddBtn").addEventListener("click", addStaffFromInput);
   document.getElementById("staffRecent").addEventListener("click", () => staffAction({ action: "load_recent" }));
+  document.getElementById("staffSaveAll").addEventListener("click", () => staffAction({ action: "save_all" }));
+  document.getElementById("anesSaveAll").addEventListener("click", () => staffAction({ action: "save_all", role: "anes" }));
   function addAnesFromInput() {
     const input = document.getElementById("anesInput");
     const names = input.value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
@@ -894,8 +908,9 @@
     document.getElementById("staffPopName").textContent = popFor.name;
     staffPop.querySelectorAll("[data-mark]").forEach(b => {
       const k = b.dataset.mark;
-      b.classList.toggle("is-on", k === "off" ? !!m.off : m.duty === k);
+      b.classList.toggle("is-on", k === "off" ? !!m.off : k === "save" ? isSaved(popFor.role, popFor.name) : m.duty === k);
     });
+    staffPop.querySelector(".sp-save em").textContent = isSaved(popFor.role, popFor.name) ? "고정 해제" : "고정 명단에 저장";
   }
   function openStaffPop(role, name, chip) {
     if (popFor && popFor.role === role && popFor.name === name && !staffPop.hidden) return closeStaffPop();
@@ -914,7 +929,8 @@
     if (!b || !popFor) return;
     const m = markOf(popFor.role, popFor.name), k = b.dataset.mark;
     const body = { action: "mark", role: popFor.role, name: popFor.name };
-    if (k === "off") body.off = !m.off; else body.duty = m.duty === k ? "" : k;
+    if (k === "save") body.action = isSaved(popFor.role, popFor.name) ? "unsave" : "save";
+    else if (k === "off") body.off = !m.off; else body.duty = m.duty === k ? "" : k;
     closeStaffPop();
     staffAction(body);
   });
