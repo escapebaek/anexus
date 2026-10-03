@@ -58,6 +58,8 @@
   flex-direction: column;
 }
 .orb:fullscreen .orb-body { flex: 1; }
+.orb:fullscreen .orb-side { overflow-y: auto; }   /* 높이는 JS 가 화면에 맞춰 정함 */
+.orb-board { transform-origin: top left; }
 
 /* ---------- 상단 바 ---------- */
 .orb-top {
@@ -1147,9 +1149,20 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 /* 헤더 버튼: 글자가 두 줄로 꺾이지 않게 (좁은 화면은 버튼 줄을 감싸서 다음 줄로) */
 .orb-btn { white-space: nowrap; }
 /* 헤더 버튼: 2줄 (수술 추가·순서 변경 / 남은 것·모두 펼치기) + 오른쪽 전체화면 */
-.orb-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+/* 헤더 버튼 2줄: 수술 추가 · 삭제된 수술 · 순서 변경 / 남은 것 · 모두 펼치기 · 전체화면 */
+.orb-actions { display: grid; grid-template-columns: repeat(3, auto); gap: 6px; }
 .orb-actions .orb-btn { justify-content: center; }
-.orb-btn-icon { grid-column: 3; grid-row: 1 / span 2; padding: 6px 10px; }
+.orb-btn-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--orb-primary, #2b5876);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+.orb-btn-count:empty { display: none; }
 @media (max-width: 700px) {
   .orb-actions { width: 100%; }
   .tile { min-width: 54px; padding: 4px 9px 5px; }
@@ -1164,3 +1177,37 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 .staff-pin { margin-left: 3px; font-size: 9px; color: #b45309; transform: rotate(30deg); }
 .staff-save-all { font-size: 11.5px; }
 .staff-pop button.sp-save em { font-style: normal; }
+
+/* 삭제된 수술 (휴지통) */
+.trash-content { max-width: 560px; }
+.trash-list { list-style: none; margin: 0; padding: 0; max-height: 60vh; overflow-y: auto; }
+.trash-list li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 4px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+.trash-list li:last-child { border-bottom: none; }
+.trash-room { font-weight: 800; color: #2b5876; text-align: center; }
+.trash-main { min-width: 0; display: flex; flex-direction: column; }
+.trash-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.trash-main small { color: #6b7686; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trash-restore {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2b5876, #4e4376);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.trash-purge { padding: 6px 9px; border: 1px solid #f1c6c2; border-radius: 8px; background: #fff; color: #b3261e; cursor: pointer; }
+.trash-purge:hover { background: #fdecea; }
+.trash-restore:disabled, .trash-purge:disabled { opacity: 0.5; cursor: default; }
+.trash-list .trash-empty { display: block; padding: 24px 0; text-align: center; color: #6b7686; border: none; }
