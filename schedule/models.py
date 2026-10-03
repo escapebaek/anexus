@@ -33,6 +33,8 @@ class SurgerySchedule(models.Model):
     # 현황판에서 '진행중'으로 바꾼 시각 (+ duration = 종료 예정) / '완료'로 바꾼 시각. 업데이트 시 유지.
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
+    # 현황판에서 직접 추가한 수술: 파일로 '업데이트' 할 때 파일에 없어도 지우지 않음 (파일의 같은 환자와 맞춰지면 해제)
+    manual = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.date} - {self.room} - {self.surgery_name} ({self.status})"

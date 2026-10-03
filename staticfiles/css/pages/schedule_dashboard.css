@@ -1104,3 +1104,40 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 .side-card.is-collapsed .side-head { border-bottom: none; }
 .side-card.is-collapsed .side-sum { display: inline; }
 .side-card.is-collapsed .side-caret { transform: rotate(180deg); }
+
+/* 접기: 머리글만 남기고 칸 내용 숨김 (Hold·공지·업로드 포함) */
+.side-card.is-collapsed > :not(.side-head) { display: none !important; }
+.side-hold .side-toggle .side-count, .side-notice .side-toggle .notice-status { margin-left: 4px; }
+
+/* 수술 메뉴: 보조 설명 · 삭제 */
+.rm-note { margin-left: 4px; font-size: 10.5px; font-weight: 500; color: var(--orb-muted, #6b7686); }
+.rm-opt.rm-danger { color: #b3261e; }
+.rm-opt.rm-danger:hover { background: #fdecea; }
+
+/* 수술 직접 추가 */
+.add-case-content { max-width: 520px; }
+.add-case-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.add-case-form label { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 12.5px; font-weight: 700; color: #3b4a5f; }
+.add-case-form label b { color: #b3261e; }
+.add-case-form .wide { grid-column: 1 / -1; }
+.add-case-form input, .add-case-form select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid #dfe4ec;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  background: #fff;
+}
+.add-case-form input:focus, .add-case-form select:focus { border-color: #2b5876; outline: none; box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.12); }
+.add-case-error { grid-column: 1 / -1; margin: 0; padding: 6px 10px; border-radius: 8px; background: #fdecea; color: #b3261e; font-size: 12.5px; }
+.add-case-form .memo-modal-footer { padding-top: 4px; }
+@media (max-width: 480px) {
+  .add-case-form { grid-template-columns: 1fr; }
+}
+/* 헤더 버튼: 글자가 두 줄로 꺾이지 않게 (좁은 화면은 버튼 줄을 감싸서 다음 줄로) */
+.orb-btn { white-space: nowrap; }
+@media (max-width: 600px) {
+  .orb-actions { flex-wrap: wrap; }
+}
+.add-case-content { max-height: calc(100vh - 24px); overflow-y: auto; }
