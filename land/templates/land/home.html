@@ -39,7 +39,7 @@
   <div class="hero-content text-center">
     <h1 class="hero-title">Welcome to <span class="hero-brand">ANExuS</span></h1>
     <p class="hero-subtitle">
-      <span id="hero-typewriter">Your one-stop solution for safe and precise anesthesia care.</span><span class="hero-cursor" aria-hidden="true"></span>
+      <span id="hero-typewriter">Your one-stop solution for safe and precise anesthesia care.</span>
     </p>
     <a href="https://escapebaek.github.io/me/" target="_blank" rel="noopener noreferrer" class="hero-about">
       About the developer <i class="fas fa-arrow-right"></i>
@@ -190,20 +190,16 @@
       "Precise. Safe. Smart.",
       "Everything you need for modern anesthesia practice.",
     ];
-    let pi = 0, ci = phrases[0].length, deleting = true;
-    function tick() {
-      const phrase = phrases[pi];
-      if (!deleting) {
-        el.textContent = phrase.slice(0, ++ci);
-        if (ci === phrase.length) { deleting = true; setTimeout(tick, 2600); return; }
-        setTimeout(tick, 42);
-      } else {
-        el.textContent = phrase.slice(0, --ci);
-        if (ci === 0) { deleting = false; pi = (pi + 1) % phrases.length; setTimeout(tick, 380); return; }
-        setTimeout(tick, 22);
-      }
-    }
-    setTimeout(tick, 3200);
+    // 타자 효과 대신 문구를 부드럽게 바꿔 끼움 (덜 산만하게)
+    let pi = 0;
+    setInterval(() => {
+      el.classList.add("is-fading");
+      setTimeout(() => {
+        pi = (pi + 1) % phrases.length;
+        el.textContent = phrases[pi];
+        el.classList.remove("is-fading");
+      }, 450);
+    }, 4500);
   });
 </script>
 

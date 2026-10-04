@@ -479,3 +479,31 @@ html, body { overflow-x: clip; }   /* 100vw 가 세로 스크롤바 폭만큼 �
 }
 .features-section > .container-xxl { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
 @media (max-width: 576px) { .features-section > .container-xxl { padding: 0 12px; } }
+
+/* ===== 히어로 정돈: 글자 뒤로 지나가던 파형을 아래쪽 가는 모니터 선으로, 장식 구슬 없음 ===== */
+.hero-section { min-height: 0; padding: 64px 0 112px; }
+.hero-background { display: none; }
+.hero-monitor {
+  top: auto;
+  bottom: 62px;           /* 떠 있는 첫 카드(-56px) 바로 위 */
+  height: 54px;
+  transform: none;
+  opacity: 0.9;
+}
+.wave-trace { stroke: rgba(255, 255, 255, 0.08); stroke-width: 1.2; }
+.wave-sweep { stroke-width: 1.8; }
+.hero-title { font-size: 2.9rem; margin-bottom: 0.6rem; letter-spacing: -0.02em; text-shadow: none; }
+.hero-subtitle { min-height: 0; margin-bottom: 1rem; font-size: 1.12rem; color: rgba(255, 255, 255, 0.82); text-shadow: none; }
+#hero-typewriter { transition: opacity 0.45s ease; }
+#hero-typewriter.is-fading { opacity: 0; }
+@media (max-width: 768px) {
+  .hero-section { padding: 56px 0 100px; }
+  .hero-monitor { height: 44px; bottom: 56px; transform: none; }
+  .hero-title { font-size: 2.1rem; }
+  .hero-subtitle { font-size: 1rem; min-height: 2.8rem; }   /* 두 줄 문구로 바뀔 때 높이 흔들림 방지 */
+}
+@media (max-width: 576px) {
+  .hero-title { font-size: 1.8rem; }
+  .hero-subtitle { font-size: 0.92rem; }
+}
+@media (prefers-reduced-motion: reduce) { #hero-typewriter { transition: none; } }
