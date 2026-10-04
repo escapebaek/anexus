@@ -41,32 +41,25 @@
     <p class="hero-subtitle">
       <span id="hero-typewriter">Your one-stop solution for safe and precise anesthesia care.</span><span class="hero-cursor" aria-hidden="true"></span>
     </p>
-    <div class="hero-buttons">
-      <a href="#features" class="btn btn-hero btn-hero-primary">
-        <span>Explore Our Features</span>
-        <i class="fas fa-arrow-down ms-2"></i>
-      </a>
-      <a href="https://escapebaek.github.io/me/" target="_blank" rel="noopener noreferrer" class="btn btn-hero btn-hero-secondary">
-        <span>About the Developer</span>
-        <i class="fas fa-user ms-2"></i>
-      </a>
-    </div>
+    <a href="https://escapebaek.github.io/me/" target="_blank" rel="noopener noreferrer" class="hero-about">
+      About the developer <i class="fas fa-arrow-right"></i>
+    </a>
   </div>
 </div>
 
 <!-- Feature Cards -->
 {% with member=is_member %}
 <div id="features" class="features-section">
-  <div class="container-xxl">
+  <div class="container-xxl lp-wrap">
     {% if surgeries %}
     <!-- 수술 현황 요약 (현황판을 쓰는 회원) -->
     <a class="lp-or" href="{% url 'schedule_dashboard' %}">
       <div class="lp-or-head">
         <span class="lp-or-title">{% if surgeries.counts.ongoing %}<span class="lp-or-live" aria-hidden="true"></span>{% endif %}수술 현황</span>
         <span class="lp-or-counts">
-          <span class="c-ongoing">진행 <b>{{ surgeries.counts.ongoing }}</b></span>
-          <span class="c-pending">예정 <b>{{ surgeries.counts.pending }}</b></span>
-          <span class="c-finished">완료 <b>{{ surgeries.counts.finished }}</b></span>
+          <span class="c-ongoing"><b>{{ surgeries.counts.ongoing }}</b>진행</span>
+          <span class="c-pending"><b>{{ surgeries.counts.pending }}</b>예정</span>
+          <span class="c-finished"><b>{{ surgeries.counts.finished }}</b>완료</span>
         </span>
         <span class="lp-or-go">현황판 열기 <i class="fas fa-arrow-right"></i></span>
       </div>
@@ -92,6 +85,10 @@
         <h2 class="lp-section-title" id="{{ section.id }}-title">{{ section.title }}</h2>
         <p class="lp-section-sub">{{ section.subtitle }}</p>
       </header>
+      {% if forloop.first and not user.is_authenticated %}
+      <p class="lp-login-note"><i class="fas fa-lock"></i> 로그인하면 아래 기능을 모두 쓸 수 있어요.
+        <a href="{% url 'login' %}">로그인</a></p>
+      {% endif %}
 
       <div class="lp-grid" style="--lp-cols: {{ section.cols }}">
         {% for card in section.cards %}
@@ -109,12 +106,12 @@
           </span>
           <span class="lp-foot">
             {% if member %}
-              {% if card.external %}<span class="lp-go">Open <i class="fas fa-external-link-alt"></i></span><span class="visually-hidden">(opens in a new tab)</span>
-              {% else %}<span class="lp-go">Open <i class="fas fa-arrow-right"></i></span>{% endif %}
+              {% if card.external %}<i class="fas fa-external-link-alt lp-go" title="새 탭에서 열림"></i><span class="visually-hidden">(opens in a new tab)</span>
+              {% else %}<i class="fas fa-chevron-right lp-go"></i>{% endif %}
             {% elif user.is_authenticated %}
-              <span class="lp-state"><i class="fas fa-user-clock"></i> 승인 대기 중</span>
+              <span class="lp-state" title="승인 대기 중"><i class="fas fa-user-clock"></i><span class="visually-hidden">승인 대기 중</span></span>
             {% else %}
-              <span class="lp-state"><i class="fas fa-sign-in-alt"></i> 로그인 후 이용</span>
+              <span class="lp-state" title="로그인하면 열 수 있어요"><i class="fas fa-lock"></i><span class="visually-hidden">로그인 후 이용</span></span>
             {% endif %}
           </span>
         {% if user.is_authenticated and not member %}</div>{% else %}</a>{% endif %}
@@ -182,14 +179,6 @@
       }, { threshold: 0.05, rootMargin: "0px 0px -20px 0px" });
       items.forEach((el) => observer.observe(el));
     }
-
-    document.querySelector(".btn-hero-primary")?.addEventListener("click", function (e) {
-      const target = document.querySelector("#features");
-      if (!target) return;
-      e.preventDefault();
-      const navHeight = document.querySelector(".navbar")?.offsetHeight || 70;
-      window.scrollTo({ top: target.offsetTop - navHeight, behavior: reduceMotion ? "auto" : "smooth" });
-    });
 
     // 문구 순환 (움직임 줄이기 설정이면 첫 문구만 보여준다)
     const el = document.getElementById("hero-typewriter");

@@ -3,8 +3,8 @@
 /* Hero Section - Optimized for performance */
 .hero-section {
   position: relative;
-  min-height: min(430px, 56vh);
-  padding: 64px 0 56px;
+  min-height: min(360px, 48vh);
+  padding: 56px 0 96px;   /* 아래 여백: 첫 카드가 히어로 위로 살짝 올라옴 */
   background: var(--primary-gradient);
   color: white;
   display: flex;
@@ -69,7 +69,7 @@
   text-shadow: 0 1px 6px rgba(20, 30, 60, 0.45);  /* 뒤로 흐르는 파형 위에서도 또렷하게 */
   font-size: 1.3rem;
   font-weight: 400;
-  margin-bottom: 2rem;
+  margin-bottom: 1.1rem;
   opacity: 0;
   animation: fadeInUp 0.5s ease-out 0.2s forwards;
   min-height: 3.6rem; /* 2줄 높이 고정 — 삭제 중 레이아웃 흔들림 방지 */
@@ -144,51 +144,25 @@
   50%       { opacity: 0; }
 }
 
-.hero-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
+/* 개발자 소개: 큰 버튼 대신 조용한 글자 링크 */
+.hero-about {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-decoration: none;
   opacity: 0;
   animation: fadeInUp 0.5s ease-out 0.3s forwards;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
-
-.btn-hero {
-  padding: 1rem 2rem;
-  border-radius: 30px;
-  font-weight: 600;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.btn-hero-primary {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-}
-
-.btn-hero-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.btn-hero:hover {
-  color: white;
-  text-decoration: none;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.btn-hero-primary:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.btn-hero-secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.4);
-}
+.hero-about i { font-size: 0.7rem; transition: transform 0.2s ease; }
+.hero-about:hover { color: #fff; border-color: rgba(255, 255, 255, 0.7); text-decoration: none; }
+.hero-about:hover i { transform: translateX(3px); }
 
 /* Optimized Animations */
 @keyframes float {
@@ -212,71 +186,154 @@
   }
 }
 
-/* Features: 섹션별 카드 묶음 */
+/* ===================== 아래 본문 ===================== */
+/* 바탕: 무늬 없이 아주 옅은 회청색, 첫 블록은 히어로 아래 끝에 살짝 겹쳐 떠 있게 */
 .features-section {
-  background: #ffffff;
-  padding: 48px 0 64px;
+  background: #f4f6fa;
+  padding: 0 0 72px;
 }
+.features-section::before { display: none; }
+.features-section { overflow: visible !important; }   /* main.css 의 hidden 이면 히어로 위로 올린 카드가 잘림 */
+.lp-wrap { position: relative; z-index: 2; margin-top: -56px !important; }
 
-.lp-section + .lp-section {
-  margin-top: 2.75rem;
-}
-
+/* 섹션 머리: 제목 · 설명 · 오른쪽으로 이어지는 가는 선 */
+.lp-section { margin-top: 2.5rem; }
+.lp-section:first-child, .lp-or + .lp-section { margin-top: 2rem; }
+.lp-wrap > .lp-section:first-child { margin-top: 0; }
 .lp-section-head {
   display: flex;
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  margin-bottom: 1rem;
-  padding-left: 0.85rem;
-  border-left: 4px solid;
-  border-image: var(--primary-gradient) 1;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
 }
-
-.lp-section-title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--primary-dark);
-  margin: 0;
+.lp-section-head::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  align-self: center;
+  background: linear-gradient(90deg, rgba(43, 88, 118, 0.18), transparent);
 }
+.lp-section-title { margin: 0; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: var(--primary-dark); }
+.lp-section-sub { margin: 0; font-size: 0.85rem; color: #7b8794; }
+/* 첫 섹션이 히어로 위로 올라올 때: 제목이 어두운 바탕에 묻히지 않게 흰 판 위에 */
+.lp-wrap > .lp-section:first-child { padding: 1.1rem 1.1rem 1.2rem; border-radius: 18px; background: #fff; box-shadow: 0 12px 32px rgba(30, 41, 59, 0.10); }
+.lp-wrap > .lp-section:first-child .lp-card { box-shadow: none; background: #f7f9fc; }
 
-.lp-section-sub {
-  color: #6c757d;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
+/* 카드: 가로로 납작한 타일 (아이콘 · 제목/한 줄 설명 · 화살표) */
 .lp-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 0.75rem;
 }
-
-@media (min-width: 1200px) {
-  .lp-grid {
-    grid-template-columns: repeat(var(--lp-cols, 5), minmax(0, 1fr));
-  }
+/* 넓은 화면: 섹션마다 정한 열 수로 딱 맞게 (6장 = 3×2, 5장 = 한 줄) */
+@media (min-width: 1100px) {
+  .lp-grid { grid-template-columns: repeat(var(--lp-cols, 3), minmax(0, 1fr)); }
 }
-
-/* ---------- 수술 현황 요약 ---------- */
-.lp-or {
-  position: relative;  /* 섹션 배경 무늬(::before) 위로 - 안 그러면 눌러도 현황판으로 안 넘어감 */
-  z-index: 1;
-  display: block;
-  margin-bottom: 2rem;
-  padding: 14px 18px;
-  background: #fff;
-  border: 1px solid rgba(43, 88, 118, 0.14);
-  border-left: 4px solid var(--primary-dark);
+.lp-card {
+  position: relative;
+  min-width: 0;   /* 한 줄 설명(nowrap)이 칸 폭을 밀어내지 않게 */
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 76px;
+  padding: 0.85rem 1rem;
   border-radius: 14px;
-  box-shadow: 0 4px 16px rgba(43, 88, 118, 0.08);
+  background: #fff;
+  border: 1px solid rgba(43, 88, 118, 0.08);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   color: inherit;
   text-decoration: none;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
 }
-.lp-or:hover { color: inherit; text-decoration: none; box-shadow: 0 10px 24px rgba(43, 88, 118, 0.14); }
-.lp-or-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; }
-.lp-or-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; color: var(--primary-dark); font-size: 1.05rem; }
+a.lp-card:hover,
+a.lp-card:focus-visible {
+  transform: translateY(-2px);
+  background: #fff;
+  border-color: rgba(43, 88, 118, 0.22);
+  box-shadow: 0 10px 24px rgba(43, 88, 118, 0.12);
+  color: inherit;
+  text-decoration: none;
+}
+a.lp-card:focus-visible { outline: 3px solid rgba(43, 88, 118, 0.3); outline-offset: 2px; }
+.lp-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--primary-gradient);
+  color: #fff;
+  font-size: 1rem;
+  box-shadow: 0 4px 10px rgba(43, 88, 118, 0.22);
+}
+.lp-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
+.lp-title { font-size: 0.97rem; font-weight: 600; line-height: 1.25; color: #1f2d3d; }
+.lp-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; line-height: 1.4; color: #7b8794; }
+.lp-foot { flex: none; font-size: 0.78rem; }
+.lp-go { color: #a3b0bf; font-size: 0.8rem; transition: transform 0.18s ease, color 0.18s ease; }
+a.lp-card:hover .lp-go { color: var(--primary-dark); transform: translateX(3px); }
+.lp-go.fa-external-link-alt { font-size: 0.72rem; }
+a.lp-card:hover .lp-go.fa-external-link-alt { transform: translate(2px, -2px); }
+/* 로그인 전·승인 전: 자물쇠/시계 아이콘만 (글자는 화면 읽기·툴팁용) */
+.lp-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #eef2f7;
+  color: #8a96a8;
+  font-size: 0.72rem;
+}
+/* 로그인 안내 (첫 판 위쪽 한 줄) */
+.lp-login-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: -0.1rem 0 0.9rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(43, 88, 118, 0.07), rgba(78, 67, 118, 0.07));
+  color: #4a5768;
+  font-size: 0.86rem;
+}
+.lp-login-note i { color: var(--primary-dark); }
+.lp-login-note a {
+  margin-left: auto;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--primary-gradient);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.lp-login-note a:hover { color: #fff; text-decoration: none; box-shadow: 0 6px 16px rgba(43, 88, 118, 0.3); }
+.lp-card.is-locked { cursor: not-allowed; }
+.lp-card.is-locked .lp-icon { opacity: 0.5; box-shadow: none; }
+
+/* ---------- 수술 현황 요약 (현황판 쓰는 회원) ---------- */
+.lp-or {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-bottom: 0;
+  padding: 1.1rem 1.25rem 1.2rem;
+  border-radius: 18px;
+  background: #fff;
+  border: none;
+  box-shadow: 0 12px 32px rgba(30, 41, 59, 0.10);
+  color: inherit;
+  text-decoration: none;
+  transition: box-shadow 0.2s ease;
+}
+.lp-or:hover { color: inherit; text-decoration: none; box-shadow: 0 16px 38px rgba(30, 41, 59, 0.15); }
+.lp-or-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 1.25rem; }
+.lp-or-title { display: inline-flex; align-items: center; gap: 8px; font-size: 1.05rem; font-weight: 700; color: #1f2d3d; }
 .lp-or-live {
   width: 9px; height: 9px; border-radius: 50%;
   background: #2b5876;
@@ -284,302 +341,132 @@
   animation: orLive 1.6s ease-out infinite;
 }
 @keyframes orLive { to { box-shadow: 0 0 0 9px rgba(43, 88, 118, 0); } }
-.lp-or-counts { display: inline-flex; gap: 12px; font-size: 0.88rem; color: #6c757d; }
-.lp-or-counts b { font-variant-numeric: tabular-nums; }
+.lp-or-counts { display: inline-flex; gap: 0.5rem; }
+.lp-or-counts > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f1f4f9;
+  color: #6b7686;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.lp-or-counts b { font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #1f2d3d; }
+.lp-or-counts .c-ongoing { background: rgba(43, 88, 118, 0.1); }
 .lp-or-counts .c-ongoing b { color: #2b5876; }
 .lp-or-counts .c-pending b { color: #4e4376; }
-.lp-or-go { margin-left: auto; font-size: 0.82rem; font-weight: 700; color: var(--primary-dark); opacity: 0.75; }
-.lp-or:hover .lp-or-go { opacity: 1; }
-.lp-or-go i { font-size: 0.7rem; margin-left: 2px; }
-.lp-or-list {
-  list-style: none; margin: 10px 0 0; padding: 0;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 10px;
-}
-.lp-or-list li {
-  display: flex; align-items: center; gap: 8px; min-width: 0;
-  padding: 6px 10px; border-radius: 9px;
-  background: linear-gradient(135deg, #2b5876, #3d4f7c); color: #fff; font-size: 0.86rem;
-}
-.lp-or-room { font-weight: 800; flex: 0 0 auto; }
-.lp-or-op { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.92; }
-.lp-or-eta { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.8rem; color: #cfe2ff; }
-.lp-or-list li.is-over { box-shadow: inset 3px 0 0 #f0b44c; }
-.lp-or-list li.is-over .lp-or-eta { color: #ffd58a; }
-.lp-or-list .lp-or-more { background: #eef2f8; color: #2b5876; justify-content: center; font-weight: 700; }
-.lp-or-empty { margin: 8px 0 0; color: #6c757d; font-size: 0.88rem; }
-@media (max-width: 576px) {
-  .lp-or { padding: 12px 12px; margin-bottom: 1.5rem; }
-  .lp-or-go { margin-left: 0; }
-  .lp-or-list { grid-template-columns: 1fr; }
-}
-@media (prefers-reduced-motion: reduce) { .lp-or-live { animation: none; } }
-
-/* 카드 전체가 링크 */
-.lp-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  height: 100%;
-  padding: 1.1rem 1.1rem 0.95rem;
-  background: #fff;
-  border: 1px solid rgba(43, 88, 118, 0.12);
-  border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-  color: inherit;
-  text-decoration: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-a.lp-card:hover,
-a.lp-card:focus-visible {
-  transform: translateY(-2px);
-  border-color: rgba(43, 88, 118, 0.35);
-  box-shadow: 0 10px 24px rgba(43, 88, 118, 0.14);
-  color: inherit;
-  text-decoration: none;
-}
-
-a.lp-card:focus-visible {
-  outline: 3px solid rgba(43, 88, 118, 0.35);
-  outline-offset: 2px;
-}
-
-.lp-card.is-locked {
-  cursor: not-allowed;
-  background: #fafbfc;
-}
-
-.lp-card.is-locked .lp-icon {
-  opacity: 0.55;
-}
-
-.lp-icon {
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  border-radius: 11px;
+.lp-or-go {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
   background: var(--primary-gradient);
   color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.05rem;
-}
-
-.lp-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  flex: 1 1 auto;
-}
-
-.lp-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--primary-dark);
-  line-height: 1.3;
-}
-
-.lp-text {
-  font-size: 0.85rem;
-  color: #6c757d;
-  line-height: 1.45;
-}
-
-.lp-foot {
   font-size: 0.8rem;
   font-weight: 600;
 }
-
-.lp-go {
-  color: var(--primary-dark);
-  opacity: 0.75;
-  transition: opacity 0.2s ease;
+.lp-or-go i { font-size: 0.7rem; transition: transform 0.2s ease; }
+.lp-or:hover .lp-or-go i { transform: translateX(3px); }
+.lp-or-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 6px 10px;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
 }
-
-.lp-go i {
-  font-size: 0.7rem;
-  margin-left: 0.2rem;
+.lp-or-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 10px 7px 7px;
+  border-radius: 10px;
+  background: #f4f6fa;
+  font-size: 0.86rem;
+  color: #1f2d3d;
 }
-
-a.lp-card:hover .lp-go {
-  opacity: 1;
+.lp-or-room {
+  flex: none;
+  min-width: 42px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: var(--primary-gradient);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
 }
-
-.lp-state {
-  color: #6c757d;
-}
-
-.lp-state i {
-  margin-right: 0.2rem;
-}
+.lp-or-op { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-or-eta { flex: none; font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #2b5876; }
+.lp-or-list li.is-over { box-shadow: inset 3px 0 0 #d69e2e; }
+.lp-or-list li.is-over .lp-or-eta { color: #b7791f; }
+.lp-or-list .lp-or-more { justify-content: center; color: #6b7686; font-weight: 600; background: transparent; border: 1px dashed #d5dde8; }
+.lp-or-empty { margin: 0.75rem 0 0; font-size: 0.88rem; color: #7b8794; }
 
 /* 스크롤 등장 — 짧고 작게 */
 .scroll-reveal {
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
+.scroll-reveal.revealed { opacity: 1; transform: none; }
+a.lp-card.scroll-reveal.revealed:hover { transform: translateY(-2px); }
 
-.scroll-reveal.revealed {
-  opacity: 1;
-  transform: none;
-}
+/* 랜딩의 푸터: 얇게 한 줄로 */
+footer { padding: 22px 0 !important; margin-top: 0 !important; }
+footer .container-fluid { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 14px; }
+footer p { margin: 0 !important; font-size: 0.82rem !important; }
+footer .footer-text { opacity: 0.75; }
+footer .social-icons { margin: 0 !important; }
+footer .social-icons a { width: 30px !important; height: 30px !important; font-size: 0.9rem !important; }
 
-/* Responsive */
+/* ===================== 반응형 ===================== */
 @media (max-width: 1200px) {
-  .hero-title {
-    font-size: 2.8rem;
-  }
+  .hero-title { font-size: 2.8rem; }
 }
-
 @media (max-width: 768px) {
-  .hero-section {
-    min-height: 0;
-    padding: 56px 0 44px;
-  }
-
+  .hero-section { min-height: 0; padding: 52px 0 84px; }
   .hero-monitor { height: 170px; transform: translateY(-78%); }
   .hero-visits { right: 50%; transform: translateX(50%); top: 14px; gap: 14px; font-size: 9.5px; }
   .visits-num { font-size: 13px; }
-
-  .hero-title {
-    font-size: 2.1rem;
-    margin-bottom: 0.6rem;
-  }
-
-  .hero-subtitle {
-    font-size: 1.05rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .btn-hero {
-    padding: 0.7rem 1.4rem;
-    font-size: 0.9rem;
-  }
-
-  .features-section {
-    padding: 32px 0 48px;
-  }
-
-  .lp-section + .lp-section {
-    margin-top: 2rem;
-  }
-
-  .orb-1,
-  .orb-2 {
-    width: 120px;
-    height: 120px;
-    filter: blur(30px);
-  }
+  .hero-title { font-size: 2.1rem; margin-bottom: 0.6rem; }
+  .hero-subtitle { font-size: 1.05rem; margin-bottom: 0.8rem; }
+  .features-section { padding-bottom: 48px; }
+  .lp-wrap { margin-top: -48px !important; }
+  .orb-1, .orb-2 { width: 120px; height: 120px; filter: blur(30px); }
 }
-
-/* 휴대폰: 한 줄에 카드 두 장, 간결하게 */
 @media (max-width: 576px) {
-  .hero-title {
-    font-size: 1.8rem;
-  }
-
-  .hero-subtitle {
-    font-size: 0.95rem;
-  }
-
-  .btn-hero {
-    padding: 0.6rem 1.1rem;
-    font-size: 0.85rem;
-  }
-
-  .lp-section-title {
-    font-size: 1.15rem;
-  }
-
-  .lp-section-sub {
-    font-size: 0.8rem;
-  }
-
-  .lp-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.6rem;
-  }
-
-  .lp-card {
-    padding: 0.85rem 0.8rem 0.75rem;
-    gap: 0.5rem;
-    border-radius: 12px;
-  }
-
-  .lp-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-    font-size: 0.9rem;
-  }
-
-  .lp-title {
-    font-size: 0.9rem;
-  }
-
-  .lp-text {
-    font-size: 0.75rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .lp-foot {
-    font-size: 0.72rem;
-  }
-
-  .orb-1,
-  .orb-2 {
-    width: 100px;
-    height: 100px;
-    filter: blur(25px);
-  }
+  .hero-title { font-size: 1.8rem; }
+  .hero-subtitle { font-size: 0.95rem; }
+  .lp-grid { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+  .lp-section-head { flex-direction: column; align-items: flex-start; gap: 0.1rem; }
+  .lp-section-head::after { display: none; }
+  .lp-card { min-height: 64px; padding: 0.7rem 0.85rem; gap: 0.75rem; }
+  .lp-icon { width: 36px; height: 36px; border-radius: 10px; font-size: 0.9rem; }
+  .lp-wrap > .lp-section:first-child, .lp-or { padding: 0.9rem 0.8rem 1rem; border-radius: 16px; }
+  .lp-or-go { margin-left: 0; }
+  .lp-or-list { grid-template-columns: 1fr; }
+  .orb-1, .orb-2 { width: 100px; height: 100px; filter: blur(25px); }
 }
 
 /* 움직임 줄이기 설정 존중 */
 @media (prefers-reduced-motion: reduce) {
-  .gradient-orb,
-  .hero-cursor {
-    animation: none;
-  }
-
-  /* 움직이는 파형 대신 멈춘 파형만 */
+  .gradient-orb, .hero-cursor, .lp-or-live { animation: none; }
   .wave-sweep, .wave-head { display: none; }
   .wave-trace { stroke: rgba(147, 197, 253, 0.4); }
-
-  .hero-title,
-  .hero-subtitle,
-  .hero-buttons {
-    animation: none;
-    opacity: 1;
-  }
-
-  .scroll-reveal,
-  .lp-card,
-  a.lp-card:hover {
-    transition: none;
-    opacity: 1;
-    transform: none;
-  }
+  .hero-title, .hero-subtitle, .hero-about { animation: none; opacity: 1; }
+  .scroll-reveal, .lp-card, a.lp-card:hover, .lp-go { transition: none; opacity: 1; transform: none; }
 }
 
 /* High contrast mode */
 @media (prefers-contrast: high) {
-  .hero-section {
-    background: linear-gradient(135deg, #1a365d, #2d3748);
-  }
-
-  .btn-hero {
-    border: 2px solid rgba(255, 255, 255, 0.8);
-  }
-
-  .lp-card {
-    border-color: #2b5876;
-  }
+  .hero-section { background: linear-gradient(135deg, #1a365d, #2d3748); }
+  .lp-card { border-color: #2b5876; }
 }
 
 /* 넓은 화면: 히어로·기능 섹션 배경을 화면 끝까지 (사이트 공통 1400px 틀 밖으로), 내용은 조금 더 넓게 */
@@ -590,5 +477,5 @@ html, body { overflow-x: clip; }   /* 100vw 가 세로 스크롤바 폭만큼 �
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
 }
-.features-section > .container-xxl { max-width: 1600px; margin: 0 auto; padding: 0 24px; }
+.features-section > .container-xxl { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
 @media (max-width: 576px) { .features-section > .container-xxl { padding: 0 12px; } }
