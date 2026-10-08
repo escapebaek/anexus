@@ -421,6 +421,15 @@ html, body { overflow-x: clip; }   /* 100vw 가 세로 스크롤바 폭만큼 �
 .hero-flow path:nth-child(3n + 2) { stroke: rgba(196, 181, 253, 0.22); }
 
 .hero-times { color: #c4b5fd; margin: 0 2px; letter-spacing: 0; }
+.hero-eyebrow { flex-wrap: wrap; }
+.hero-motto {
+  margin-left: 6px; padding-left: 14px; border-left: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 0.86rem; font-weight: 400; font-style: italic; letter-spacing: 0.01em; text-transform: none;
+  color: rgba(255, 255, 255, 0.7);
+}
+@media (max-width: 420px) {
+  .hero-motto { flex-basis: 100%; margin: 4px 0 0 30px; padding-left: 0; border-left: 0; }   /* 좁은 폭: 아래 줄로 */
+}
 
 /* 히어로와 아래 카드 사이 여백 (겹치지 않게) */
 .features-section { padding-top: 28px !important; }
