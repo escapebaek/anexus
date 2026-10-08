@@ -392,6 +392,7 @@ html, body { overflow-x: clip; }   /* 100vw 가 세로 스크롤바 폭만큼 �
   display: block; min-height: 1.6em; margin-bottom: 1.1rem;
   font-size: 1.12rem; color: rgba(255, 255, 255, 0.82); text-shadow: none;
 }
+.hero-section .hero-subtitle { margin-bottom: 0; }   /* 마지막 줄: main.css 의 2rem 아래 여백 제거 (위아래 여백 균형) */
 #hero-typewriter { transition: opacity 0.45s ease; }
 #hero-typewriter.is-fading { opacity: 0; }
 
