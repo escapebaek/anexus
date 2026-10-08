@@ -12,7 +12,7 @@ class HomeTests(TestCase):
     def test_cards_are_grouped_into_sections(self):
         res = self.client.get(reverse('home'))
         titles = [s['title'] for s in res.context['sections']]
-        self.assertEqual(titles, ['ANExuS', 'Calculators & Simulators', 'Resources'])
+        self.assertEqual(titles, ['ANExUS', 'Calculators & Simulators', 'Resources'])
         cards = [c for s in res.context['sections'] for c in s['cards']]
         self.assertEqual(len(cards), 17)
         self.assertNotIn('Trends in Anesthesia', [c['title'] for c in cards])   # 추후 개발 후 다시 추가

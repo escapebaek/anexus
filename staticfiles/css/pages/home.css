@@ -42,42 +42,7 @@
   justify-content: center;
 }
 
-/* 방문 수: 환자 모니터의 수치 칸 (오른쪽 위) */
-.hero-visits {
-  position: absolute;
-  z-index: 2;
-  right: 22px;
-  top: 18px;
-  display: flex;
-  padding: 7px 4px;
-  border-radius: 12px;
-  background: rgba(12, 18, 48, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-.visits-item { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 0 14px; white-space: nowrap; }
-.visits-item + .visits-item { border-left: 1px solid rgba(255, 255, 255, 0.12); }
-.visits-label { display: flex; align-items: center; gap: 5px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; color: #93c5fd; opacity: 0.85; }
-.visits-num { font-size: 24px; line-height: 1; font-weight: 700; color: #dbeafe; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
-.is-today .visits-label { color: #c4b5fd; }
-.is-today .visits-num { color: #ede9fe; }
-/* 모니터의 박동 표시처럼 1초에 한 번 깜빡이는 점 */
-.visits-beat { width: 6px; height: 6px; border-radius: 50%; background: #c4b5fd; animation: visitsBeat 1s ease-out infinite; }
-@keyframes visitsBeat { 0%, 100% { opacity: 0.25; } 12% { opacity: 1; } }
-
-/* 브랜드 마크: 심박 한 번 (처음 한 번만 그려짐) */
-.hero-mark { display: block; width: 112px; height: 30px; margin: 0 auto 10px; overflow: visible; }
-.mark-line {
-  fill: none; stroke: url(#markGrad); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
-  stroke-dasharray: 1; stroke-dashoffset: 1;
-  animation: markDraw 1.1s cubic-bezier(.45, .05, .25, 1) 0.15s forwards;
-}
-.mark-dot { fill: #ede9fe; opacity: 0; animation: markDot 0.4s ease-out 1.15s forwards; filter: drop-shadow(0 0 4px rgba(196, 181, 253, 0.9)); }
-@keyframes markDraw { to { stroke-dashoffset: 0; } }
-@keyframes markDot { to { opacity: 1; } }
-
-/* ANExuS 브랜드 강조 */
+/* ANExUS 브랜드 강조 */
 .hero-brand {
   display: inline-block;
   background: linear-gradient(110deg, #93c5fd 30%, #c4b5fd 70%);
@@ -129,7 +94,7 @@
 }
 .features-section::before { display: none; }
 .features-section { overflow: visible !important; }   /* main.css 의 hidden 이면 히어로 위로 올린 카드가 잘림 */
-.lp-wrap { position: relative; z-index: 2; margin-top: -56px !important; }
+.lp-wrap { position: relative; z-index: 2; }
 
 /* 섹션 머리: 제목 · 설명 · 오른쪽으로 이어지는 가는 선 */
 .lp-section { margin-top: 2.5rem; }
@@ -369,7 +334,6 @@ footer .social-icons a { width: 30px !important; height: 30px !important; font-s
   .hero-title { font-size: 2.1rem; margin-bottom: 0.6rem; }
   .hero-subtitle { font-size: 1.05rem; margin-bottom: 0.8rem; }
   .features-section { padding-bottom: 48px; }
-  .lp-wrap { margin-top: -48px !important; }
 }
 @media (max-width: 576px) {
   .hero-title { font-size: 1.8rem; }
@@ -387,7 +351,6 @@ footer .social-icons a { width: 30px !important; height: 30px !important; font-s
 /* 움직임 줄이기 설정 존중 */
 @media (prefers-reduced-motion: reduce) {
   .lp-or-live, .visits-beat { animation: none; }
-  .mark-line, .mark-dot { animation: none; stroke-dashoffset: 0; opacity: 1; }
   .hero-title, .hero-subtitle, .hero-about { animation: none; opacity: 1; }
   .scroll-reveal, .lp-card, a.lp-card:hover, .lp-go { transition: none; opacity: 1; transform: none; }
 }
@@ -409,24 +372,89 @@ html, body { overflow-x: clip; }   /* 100vw 가 세로 스크롤바 폭만큼 �
 .features-section > .container-xxl { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
 @media (max-width: 576px) { .features-section > .container-xxl { padding: 0 12px; } }
 
-/* ===== 히어로 정돈: 움직이는 파형 대신 심박 한 번 마크 + 모니터 수치 칸 ===== */
-.hero-section { min-height: 0; padding: 60px 0 104px; }
-.hero-title { font-size: 2.9rem; margin-bottom: 0.6rem; letter-spacing: -0.02em; text-shadow: none; }
-.hero-subtitle { min-height: 0; margin-bottom: 1rem; font-size: 1.12rem; color: rgba(255, 255, 255, 0.82); text-shadow: none; }
+/* ===== 히어로: 왼쪽 글, 오른쪽 작은 모니터(파형 + 방문 수). 아래 카드와는 여백을 두고 분리 ===== */
+.hero-section { display: block; min-height: 0; padding: 56px 0 60px; }
+.hero-inner {
+  position: relative; z-index: 2;
+  max-width: 1400px; margin: 0 auto; padding: 0 24px;   /* 아래 카드들과 왼쪽 끝 맞춤 */
+  display: flex; align-items: center; justify-content: space-between; gap: 40px;
+}
+.hero-section .hero-content { padding: 0; max-width: 720px; text-align: left; }   /* main.css 의 좌우 20px 제거: 아래 카드와 왼쪽 끝 맞춤 */
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  font-size: 0.74rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(219, 234, 254, 0.8);
+  opacity: 0; animation: fadeInUp 0.5s ease-out 0.05s forwards;
+}
+.hero-eyebrow::before { content: ""; width: 22px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #93c5fd, #c4b5fd); }
+.hero-title { font-size: 3rem; line-height: 1.12; margin-bottom: 0.7rem; letter-spacing: -0.02em; text-shadow: none; }
+.hero-subtitle {
+  display: block; min-height: 1.6em; margin-bottom: 1.1rem;
+  font-size: 1.12rem; color: rgba(255, 255, 255, 0.82); text-shadow: none;
+}
 #hero-typewriter { transition: opacity 0.45s ease; }
 #hero-typewriter.is-fading { opacity: 0; }
+
+/* 오른쪽: 틀 없이 숫자만 */
+.hero-stats {
+  display: flex; align-items: stretch; flex-shrink: 0;
+  opacity: 0; animation: fadeInUp 0.5s ease-out 0.15s forwards;
+}
+.visits-item { display: flex; flex-direction: column; gap: 8px; white-space: nowrap; padding: 2px 30px; }
+.visits-item:last-child { padding-right: 4px; }
+.visits-item + .visits-item { border-left: 1px solid rgba(255, 255, 255, 0.18); }
+.visits-label { display: flex; align-items: center; gap: 7px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.16em; color: rgba(219, 234, 254, 0.7); }
+.visits-num { font-size: 2.75rem; line-height: 1; font-weight: 300; letter-spacing: -0.02em; color: #fff; font-variant-numeric: tabular-nums; }
+.is-today .visits-label { color: #c4b5fd; }
+/* 1초에 한 번 깜빡이는 점: 지금 살아 있는 숫자 */
+.visits-beat { width: 6px; height: 6px; border-radius: 50%; background: #c4b5fd; animation: visitsBeat 1s ease-out infinite; }
+@keyframes visitsBeat { 0%, 100% { opacity: 0.25; } 12% { opacity: 1; } }
+
+/* 배경 곡선: 오른쪽에만, 글 쪽으로 갈수록 사라짐 */
+.hero-flow {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 64%; height: 100%;
+  z-index: 1; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
+}
+.hero-flow path { fill: none; stroke: rgba(255, 255, 255, 0.14); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.hero-flow path:nth-child(3n + 2) { stroke: rgba(196, 181, 253, 0.22); }
+
+.hero-times { color: #c4b5fd; margin: 0 2px; letter-spacing: 0; }
+.hero-eyebrow { flex-wrap: wrap; }
+.hero-motto {
+  margin-left: 6px; padding-left: 14px; border-left: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 0.86rem; font-weight: 400; font-style: italic; letter-spacing: 0.01em; text-transform: none;
+  color: rgba(255, 255, 255, 0.7);
+}
+@media (max-width: 420px) {
+  .hero-motto { flex-basis: 100%; margin: 4px 0 0 30px; padding-left: 0; border-left: 0; }   /* 좁은 폭: 아래 줄로 */
+}
+
+/* 히어로와 아래 카드 사이 여백 (겹치지 않게) */
+.features-section { padding-top: 28px !important; }
+.lp-wrap { margin-top: 0 !important; }
+
+@media (max-width: 992px) {
+  .hero-title { font-size: 2.5rem; }
+}
 @media (max-width: 768px) {
-  .hero-section { padding: 74px 0 92px; }   /* 위쪽: 가운데로 내려온 수치 칸 자리 */
-  .hero-visits { right: 50%; transform: translateX(50%); top: 14px; padding: 5px 2px; border-radius: 10px; }
-  .visits-item { padding: 0 11px; flex-direction: row; align-items: baseline; gap: 7px; }
-  .visits-label { font-size: 8.5px; }
-  .visits-num { font-size: 15px; }
-  .hero-mark { width: 92px; height: 25px; margin-bottom: 6px; }
+  .hero-section { padding: 36px 0 32px; }
+  .hero-inner { flex-direction: column; align-items: stretch; gap: 22px; padding: 0 16px; }
   .hero-title { font-size: 2.1rem; }
-  .hero-subtitle { font-size: 1rem; min-height: 2.8rem; }   /* 두 줄 문구로 바뀔 때 높이 흔들림 방지 */
+  .hero-subtitle { font-size: 1rem; min-height: 3em; }   /* 두 줄 문구로 바뀔 때 높이 흔들림 방지 */
+  .hero-flow { width: 100%; opacity: 0.7; }
+  .visits-item { padding: 0 18px; gap: 6px; }
+  .visits-item:first-child { padding-left: 0; }
+  .visits-num { font-size: 1.9rem; }
+  .features-section { padding-top: 20px !important; }
 }
 @media (max-width: 576px) {
-  .hero-title { font-size: 1.8rem; }
+  .hero-title { font-size: 1.85rem; }
   .hero-subtitle { font-size: 0.92rem; }
+  .features-section { padding-top: 16px !important; }
 }
-@media (prefers-reduced-motion: reduce) { #hero-typewriter { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  #hero-typewriter { transition: none; }
+  .hero-eyebrow, .hero-stats { animation: none; opacity: 1; }
+}

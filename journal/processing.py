@@ -106,7 +106,7 @@ def crossref_metadata(doi):
         return None
     try:
         res = requests.get(CROSSREF_URL.format(doi=doi), timeout=12,
-                           headers={"User-Agent": "ANExuS journal stand (https://anexus.cloud)"})
+                           headers={"User-Agent": "ANExUS journal stand (https://anexus.cloud)"})
         if res.status_code != 200:
             return None
         item = res.json().get("message") or {}

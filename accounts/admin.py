@@ -27,10 +27,10 @@ class CustomUserAdmin(UserAdmin):
     list_filter = [ApprovalFilter, 'is_approved', 'is_specially_approved', 'is_staff', 'is_active', 'training_hospital']
     list_editable = ['is_approved']
     fieldsets = UserAdmin.fieldsets + (
-        ('ANExuS', {'fields': ('real_name', 'training_hospital', 'is_approved', 'is_specially_approved')}),
+        ('ANExUS', {'fields': ('real_name', 'training_hospital', 'is_approved', 'is_specially_approved')}),
     )
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('ANExuS', {'fields': ('email', 'real_name', 'training_hospital', 'is_approved', 'is_specially_approved')}),
+        ('ANExUS', {'fields': ('email', 'real_name', 'training_hospital', 'is_approved', 'is_specially_approved')}),
     )
     search_fields = ['username', 'real_name', 'email']
     ordering = ['-date_joined']

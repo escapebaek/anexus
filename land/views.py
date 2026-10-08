@@ -46,7 +46,7 @@ def home(request):
         {
             'id': 'anexus',
             'cols': 3,  # 넓은 화면에서 한 줄 카드 수 (6장 = 3장씩 두 줄)
-            'title': 'ANExuS',
+            'title': 'ANExUS',
             'subtitle': 'Built-in tools for daily practice and study.',
             'cards': [
                 _card('Board', 'Join discussions and share knowledge.', reverse('board_index'), 'fas fa-comments'),

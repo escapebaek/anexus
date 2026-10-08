@@ -264,7 +264,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_TIMEOUT = 15
 EMAIL_CONFIGURED = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=f'ANExuS <{EMAIL_HOST_USER}>' if EMAIL_HOST_USER else 'ANExuS <noreply@anexus.cloud>')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=f'ANExUS <{EMAIL_HOST_USER}>' if EMAIL_HOST_USER else 'ANExUS <noreply@anexus.cloud>')
 if EMAIL_CONFIGURED:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 elif DEBUG:

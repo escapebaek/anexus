@@ -8,34 +8,39 @@
 
 <!-- Hero Section -->
 <div class="hero-section">
-  {% if visits %}
-  <!-- 방문 수: 환자 모니터의 수치 칸처럼 -->
-  <div class="hero-visits" title="같은 브라우저에서 30분 넘게 쉬었다 다시 오면 한 번으로 셉니다">
-    <span class="visits-item"><span class="visits-label">TOTAL VISITS</span><b class="visits-num" data-count="{{ visits.total }}">{{ visits.total }}</b></span>
-    <span class="visits-item is-today"><span class="visits-label"><i class="visits-beat" aria-hidden="true"></i>TODAY</span><b class="visits-num" data-count="{{ visits.today }}">{{ visits.today }}</b></span>
-  </div>
-  {% endif %}
+  <!-- 배경: 오른쪽에만 옅게 흐르는 곡선 (정적 장식) -->
+  <svg class="hero-flow" viewBox="0 0 900 400" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
+    <g>
+      <path d="M-40 100 C 180 0, 380 210, 620 80 S 860 -10, 960 50" />
+      <path d="M-40 130 C 180 36, 380 232, 620 110 S 860 30, 960 80" />
+      <path d="M-40 160 C 180 72, 380 254, 620 140 S 860 70, 960 110" />
+      <path d="M-40 190 C 180 108, 380 276, 620 170 S 860 110, 960 140" />
+      <path d="M-40 220 C 180 144, 380 298, 620 200 S 860 150, 960 170" />
+      <path d="M-40 250 C 180 180, 380 320, 620 230 S 860 190, 960 200" />
+      <path d="M-40 280 C 180 216, 380 342, 620 260 S 860 230, 960 230" />
+      <path d="M-40 310 C 180 252, 380 364, 620 290 S 860 270, 960 260" />
+      <path d="M-40 340 C 180 288, 380 386, 620 320 S 860 310, 960 290" />
+    </g>
+  </svg>
+  <div class="hero-inner">
+    <div class="hero-content">
+      <span class="hero-eyebrow" title="ANExUS = ANE(마취과) × US(우리) — 이름 속 소문자 x 가 곱하기">ANE <span class="hero-times">×</span> US<span class="hero-motto">Anesthesia, multiplied by us.</span></span>
+      <h1 class="hero-title">Welcome to <span class="hero-brand">ANExUS</span></h1>
+      <p class="hero-subtitle">
+        <span id="hero-typewriter">Your one-stop solution for safe and precise anesthesia care.</span>
+      </p>
+      <a href="https://escapebaek.github.io/me/" target="_blank" rel="noopener noreferrer" class="hero-about">
+        About the developer <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
 
-  <div class="hero-content text-center">
-    <!-- 브랜드 마크: 심박 한 번 (처음 한 번만 그려짐) -->
-    <svg class="hero-mark" viewBox="0 0 120 32" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="markGrad" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0" stop-color="#93c5fd" stop-opacity="0" />
-          <stop offset=".35" stop-color="#93c5fd" />
-          <stop offset="1" stop-color="#c4b5fd" />
-        </linearGradient>
-      </defs>
-      <path class="mark-line" pathLength="1" d="M2 20 H40 Q45 15 50 20 H56 L59 23 L64 4 L69 28 L72 20 H80 Q88 12 96 20 H112" />
-      <circle class="mark-dot" cx="114" cy="20" r="2.6" />
-    </svg>
-    <h1 class="hero-title">Welcome to <span class="hero-brand">ANExuS</span></h1>
-    <p class="hero-subtitle">
-      <span id="hero-typewriter">Your one-stop solution for safe and precise anesthesia care.</span>
-    </p>
-    <a href="https://escapebaek.github.io/me/" target="_blank" rel="noopener noreferrer" class="hero-about">
-      About the developer <i class="fas fa-arrow-right"></i>
-    </a>
+    {% if visits %}
+    <!-- 방문 수: 틀 없이 숫자만 -->
+    <div class="hero-stats" title="같은 브라우저에서 30분 넘게 쉬었다 다시 오면 한 번으로 셉니다">
+      <span class="visits-item"><span class="visits-label">TOTAL VISITS</span><b class="visits-num" data-count="{{ visits.total }}">{{ visits.total }}</b></span>
+      <span class="visits-item is-today"><span class="visits-label"><i class="visits-beat" aria-hidden="true"></i>TODAY</span><b class="visits-num" data-count="{{ visits.today }}">{{ visits.today }}</b></span>
+    </div>
+    {% endif %}
   </div>
 </div>
 

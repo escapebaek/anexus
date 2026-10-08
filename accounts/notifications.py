@@ -24,6 +24,6 @@ def notify_admins_of_signup(request, user):
             f"아이디: {user.username}\n이름: {user.real_name}\n수련병원: {user.training_hospital}\n이메일: {user.email}\n\n"
             f"승인하기: {admin_url}\n")
     try:
-        send_mail('[ANExuS] 가입 승인 요청: ' + user.username, body, None, recipients)
+        send_mail('[ANExUS] 가입 승인 요청: ' + user.username, body, None, recipients)
     except Exception:  # 메일 서버 문제로 가입이 막히면 안 된다
         logger.exception('signup notification failed')
