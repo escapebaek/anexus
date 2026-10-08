@@ -181,7 +181,7 @@ class BoardAccessTests(TestCase):
     def test_footer_year_is_current(self):
         from django.utils import timezone
         res = self.client.get('/')
-        self.assertContains(res, f'2024-{timezone.now().year} ANExuS')
+        self.assertContains(res, f'2024-{timezone.now().year} ANExUS')
 
 
 class BoardFormDefaultsTests(TestCase):

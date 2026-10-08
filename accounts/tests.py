@@ -210,7 +210,7 @@ class SettingsTests(TestCase):
         with mock.patch.dict('os.environ', {'DEBUG': 'False', 'EMAIL_HOST_USER': 'x@gmail.com', 'EMAIL_HOST_PASSWORD': 'abcd'}):
             reload(prod)
             self.assertEqual(prod.EMAIL_BACKEND, 'django.core.mail.backends.smtp.EmailBackend')
-            self.assertEqual(prod.DEFAULT_FROM_EMAIL, 'ANExuS <x@gmail.com>')
+            self.assertEqual(prod.DEFAULT_FROM_EMAIL, 'ANExUS <x@gmail.com>')
         reload(prod)
 
 
