@@ -26,18 +26,6 @@
   box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.25);
 }
 
-/* 다크모드 대응 */
-@media (prefers-color-scheme: dark) {
-  .notice-field {
-    background: linear-gradient(135deg, #2d2416 0%, #3d3020 100%);
-    border-color: #ff9800;
-  }
-  
-  .notice-label {
-    color: #ffb74d;
-  }
-}
-
 /* 모바일 반응형 */
 @media (max-width: 768px) {
   .notice-field {
