@@ -9,7 +9,7 @@ import os
 import re
 import subprocess
 from io import BytesIO
-from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice, DutyStaff, RoomKeeper, SavedStaff, RosterSeed
+from .models import SurgerySchedule, PatientMemo, ScheduleUploadJob, BoardNotice, DutyStaff, RoomKeeper, RoomRelief, SavedStaff, RosterSeed
 from . import table_parser
 from .ai_client import extract_schedules, find_duration_column
 from django.contrib import messages
@@ -1028,6 +1028,7 @@ def ai_check(request):
 # 근무자 명단 · 방킵 배정 (스케줄 파일에는 보통 없어서 현황판에서 직접)
 # ---------------------------------------------------------------------------
 MAX_STAFF = 60
+RELIEF_SLOTS = ("am", "lunch", "pm")
 
 
 def board_date(board):
@@ -1056,7 +1057,8 @@ def staff_state(user, day):
            roster: [{name, rooms}] (근무자), keepers: {room: [names]}, recent: {date, count} | None,
            anes: [names] (마취의 명단), anes_recent: {date, count} | None,
            marks: {keeper|anes: {name: {off, duty}}} (퇴근·당직 표시가 있는 사람만),
-           saved: {keeper|anes: [names]} (고정 명단)}
+           saved: {keeper|anes: [names]} (고정 명단),
+           reliefs: {room: {am|lunch|pm: {name, role}}} (커피·식사 교대)}
     그날 처음 보는 명단이면 고정 명단을 먼저 채움. 마취의를 맡은 수술 수는 화면이 현황판 데이터로 셈."""
     _seed_saved(user, day)
     keepers = defaultdict(list)
@@ -1075,7 +1077,14 @@ def staff_state(user, day):
     return {"date": day.isoformat(), "roster": roster, "keepers": dict(keepers),
             "recent": None if roster else _recent_roster(user, day, "keeper"),
             "anes": anes, "anes_recent": None if anes else _recent_roster(user, day, "anes"),
-            "marks": marks, "saved": _saved_names(user)}
+            "marks": marks, "saved": _saved_names(user), "reliefs": _reliefs(user, day)}
+
+
+def _reliefs(user, day):
+    reliefs = defaultdict(dict)
+    for r in RoomRelief.objects.filter(user=user, date=day):
+        reliefs[r.room][r.slot] = {"name": r.name, "role": r.role}
+    return dict(reliefs)
 
 
 def _saved_names(user):
@@ -1115,6 +1124,9 @@ def staff_api(request):
     save(name) · unsave(name) · save_all - 고정 명단 (다음 날부터 자동으로 명단에 들어감).
     remove 는 그날 명단에서만 빼고 고정 명단은 그대로.
     assign(name, room) · unassign(name, room) - 방킵. 한 사람은 하루에 한 방만 (다른 방으로 배정하면 옮겨짐).
+    relief(room, slot, name, role, from_room?, from_slot?) - 커피·식사 교대 (slot: am | lunch | pm).
+      name 이 비면 그 칸을 비움. from_room·from_slot 을 주면 그 칸에서 옮겨 온 것 (원래 칸은 비움).
+      한 사람이 여러 방의 교대를 맡을 수 있음.
     (수술별 마취의 자체는 schedule_update 의 anesthesiologist 로 저장)
     응답으로 그날의 명단·배정 전체를 돌려줌."""
     try:
@@ -1173,6 +1185,16 @@ def staff_api(request):
             if not fields:
                 return JsonResponse({"status": "error", "message": "요청을 이해하지 못했습니다."}, status=400)
             DutyStaff.objects.filter(user=user, date=day, role=role, name=name).update(**fields)
+        elif action == "relief" and room and data.get("slot") in RELIEF_SLOTS:
+            slot = data.get("slot")
+            from_room = re.sub(r"\s+", " ", str(data.get("from_room") or "")).strip()[:FIELD_MAX_LENGTHS["room"]]
+            if from_room and data.get("from_slot") in RELIEF_SLOTS and (from_room, data.get("from_slot")) != (room, slot):
+                RoomRelief.objects.filter(user=user, date=day, room=from_room, slot=data.get("from_slot")).delete()
+            if name:
+                RoomRelief.objects.update_or_create(user=user, date=day, room=room, slot=slot,
+                                                    defaults={"name": name, "role": role})
+            else:
+                RoomRelief.objects.filter(user=user, date=day, room=room, slot=slot).delete()
         elif action == "unassign" and name and room:
             RoomKeeper.objects.filter(user=user, date=day, room=room, name=name).delete()
         else:

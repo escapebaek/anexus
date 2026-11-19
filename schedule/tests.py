@@ -1535,3 +1535,58 @@ class ScheduleTrashTests(TestCase):
         self.assertFalse(SurgerySchedule.all_objects.filter(id=self.a.id).exists())
         res = self.client.get(reverse('schedule_dashboard'))
         self.assertEqual(res.context['trash_count'], 1)
+
+
+class RoomReliefTests(TestCase):
+    """커피 · 식사 교대: 방마다 오전 커피 / 점심 / 오후 커피 담당."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('doc', password='x')
+        self.user.is_specially_approved = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def act(self, **body):
+        body.setdefault('date', '2026-08-27')
+        return self.client.post(reverse('schedule_staff'), json.dumps(body), content_type='application/json')
+
+    def state(self, **body):
+        res = self.act(**body)
+        self.assertEqual(res.status_code, 200, res.content)
+        return res.json()['staff']
+
+    def test_set_replace_move_clear(self):
+        s = self.state(action='add', names=['김방킵'])
+        self.assertEqual(s['reliefs'], {})
+        s = self.state(action='relief', room='101', slot='am', name=' 김방킵 ', role='keeper')
+        s = self.state(action='relief', room='101', slot='lunch', name='이교수', role='anes')   # 마취의도 가능
+        s = self.state(action='relief', room='102', slot='am', name='김방킵', role='keeper')   # 한 사람이 여러 방
+        self.assertEqual(s['reliefs'], {
+            '101': {'am': {'name': '김방킵', 'role': 'keeper'}, 'lunch': {'name': '이교수', 'role': 'anes'}},
+            '102': {'am': {'name': '김방킵', 'role': 'keeper'}},
+        })
+        s = self.state(action='relief', room='101', slot='am', name='박방킵', role='keeper')   # 같은 칸은 바뀜
+        self.assertEqual(s['reliefs']['101']['am']['name'], '박방킵')
+        # 다른 칸으로 옮기기: 원래 칸은 비움
+        s = self.state(action='relief', room='103', slot='pm', name='이교수', role='anes', from_room='101', from_slot='lunch')
+        self.assertEqual(s['reliefs']['101'], {'am': {'name': '박방킵', 'role': 'keeper'}})
+        self.assertEqual(s['reliefs']['103'], {'pm': {'name': '이교수', 'role': 'anes'}})
+        s = self.state(action='relief', room='103', slot='pm', name='')                        # 비우기
+        self.assertNotIn('103', s['reliefs'])
+        # 다른 날짜와는 따로
+        self.assertEqual(self.state(date='2026-08-28', action='relief', room='101', slot='am', name='')['reliefs'], {})
+
+    def test_rejects_bad_slot_and_is_per_user(self):
+        self.assertEqual(self.act(action='relief', room='101', slot='night', name='김').status_code, 400)
+        self.assertEqual(self.act(action='relief', room='', slot='am', name='김').status_code, 400)
+        self.state(action='relief', room='101', slot='am', name='김방킵')
+        other = get_user_model().objects.create_user('other', password='x')
+        other.is_specially_approved = True
+        other.save()
+        self.client.force_login(other)
+        self.assertEqual(self.state(action='relief', room='101', slot='pm', name='')['reliefs'], {})
+
+    def test_dashboard_has_collapsed_relief_card(self):
+        res = self.client.get(reverse('schedule_dashboard'))
+        self.assertContains(res, 'id="reliefCard"')
+        self.assertContains(res, 'data-collapse-default="1"')

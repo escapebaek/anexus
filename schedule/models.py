@@ -128,6 +128,25 @@ class RoomKeeper(models.Model):
         return f"{self.date} {self.room}: {self.name}"
 
 
+class RoomRelief(models.Model):
+    """그날 그 방의 커피·식사 교대 담당. slot: am(오전 커피) · lunch(점심 식사) · pm(오후 커피).
+    role 은 이름을 어느 명단에서 가져왔는지 (keeper 근무자·방킵 | anes 마취의) - 화면 색 구분용.
+    방 이름으로 연결하므로 스케줄을 다시 올려도(같은 방 이름이면) 유지됨."""
+    SLOT_CHOICES = [("am", "오전 커피"), ("lunch", "점심 식사"), ("pm", "오후 커피")]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='room_reliefs')
+    date = models.DateField()
+    room = models.CharField(max_length=10)
+    slot = models.CharField(max_length=10, choices=SLOT_CHOICES)
+    name = models.CharField(max_length=50)
+    role = models.CharField(max_length=10, choices=DutyStaff.ROLE_CHOICES, default="keeper")
+
+    class Meta:
+        unique_together = [("user", "date", "room", "slot")]
+
+    def __str__(self):
+        return f"{self.date} {self.room} {self.slot}: {self.name}"
+
+
 class SavedStaff(models.Model):
     """고정 명단: 저장해 둔 근무자·마취의는 날마다 그날 명단에 자동으로 들어감 (오늘만 빼도 저장은 유지)."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saved_staff')
