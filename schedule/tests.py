@@ -1586,7 +1586,7 @@ class RoomReliefTests(TestCase):
         self.client.force_login(other)
         self.assertEqual(self.state(action='relief', room='101', slot='pm', name='')['reliefs'], {})
 
-    def test_dashboard_has_collapsed_relief_card(self):
+    def test_dashboard_has_relief_toggle(self):
         res = self.client.get(reverse('schedule_dashboard'))
-        self.assertContains(res, 'id="reliefCard"')
-        self.assertContains(res, 'data-collapse-default="1"')
+        self.assertContains(res, 'id="reliefBtn"')       # 현황판 헤더의 '교대' 버튼 (켜면 방마다 한 줄)
+        self.assertContains(res, 'id="reliefPop"')

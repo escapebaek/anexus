@@ -45,7 +45,10 @@
       <button type="button" class="orb-btn" id="reorderBtn" title="잠금을 풀면 수술을 끌어다 놓아 순서·방을 바꿀 수 있어요"><i class="fas fa-lock"></i> <span>순서 변경</span></button>
       <button type="button" class="orb-btn" id="expandRemainBtn" title="각 방의 남은(완료 안 된) 수술만 펼치기"><i class="fas fa-stream"></i> <span>남은 것 펼치기</span></button>
       <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기 (완료 포함)"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
-      <button type="button" class="orb-btn orb-btn-icon" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
+      <div class="orb-btn-pair">
+        <button type="button" class="orb-btn" id="reliefBtn" aria-pressed="false" title="방마다 커피 · 식사 교대 담당 보기 (현황판 각 방 위에 한 줄)"><i class="fas fa-mug-hot"></i> <span>교대</span><b class="orb-btn-count" id="reliefCount"></b></button>
+        <button type="button" class="orb-btn orb-btn-icon" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
+      </div>
     </div>
   </header>
 
@@ -112,19 +115,6 @@
           <button type="button" class="staff-recent" id="anesRecent" hidden></button>
           <button type="button" class="staff-recent staff-save-all" id="anesSaveAll" hidden><i class="fas fa-thumbtack"></i> 오늘 명단 모두 고정</button>
           <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근 · 📌 고정을 표시해요. <b>고정</b>한 사람은 다음 날에도 자동으로 들어오고, ×는 오늘만 빼요.</p>
-        </div>
-      </section>
-
-      <!-- ===== 커피 · 식사 교대 (방별 오전 커피 / 점심 / 오후 커피 담당, 기본 접힘) ===== -->
-      <section class="side-card side-relief" id="reliefCard" aria-label="커피 · 식사 교대">
-        <h4 class="side-head side-toggle" data-collapse="reliefCard" data-collapse-default="1" role="button" tabindex="0" aria-expanded="true" title="접기/펼치기">
-          <i class="fas fa-mug-hot"></i> 커피 · 식사 교대 <span class="side-count relief-count" id="reliefCount" title="정해진 교대 칸 / 전체 칸"></span><i class="fas fa-chevron-up side-caret"></i></h4>
-        <div class="staff-body">
-          <table class="relief-grid">
-            <thead><tr><th>방</th><th data-slot-head="am">☕ 오전</th><th data-slot-head="lunch">🍚 점심</th><th data-slot-head="pm">☕ 오후</th></tr></thead>
-            <tbody id="reliefRows"></tbody>
-          </table>
-          <p class="staff-hint">근무자·마취의 이름을 칸으로 <b>끌어다 놓거나</b> 칸을 <b>눌러</b> 고르세요. 칸의 이름을 다른 칸으로 끌면 옮겨지고, 근무자·마취의 카드로 끌어오면 지워져요.</p>
         </div>
       </section>
 
@@ -447,25 +437,31 @@
     const h = +new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", hour: "numeric", hourCycle: "h23" }).format(new Date());
     return h < 11 ? "am" : h < 14 ? "lunch" : "pm";
   }
-  function renderRelief() {
-    const rows = document.getElementById("reliefRows");
-    const rooms = BOARD.rooms.map(r => r.room).filter(Boolean);
-    let filled = 0;
-    rows.innerHTML = rooms.map(room => {
-      const r = BOARD.rooms.find(x => x.room === room);
-      const done = r.cases.every(c => c.group === "finished");
-      return `<tr class="${done ? "is-done" : ""}"><th title="${done ? "수술 종료" : ""}">${esc(room)}</th>${RELIEF_SLOTS.map(([slot, label]) => {
-        const v = reliefOf(room, slot);
-        if (v) filled++;
-        const role = v && v.role === "anes" ? "anes" : "keeper";
-        return `<td class="rl-cell" data-room="${esc(room)}" data-slot="${slot}" title="${esc(room)} ${label}${v ? " · " + esc(v.name) : " · 눌러서 고르기"}">${v
-          ? `<span class="relief-name rl-${role}${offClass(role, v.name)}" data-relief-name="${esc(v.name)}" data-role="${role}" data-from-room="${esc(room)}" data-from-slot="${slot}">${dutyEmoji(role, v.name)}${esc(v.name)}</span>`
-          : '<span class="rl-empty">+</span>'}</td>`;
-      }).join("")}</tr>`;
-    }).join("") || '<tr><td colspan="4" class="rl-none">현황판에 방이 생기면 여기서 교대를 정할 수 있어요</td></tr>';
-    document.getElementById("reliefCount").textContent = rooms.length ? `${filled}/${rooms.length * 3}` : "";
+  // '교대' 버튼을 켜면 현황판의 방마다 맨 위에 한 줄 (기본 꺼짐, 이 브라우저에 기억)
+  let reliefView = false;
+  try { reliefView = localStorage.getItem("orb-relief-view") === "1"; } catch (e) { /* 기본: 꺼짐 */ }
+  function reliefRow(room) {
     const now = currentReliefSlot();
-    document.querySelectorAll("[data-slot-head]").forEach(th => th.classList.toggle("is-now", th.dataset.slotHead === now));
+    const slots = RELIEF_SLOTS.map(([slot, label]) => {
+      const v = reliefOf(room, slot);
+      const role = v && v.role === "anes" ? "anes" : "keeper";
+      const icon = slot === "lunch" ? "🍚" : "☕";
+      const short = { am: "오전", lunch: "점심", pm: "오후" }[slot];
+      return `<span class="rl-cell rl-slot${slot === now ? " is-now" : ""}" data-room="${esc(room)}" data-slot="${slot}" title="${esc(room)} ${label}${v ? " · " + esc(v.name) : " · 눌러서 고르기"}">
+        <i class="rl-label">${icon} ${short}</i>${v
+          ? `<span class="relief-name rl-${role}${offClass(role, v.name)}" data-relief-name="${esc(v.name)}" data-role="${role}" data-from-room="${esc(room)}" data-from-slot="${slot}">${dutyEmoji(role, v.name)}${esc(v.name)}</span>`
+          : '<span class="rl-empty">+</span>'}</span>`;
+    }).join("");
+    return `<tr class="relief-row"><td colspan="${compact ? 5 : 6}"><div class="rl-slots"><b class="rl-room" title="${esc(room)} 교대">${esc(room)}</b>${slots}</div></td></tr>`;
+  }
+  function renderRelief() {
+    const rooms = BOARD.rooms.map(r => r.room).filter(Boolean);
+    const filled = rooms.reduce((n, room) => n + RELIEF_SLOTS.filter(([slot]) => reliefOf(room, slot)).length, 0);
+    document.getElementById("reliefCount").textContent = filled || "";
+    const btn = document.getElementById("reliefBtn");
+    btn.classList.toggle("is-active", reliefView);
+    btn.setAttribute("aria-pressed", String(reliefView));
+    btn.title = reliefView ? "교대 줄 숨기기" : `방마다 커피 · 식사 교대 담당 보기${filled ? ` (${filled}칸 정해짐)` : ""}`;
   }
 
   const reliefPop = document.getElementById("reliefPop");
@@ -504,12 +500,14 @@
     closeReliefPop();
     staffAction(body);
   });
-  document.getElementById("reliefRows").addEventListener("click", (e) => {
-    const cell = e.target.closest("td.rl-cell");
-    if (cell) openReliefPop(cell);
+  document.getElementById("reliefBtn").addEventListener("click", () => {
+    reliefView = !reliefView;
+    try { localStorage.setItem("orb-relief-view", reliefView ? "1" : ""); } catch (e) { /* 저장 못 해도 동작 */ }
+    closeReliefPop();
+    renderBoard();
   });
   document.addEventListener("pointerdown", (e) => {
-    if (!reliefPop.hidden && !e.target.closest("#reliefPop, td.rl-cell")) closeReliefPop();
+    if (!reliefPop.hidden && !e.target.closest("#reliefPop, .rl-cell")) closeReliefPop();
   });
   window.addEventListener("scroll", () => { if (!reliefPop.hidden) closeReliefPop(); }, { passive: true });
 
@@ -584,6 +582,7 @@
       const list = onCallCases.map(c => esc([c.time_slot, c.surgery_name].filter(Boolean).join(" "))).join(", ");
       html += `<tr class="oncall-banner"><td colspan="${compact ? 5 : 6}" title="${list}"><i class="fas fa-moon"></i> <b>${esc(r.room)} 당직</b> <span>${onCallCases.length}건</span></td></tr>`;
     }
+    if (reliefView && !reorderMode) html += reliefRow(r.room);
     html += `
       <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}" data-idx="${curIdx}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
         <th class="c-room" data-case-menu="${cur.id}" title="수술 메뉴: 완료·진행중 / 당직·Hold / 방킵"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}${keeperChips(r.room)}</th>${caseCells(cur, more)}
@@ -1100,10 +1099,7 @@
       head.setAttribute("aria-expanded", String(!collapsed));
       try { localStorage.setItem(key, collapsed ? "1" : ""); } catch (e) { /* 저장 못 해도 동작 */ }
     };
-    let saved = null;
-    try { saved = localStorage.getItem(key); } catch (e) { /* 저장 못 해도 동작 */ }
-    // 기본: 펼침 (data-collapse-default="1" 인 칸은 처음엔 접힘, 이후엔 사용자가 정한 대로)
-    if (saved === "1" || (saved === null && head.dataset.collapseDefault === "1")) set(true);
+    try { if (localStorage.getItem(key) === "1") set(true); } catch (e) { /* 기본: 펼침 */ }
     head.addEventListener("click", () => set(!card.classList.contains("is-collapsed")));
     head.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set(!card.classList.contains("is-collapsed")); }
@@ -1157,7 +1153,7 @@
     const el = document.elementFromPoint(x, y);
     if (!el) return null;
     if (kind === "case") return el.closest("tbody.room tr[data-idx]") || el.closest("tbody.room[data-room]");
-    const relief = el.closest("td.rl-cell");
+    const relief = el.closest(".rl-cell");
     if (relief) return relief;   // 근무자·마취의·교대 이름 모두 교대 칸에 놓을 수 있음
     if (kind === "relief") return el.closest("#staffBar, #anesBar");   // 명단 카드로 끌어오면 교대 지움
     return kind === "anes"
@@ -1239,7 +1235,7 @@
     document.body.classList.remove("is-dragging", "drag-" + d.kind);
     if (d.target) d.target.classList.remove("is-drop", "drop-before", "drop-after");
     if (cancelled || !d.target) return;
-    if (d.target.matches("td.rl-cell")) {
+    if (d.target.matches(".rl-cell")) {
       // 교대 칸에 놓기: 명단 이름이면 지정, 다른 교대 칸의 이름이면 옮김
       const room = d.target.dataset.room, slot = d.target.dataset.slot;
       const body = { action: "relief", room, slot, name: d.name, role: d.kind === "relief" ? d.role : d.kind };
@@ -1315,6 +1311,8 @@
   }
 
   document.getElementById("board").addEventListener("click", (e) => {
+    const relief = e.target.closest(".rl-cell");
+    if (relief) return openReliefPop(relief);
     const memo = e.target.closest("[data-memo]");
     if (memo) return openMemoModal(memo.dataset.memo);
     const anes = e.target.closest("[data-anes]");
