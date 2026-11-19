@@ -1235,3 +1235,75 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 .trash-purge:hover { background: #fdecea; }
 .trash-restore:disabled, .trash-purge:disabled { opacity: 0.5; cursor: default; }
 .trash-list .trash-empty { display: block; padding: 24px 0; text-align: center; color: #6b7686; border: none; }
+
+/* ---------- 커피 · 식사 교대: '교대' 버튼을 켜면 방마다 맨 위에 한 줄 ---------- */
+.orb-btn-pair { display: flex; gap: 6px; }
+.orb-btn-pair #reliefBtn { flex: 1; justify-content: center; }
+#reliefBtn.is-active { background: #fff; color: #7c4a2d; font-weight: 700; }
+#reliefBtn.is-active .orb-btn-count { background: #7c4a2d; color: #fff; }
+tr.relief-row > td { padding: 3px 6px !important; background: #fbf7f3 !important; border-bottom: 1px dashed #eadfd5; }
+.rl-slots { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.rl-room { flex: none; align-self: center; min-width: 30px; padding: 0 5px; border-radius: 5px; background: #ecdfd3; color: #7c4a2d; font-size: 11px; font-weight: 800; text-align: center; line-height: 18px; }
+.rl-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 0;
+  min-width: 96px;
+  padding: 1px 3px 1px 6px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 11.5px;
+}
+.rl-slot:hover { background: #f3e9df; }
+.rl-label { flex: none; font-style: normal; font-size: 11px; font-weight: 700; color: #9a7a63; white-space: nowrap; }
+.rl-slot.is-now .rl-label { color: #7c4a2d; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.rl-empty, .relief-name {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  line-height: 18px;
+  border-radius: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.rl-empty { border: 1px dashed #dccbbd; color: #c2ab98; font-weight: 700; }
+.rl-slot:hover .rl-empty { border-color: #7c4a2d; color: #7c4a2d; }
+.relief-name { padding: 0 4px; font-weight: 700; letter-spacing: -0.3px; border: 1px solid transparent; cursor: grab; touch-action: none; }
+.relief-name.rl-keeper { background: #e6f4f1; color: #0f766e; border-color: #b7dfd7; }
+.relief-name.rl-anes { background: #e8eefc; color: #1d4ed8; border-color: #c3d2f6; }
+.relief-name.is-off { text-decoration: line-through; text-decoration-thickness: 2px; }
+.rl-slot.is-drop { background: #f3e9df; box-shadow: inset 0 0 0 2px #7c4a2d; }
+/* 교대 이름을 명단 카드로 끌어올 때: 지움 안내 */
+body.drag-relief .side-staff.is-drop .staff-body::before,
+body.drag-relief .side-anes.is-drop .staff-body::before { content: "여기에 놓으면 교대 지움"; }
+
+/* 교대 칸 고르기 팝업 */
+.relief-pop { min-width: 200px; max-width: 260px; }
+.relief-pop .rm-keepers { padding: 3px 4px 5px; }
+/* .staff-pop button 의 메뉴 줄 모양 대신 이름 칩 모양으로 */
+.relief-pop .rm-kp {
+  display: inline-flex;
+  padding: 3px 9px;
+  border: 1px solid #0f766e;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 600;
+}
+.relief-pop .rm-kp:hover { background: #e6f4f1; }
+.relief-pop .rm-kp.is-on { background: #0f766e; color: #fff; }
+.relief-pop .rm-kp.is-on::after { content: none; }
+.relief-pop .rm-kp.rm-an { border-color: #1d4ed8; color: #1d4ed8; }
+.relief-pop .rm-kp.rm-an:hover { background: #e8eefc; }
+.relief-pop .rm-kp.rm-an.is-on { background: #1d4ed8; color: #fff; }
+.relief-pop .rm-group { padding: 4px 4px 1px; }
+.relief-pop .rp-clear { margin-top: 2px; border-top: 1px solid #eef1f5; border-radius: 0 0 7px 7px; color: #b3261e; font-size: 12.5px; }
+.relief-pop .rp-clear[hidden] { display: none; }
+@media (max-width: 700px) {
+  .rl-slot { min-width: 88px; }
+  .rl-empty, .relief-name { height: 26px; line-height: 24px; font-size: 12.5px; }   /* 손가락으로 누르기 쉽게 */
+}

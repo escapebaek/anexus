@@ -45,7 +45,10 @@
       <button type="button" class="orb-btn" id="reorderBtn" title="잠금을 풀면 수술을 끌어다 놓아 순서·방을 바꿀 수 있어요"><i class="fas fa-lock"></i> <span>순서 변경</span></button>
       <button type="button" class="orb-btn" id="expandRemainBtn" title="각 방의 남은(완료 안 된) 수술만 펼치기"><i class="fas fa-stream"></i> <span>남은 것 펼치기</span></button>
       <button type="button" class="orb-btn" id="expandAllBtn" title="모든 방의 전체 일정 펼치기 (완료 포함)"><i class="fas fa-layer-group"></i> <span>모두 펼치기</span></button>
-      <button type="button" class="orb-btn orb-btn-icon" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
+      <div class="orb-btn-pair">
+        <button type="button" class="orb-btn" id="reliefBtn" aria-pressed="false" title="방마다 커피 · 식사 교대 담당 보기 (현황판 각 방 위에 한 줄)"><i class="fas fa-mug-hot"></i> <span>교대</span><b class="orb-btn-count" id="reliefCount"></b></button>
+        <button type="button" class="orb-btn orb-btn-icon" id="fullscreenBtn" title="전체화면"><i class="fas fa-expand"></i></button>
+      </div>
     </div>
   </header>
 
@@ -158,6 +161,16 @@
   <button type="button" data-mark="yesterday"><span>💤</span> 어제 당직</button>
   <button type="button" data-mark="off"><span>🏠</span> 퇴근</button>
   <button type="button" data-mark="save" class="sp-save"><span>📌</span> <em>고정 명단에 저장</em></button>
+</div>
+
+<!-- 교대 칸을 눌렀을 때: 담당 고르기 -->
+<div class="staff-pop relief-pop" id="reliefPop" hidden role="menu">
+  <div class="sp-name" id="reliefPopTitle"></div>
+  <div class="rm-group">근무자 · 방킵</div>
+  <div class="rm-keepers" id="reliefPopKeepers"></div>
+  <div class="rm-group">마취의</div>
+  <div class="rm-keepers" id="reliefPopAnes"></div>
+  <button type="button" class="rp-clear" id="reliefClear"><i class="fas fa-eraser"></i> 비우기</button>
 </div>
 
 <div class="room-menu" id="roomMenu" hidden>
@@ -416,6 +429,88 @@
     }
   }
 
+  // ----- 커피 · 식사 교대: 방마다 오전 커피 / 점심 / 오후 커피 담당 -----
+  const RELIEF_SLOTS = [["am", "오전 커피"], ["lunch", "점심 식사"], ["pm", "오후 커피"]];
+  const reliefOf = (room, slot) => ((STAFF.reliefs || {})[room] || {})[slot] || null;
+  // 지금 시각에 해당하는 교대 (머리글 강조): ~11시 오전 · ~14시 점심 · 그 뒤 오후
+  function currentReliefSlot() {
+    const h = +new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", hour: "numeric", hourCycle: "h23" }).format(new Date());
+    return h < 11 ? "am" : h < 14 ? "lunch" : "pm";
+  }
+  // '교대' 버튼을 켜면 현황판의 방마다 맨 위에 한 줄 (기본 꺼짐, 이 브라우저에 기억)
+  let reliefView = false;
+  try { reliefView = localStorage.getItem("orb-relief-view") === "1"; } catch (e) { /* 기본: 꺼짐 */ }
+  function reliefRow(room) {
+    const now = currentReliefSlot();
+    const slots = RELIEF_SLOTS.map(([slot, label]) => {
+      const v = reliefOf(room, slot);
+      const role = v && v.role === "anes" ? "anes" : "keeper";
+      const icon = slot === "lunch" ? "🍚" : "☕";
+      const short = { am: "오전", lunch: "점심", pm: "오후" }[slot];
+      return `<span class="rl-cell rl-slot${slot === now ? " is-now" : ""}" data-room="${esc(room)}" data-slot="${slot}" title="${esc(room)} ${label}${v ? " · " + esc(v.name) : " · 눌러서 고르기"}">
+        <i class="rl-label">${icon} ${short}</i>${v
+          ? `<span class="relief-name rl-${role}${offClass(role, v.name)}" data-relief-name="${esc(v.name)}" data-role="${role}" data-from-room="${esc(room)}" data-from-slot="${slot}">${dutyEmoji(role, v.name)}${esc(v.name)}</span>`
+          : '<span class="rl-empty">+</span>'}</span>`;
+    }).join("");
+    return `<tr class="relief-row"><td colspan="${compact ? 5 : 6}"><div class="rl-slots"><b class="rl-room" title="${esc(room)} 교대">${esc(room)}</b>${slots}</div></td></tr>`;
+  }
+  function renderRelief() {
+    const rooms = BOARD.rooms.map(r => r.room).filter(Boolean);
+    const filled = rooms.reduce((n, room) => n + RELIEF_SLOTS.filter(([slot]) => reliefOf(room, slot)).length, 0);
+    document.getElementById("reliefCount").textContent = filled || "";
+    const btn = document.getElementById("reliefBtn");
+    btn.classList.toggle("is-active", reliefView);
+    btn.setAttribute("aria-pressed", String(reliefView));
+    btn.title = reliefView ? "교대 줄 숨기기" : `방마다 커피 · 식사 교대 담당 보기${filled ? ` (${filled}칸 정해짐)` : ""}`;
+  }
+
+  const reliefPop = document.getElementById("reliefPop");
+  let reliefFor = null;  // { room, slot }
+  function renderReliefPop() {
+    const v = reliefOf(reliefFor.room, reliefFor.slot);
+    const label = RELIEF_SLOTS.find(([k]) => k === reliefFor.slot)[1];
+    document.getElementById("reliefPopTitle").textContent = `${reliefFor.room} · ${label}`;
+    const btn = (name, role) => `<button type="button" class="rm-kp${role === "anes" ? " rm-an" : ""}${v && v.name === name && v.role === role ? " is-on" : ""}${offClass(role, name)}" data-relief-pick="${esc(name)}" data-role="${role}">${dutyEmoji(role, name)}${esc(name)}</button>`;
+    document.getElementById("reliefPopKeepers").innerHTML = STAFF.roster.map(p => btn(p.name, "keeper")).join("")
+      || '<span class="rm-kp-empty">근무자 · 방킵 칸에 이름을 먼저 추가하세요</span>';
+    document.getElementById("reliefPopAnes").innerHTML = (STAFF.anes || []).map(n => btn(n, "anes")).join("")
+      || '<span class="rm-kp-empty">마취의 칸에 이름을 먼저 추가하세요</span>';
+    document.getElementById("reliefClear").hidden = !v;
+  }
+  function openReliefPop(cell) {
+    const key = { room: cell.dataset.room, slot: cell.dataset.slot };
+    if (reliefFor && reliefFor.room === key.room && reliefFor.slot === key.slot && !reliefPop.hidden) return closeReliefPop();
+    reliefFor = key;
+    renderReliefPop();
+    reliefPop.hidden = false;
+    const r = cell.getBoundingClientRect(), w = reliefPop.offsetWidth, h = reliefPop.offsetHeight;
+    reliefPop.style.left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8) + "px";
+    reliefPop.style.top = (r.bottom + 6 + h > window.innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
+  }
+  function closeReliefPop() { reliefPop.hidden = true; reliefFor = null; }
+  reliefPop.addEventListener("click", (e) => {
+    if (!reliefFor) return;
+    const pick = e.target.closest("[data-relief-pick]");
+    const clear = e.target.closest("#reliefClear");
+    if (!pick && !clear) return;
+    const v = reliefOf(reliefFor.room, reliefFor.slot);
+    const same = pick && v && v.name === pick.dataset.reliefPick && v.role === pick.dataset.role;
+    const body = { action: "relief", room: reliefFor.room, slot: reliefFor.slot,
+                   name: pick && !same ? pick.dataset.reliefPick : "", role: pick ? pick.dataset.role : "keeper" };
+    closeReliefPop();
+    staffAction(body);
+  });
+  document.getElementById("reliefBtn").addEventListener("click", () => {
+    reliefView = !reliefView;
+    try { localStorage.setItem("orb-relief-view", reliefView ? "1" : ""); } catch (e) { /* 저장 못 해도 동작 */ }
+    closeReliefPop();
+    renderBoard();
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (!reliefPop.hidden && !e.target.closest("#reliefPop, .rl-cell")) closeReliefPop();
+  });
+  window.addEventListener("scroll", () => { if (!reliefPop.hidden) closeReliefPop(); }, { passive: true });
+
   function renderStaff() {
     const d = new Date(STAFF.date + "T00:00:00");
     document.getElementById("staffDate").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
@@ -487,6 +582,7 @@
       const list = onCallCases.map(c => esc([c.time_slot, c.surgery_name].filter(Boolean).join(" "))).join(", ");
       html += `<tr class="oncall-banner"><td colspan="${compact ? 5 : 6}" title="${list}"><i class="fas fa-moon"></i> <b>${esc(r.room)} 당직</b> <span>${onCallCases.length}건</span></td></tr>`;
     }
+    if (reliefView && !reorderMode) html += reliefRow(r.room);
     html += `
       <tr class="main-row${cur.hold ? " is-hold" : ""}${cur.on_call ? " is-oncall" : ""}" data-idx="${curIdx}"${others ? ' title="클릭하면 이 방의 전체 일정을 펼칩니다"' : ""}>
         <th class="c-room" data-case-menu="${cur.id}" title="수술 메뉴: 완료·진행중 / 당직·Hold / 방킵"><span class="room-no">${esc(r.room) || "-"}</span>${flags ? `<span class="room-flags">${flags}</span>` : ""}${keeperChips(r.room)}</th>${caseCells(cur, more)}
@@ -504,6 +600,7 @@
   function renderBoard() {
     applyAnesDefaults();
     renderAnes();
+    renderRelief();
     const board = document.getElementById("board");
     if (!BOARD.rooms.length) return;
     board.style.transform = board.style.width = board.style.marginBottom = "";
@@ -1056,13 +1153,22 @@
     const el = document.elementFromPoint(x, y);
     if (!el) return null;
     if (kind === "case") return el.closest("tbody.room tr[data-idx]") || el.closest("tbody.room[data-room]");
+    const relief = el.closest(".rl-cell");
+    if (relief) return relief;   // 근무자·마취의·교대 이름 모두 교대 칸에 놓을 수 있음
+    if (kind === "relief") return el.closest("#staffBar, #anesBar");   // 명단 카드로 끌어오면 교대 지움
     return kind === "anes"
       ? (el.closest("td.c-anes[data-anes]") || el.closest("#anesBar"))
       : (el.closest("tbody.room[data-room]") || el.closest("#staffBar"));
   };
   document.addEventListener("pointerdown", (e) => {
-    const chip = e.target.closest(".staff-chip[data-name], .keeper[data-keeper], .anes-chip[data-anes-person], .anes-name[data-anes-name], .rh[data-reorder]");
+    const chip = e.target.closest(".staff-chip[data-name], .keeper[data-keeper], .anes-chip[data-anes-person], .anes-name[data-anes-name], .relief-name[data-relief-name], .rh[data-reorder]");
     if (!chip || e.target.closest(".staff-x") || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (chip.matches(".relief-name")) {
+      drag = { chip, kind: "relief", name: chip.dataset.reliefName, role: chip.dataset.role,
+               fromRoom: chip.dataset.fromRoom, fromSlot: chip.dataset.fromSlot,
+               x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, ghost: null, target: null };
+      return;
+    }
     if (chip.matches(".rh")) {
       // 순서 변경: 수술 행을 끌어 다른 자리·다른 방으로
       const row = chip.closest("tr[data-idx]"), c = findCase(chip.dataset.reorder);
@@ -1082,10 +1188,11 @@
     if (!drag.ghost) {
       if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
       drag.ghost = document.createElement("div");
-      drag.ghost.className = "drag-ghost" + (drag.kind === "anes" ? " is-anes" : drag.kind === "case" ? " is-case" : "");
+      const anesLike = drag.kind === "anes" || (drag.kind === "relief" && drag.role === "anes");
+      drag.ghost.className = "drag-ghost" + (anesLike ? " is-anes" : drag.kind === "case" ? " is-case" : "");
       drag.ghost.textContent = drag.name;
       document.body.appendChild(drag.ghost);
-      document.body.classList.add("is-dragging");
+      document.body.classList.add("is-dragging", "drag-" + drag.kind);
       drag.chip.classList.add("is-drag-src");
       autoScroll();
     }
@@ -1125,9 +1232,24 @@
     setTimeout(() => { suppressClick = false; }, 0);
     d.ghost.remove();
     d.chip.classList.remove("is-drag-src");
-    document.body.classList.remove("is-dragging");
+    document.body.classList.remove("is-dragging", "drag-" + d.kind);
     if (d.target) d.target.classList.remove("is-drop", "drop-before", "drop-after");
     if (cancelled || !d.target) return;
+    if (d.target.matches(".rl-cell")) {
+      // 교대 칸에 놓기: 명단 이름이면 지정, 다른 교대 칸의 이름이면 옮김
+      const room = d.target.dataset.room, slot = d.target.dataset.slot;
+      const body = { action: "relief", room, slot, name: d.name, role: d.kind === "relief" ? d.role : d.kind };
+      if (d.kind === "relief") {
+        if (room === d.fromRoom && slot === d.fromSlot) return;
+        Object.assign(body, { from_room: d.fromRoom, from_slot: d.fromSlot });
+      }
+      staffAction(body);
+      return;
+    }
+    if (d.kind === "relief") {
+      staffAction({ action: "relief", room: d.fromRoom, slot: d.fromSlot, name: "" });
+      return;
+    }
     if (d.kind === "case") {
       const room = d.target.closest("tbody.room").dataset.room;
       const data = BOARD.rooms.find(x => x.room === room);
@@ -1189,6 +1311,8 @@
   }
 
   document.getElementById("board").addEventListener("click", (e) => {
+    const relief = e.target.closest(".rl-cell");
+    if (relief) return openReliefPop(relief);
     const memo = e.target.closest("[data-memo]");
     if (memo) return openMemoModal(memo.dataset.memo);
     const anes = e.target.closest("[data-anes]");
