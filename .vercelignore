@@ -1,0 +1,27 @@
+# Vercel deployment ignore list
+
+# Ignore the virtual environment
+.git/
+node_modules/
+pycache/
+\*.pyc
+.venv/
+venv/
+env/
+
+staticfiles/
+
+.env*
+.log
+*~
+db.sqlite3
+
+media/
+
+.gitignore
+README.md
+docs/
+tests/
+_.ipynb
+_.sql
+\*.dump
