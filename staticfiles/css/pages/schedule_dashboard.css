@@ -1,7 +1,17 @@
 /* ==========================================================
    수술 현황판 (schedule dashboard) — OR 현황판형 레이아웃
-   사이트 공통 색감: #2b5876 → #4e4376, 밝은 배경
+   색 규칙: 사이트 공통 두 색(남색 #2b5876 · 보라 #4e4376) + 회색이 바탕.
+   눈에 띄는 색은 주의가 필요한 두 가지에만 - Hold(호박) · 당직(와인). 지우기 안내는 빨강.
+   사람 이름: 근무자·방킵 = 남색, 마취의 = 보라 (같은 계열 두 색)
    ========================================================== */
+:root {
+  --c-keeper: #2b5876;
+  --c-keeper-bg: #e8eff6;
+  --c-keeper-line: #c8d6e5;
+  --c-anes: #4e4376;
+  --c-anes-bg: #eeebf6;
+  --c-anes-line: #d7d1ea;
+}
 @font-face {
   font-family: "Pretendard";
   src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff") format("woff");
@@ -128,7 +138,9 @@
 .orb-btn:hover,
 .orb-btn.is-active { background: rgba(255, 255, 255, 0.28); }
 
-/* ---------- 마취 방법 배지 ---------- */
+/* ---------- 마취 방법 배지 ----------
+   수술 막대 위에서는 색 없이 글자만 (막대의 진행·예정·완료 색이 먼저 보이게).
+   방법별 색은 헤더의 비율 막대(.orb-anes-legend)에서만 씀 - 어두운 바탕에 맞춘 파스텔. */
 .at {
   display: inline-flex;
   align-items: center;
@@ -141,19 +153,22 @@
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.02em;
-  color: #fff;
-  background: #8a97a8;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+  color: var(--orb-primary);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--orb-border);
 }
-.at-GA { background: #e07b39; }   /* 전신 */
-.at-SA { background: #c2548f; }   /* 척추 */
-.at-EA { background: #8e5ea2; }   /* 경막외 */
-.at-CSE { background: #a8508f; }  /* 척추경막외 병용 */
-.at-BL { background: #16a085; }   /* 신경차단 */
-.at-MAC { background: #2e9b5c; }  /* MAC */
-.at-LA { background: #fff; color: #5b6b7d; box-shadow: inset 0 0 0 1px #b8c3d1; }  /* 국소 */
-.at-etc { background: #8a97a8; }
-.op-finished .at { opacity: 0.55; }
+.op-ongoing .at { color: #fff; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.op-pending .at { color: var(--st-pending); box-shadow: inset 0 0 0 1px #d7d1ea; }
+.op-finished .at { color: var(--st-finished); box-shadow: inset 0 0 0 1px var(--orb-border-soft); }
+tr.is-hold .op-bar .at { color: #8a5a12; box-shadow: inset 0 0 0 1px #efd29e; }
+.orb-anes-legend .at-GA { background: #8fd3ff; }   /* 전신 */
+.orb-anes-legend .at-SA { background: #c4b5fd; }   /* 척추 */
+.orb-anes-legend .at-EA { background: #f9a8d4; }   /* 경막외 */
+.orb-anes-legend .at-CSE { background: #a5b4fc; }  /* 척추경막외 병용 */
+.orb-anes-legend .at-BL { background: #99f6e4; }   /* 신경차단 */
+.orb-anes-legend .at-MAC { background: #bbf7d0; }  /* MAC */
+.orb-anes-legend .at-LA { background: #fff; }      /* 국소 */
+.orb-anes-legend .at-etc { background: #cbd5e1; }
 /* 헤더 숫자 칸: 큰 숫자 + 작은 이름, 위쪽 색 띠로 상태 구분 */
 .orb-tiles { display: flex; flex-wrap: wrap; gap: 6px; }
 .tile {
@@ -209,7 +224,6 @@
 }
 .al b { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .al-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.orb-anes-legend .at-LA { box-shadow: none; }   /* 국소: 흰 점·막대 (어두운 바탕이라 테두리 불필요) */
 
 /* ---------- 업로드 작업 안내 ---------- */
 .orb-job {
@@ -645,7 +659,6 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
 .rm-at-clear { font-size: 11px; line-height: 1.4; color: #6b7a8c; padding: 2px 6px; }
 
 /* 공지 · 메모 */
-.side-notice .side-head { border-left-color: var(--orb-primary-2); color: var(--orb-primary-2); }
 .notice-status { float: right; font-size: 10.5px; font-weight: 500; color: var(--orb-muted); }
 .notice-text {
   display: block;
@@ -659,9 +672,9 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
   font-size: 13px;
   line-height: 1.6;
   color: var(--orb-text);
-  background: #fffdf6;
+  background: #fff;
 }
-.notice-text:focus { box-shadow: inset 0 0 0 2px rgba(78, 67, 118, 0.25); }
+.notice-text:focus { box-shadow: inset 0 0 0 2px rgba(43, 88, 118, 0.2); }
 
 .orb-empty {
   grid-column: 1 / -1;
@@ -727,7 +740,6 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
   cursor: pointer;
 }
 .side-release:hover { background: var(--st-hold); color: #fff; border-color: transparent; }
-.side-hold .side-head { border-left-color: var(--st-hold); color: #8a5a12; background: var(--st-hold-bg); }
 .side-count {
   display: inline-block;
   min-width: 18px;
@@ -839,7 +851,6 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
 }
 
 /* ---------- 근무자 명단 · 방킵 ---------- */
-.side-staff .side-head { border-left-color: #0f766e; color: #0f766e; background: #e6f4f1; }
 .side-staff .side-head small { color: var(--orb-muted); font-weight: 600; margin-left: 2px; }
 .staff-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; }
 .side-staff.is-drop { background: #fdecea; border-color: #f5c2bd; }
@@ -851,10 +862,10 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
   align-items: center;
   gap: 5px;
   padding: 3px 4px 3px 10px;
-  border: 1.5px dashed #0f766e;
+  border: 1.5px dashed var(--c-keeper);
   border-radius: 999px;
   background: #fff;
-  color: #0f766e;
+  color: var(--c-keeper);
   font-size: 13px;
   cursor: grab;
   user-select: none;
@@ -862,8 +873,8 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
 }
 .staff-chip b { font-weight: 700; }
 .staff-chip small { font-size: 11px; color: var(--orb-muted); font-weight: 600; }
-.staff-chip.is-assigned { border-style: solid; background: #e6f4f1; }
-.staff-chip.is-assigned small { color: #0f766e; }
+.staff-chip.is-assigned { border-style: solid; background: var(--c-keeper-bg); }
+.staff-chip.is-assigned small { color: var(--c-keeper); }
 .staff-x {
   width: 20px;
   height: 20px;
@@ -886,17 +897,17 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
   font-size: 12.5px;
   outline: none;
 }
-.staff-add input:focus { border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12); }
+.staff-add input:focus { border-color: var(--c-keeper); box-shadow: 0 0 0 3px rgba(43, 88, 118, 0.12); }
 .staff-add button, .staff-recent {
-  border: 1px solid #0f766e;
-  background: #0f766e;
+  border: 1px solid var(--c-keeper);
+  background: var(--c-keeper);
   color: #fff;
   border-radius: 8px;
   padding: 4px 10px;
   font-size: 12px;
   cursor: pointer;
 }
-.staff-recent { background: #fff; color: #0f766e; align-self: flex-start; }
+.staff-recent { background: #fff; color: var(--c-keeper); align-self: flex-start; }
 .staff-recent[hidden] { display: none; }
 .staff-hint { margin: 0; font-size: 11px; line-height: 1.5; color: var(--orb-muted); }
 
@@ -907,7 +918,7 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
   max-width: 100%;
   padding: 1px 3px;
   border-radius: 5px;
-  background: #0f766e;
+  background: var(--c-keeper);
   color: #fff;
   font-size: 10.5px;
   letter-spacing: -0.3px;
@@ -919,15 +930,15 @@ tr.is-hold .op-bar .eta, tr.is-hold .op-bar .eta * { color: #7a3e00 !important; 
   cursor: grab;
   touch-action: none;
 }
-.room-ongoing .main-row .keeper { background: #fff; color: #0f766e; }
-.keeper-more { font-size: 10px; font-weight: 700; color: #0f766e; }
+.room-ongoing .main-row .keeper { background: #fff; color: var(--c-keeper); }
+.keeper-more { font-size: 10px; font-weight: 700; color: var(--c-keeper); }
 .room-ongoing .main-row .keeper-more { color: #fff; }
 
 /* 끌어다 놓는 중 */
 body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select: none; }
 .is-drag-src { opacity: 0.4; }
-tbody.room.is-drop > tr > * { background: #e6f4f1 !important; }
-tbody.room.is-drop .c-room { box-shadow: inset 0 0 0 3px #0f766e; }
+tbody.room.is-drop > tr > * { background: var(--c-keeper-bg) !important; }
+tbody.room.is-drop .c-room { box-shadow: inset 0 0 0 3px var(--c-keeper); }
 .drag-ghost {
   position: fixed;
   left: 0;
@@ -936,25 +947,25 @@ tbody.room.is-drop .c-room { box-shadow: inset 0 0 0 3px #0f766e; }
   pointer-events: none;
   padding: 6px 12px;
   border-radius: 999px;
-  background: #0f766e;
+  background: var(--c-keeper);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
-  box-shadow: 0 6px 18px rgba(15, 118, 110, 0.35);
+  box-shadow: 0 6px 18px rgba(43, 88, 118, 0.35);
 }
 
 /* 수술 메뉴의 방킵 선택 */
 .rm-keepers { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 8px 5px; max-width: 240px; }
 .rm-kp {
-  border: 1px solid #0f766e;
+  border: 1px solid var(--c-keeper);
   background: #fff;
-  color: #0f766e;
+  color: var(--c-keeper);
   border-radius: 999px;
   padding: 3px 9px;
   font-size: 12px;
   cursor: pointer;
 }
-.rm-kp.is-on { background: #0f766e; color: #fff; font-weight: 700; }
+.rm-kp.is-on { background: var(--c-keeper); color: #fff; font-weight: 700; }
 .rm-kp.is-on::before { content: "\2713 "; }
 .rm-kp-empty { font-size: 11.5px; color: var(--orb-muted); }
 
@@ -964,22 +975,21 @@ tbody.room.is-drop .c-room { box-shadow: inset 0 0 0 3px #0f766e; }
 }
 
 /* ---------- 마취의 명단 (파랑: 근무자·방킵의 청록과 구분) ---------- */
-.side-anes .side-head { border-left-color: #1d4ed8; color: #1d4ed8; background: #e8eefc; }
 .side-anes .side-head small { color: var(--orb-muted); font-weight: 600; margin-left: 2px; }
 .side-anes.is-drop { background: #fdecea; border-color: #f5c2bd; }
 .side-anes.is-drop .staff-body::before { content: "여기에 놓으면 마취의 지움"; font-size: 12px; font-weight: 700; color: #b3261e; }
-.anes-chip { border-color: #1d4ed8; color: #1d4ed8; }
-.anes-chip.is-assigned { background: #e8eefc; }
-.anes-chip.is-assigned small { color: #1d4ed8; }
-#anesAddBtn { background: #1d4ed8; border-color: #1d4ed8; }
-#anesInput:focus { border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12); }
-#anesRecent { color: #1d4ed8; border-color: #1d4ed8; }
+.anes-chip { border-color: var(--c-anes); color: var(--c-anes); }
+.anes-chip.is-assigned { background: var(--c-anes-bg); }
+.anes-chip.is-assigned small { color: var(--c-anes); }
+#anesAddBtn { background: var(--c-anes); border-color: var(--c-anes); }
+#anesInput:focus { border-color: var(--c-anes); box-shadow: 0 0 0 3px rgba(78, 67, 118, 0.14); }
+#anesRecent { color: var(--c-anes); border-color: var(--c-anes); }
 /* 수술의 마취의 칸 */
 .anes-name { cursor: grab; touch-action: none; user-select: none; }
-td.c-anes.is-drop { background: #e8eefc !important; box-shadow: inset 0 0 0 2px #1d4ed8; }
-.drag-ghost.is-anes { background: #1d4ed8; box-shadow: 0 6px 18px rgba(29, 78, 216, 0.35); }
-.rm-an { border-color: #1d4ed8; color: #1d4ed8; }
-.rm-an.is-on { background: #1d4ed8; color: #fff; }
+td.c-anes.is-drop { background: var(--c-anes-bg) !important; box-shadow: inset 0 0 0 2px var(--c-anes); }
+.drag-ghost.is-anes { background: var(--c-anes); box-shadow: 0 6px 18px rgba(78, 67, 118, 0.35); }
+.rm-an { border-color: var(--c-anes); color: var(--c-anes); }
+.rm-an.is-on { background: var(--c-anes); color: #fff; }
 
 /* ---------- 순서 변경 (잠금 해제 시) ---------- */
 .rh {
@@ -1116,7 +1126,7 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
   cursor: pointer;
 }
 .staff-pop button:hover { background: #f1f4f8; }
-.staff-pop button.is-on { background: #eaf0fb; color: #1d4ed8; }
+.staff-pop button.is-on { background: var(--c-anes-bg); color: var(--c-anes); }
 .staff-pop button.is-on::after { content: "✓"; margin-left: auto; font-weight: 800; }
 /* 당직 이모지 (이름 앞) */
 .duty-emo { margin-right: 2px; font-style: normal; font-size: 0.95em; text-decoration: none; display: inline-block; }
@@ -1195,8 +1205,8 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 .add-case-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 
 /* 근무자·마취의 인원 배지 (접어도 보임) · 고정 명단 */
-.side-count.staff-count { background: #0f766e; }
-.side-count.anes-count { background: #1d4ed8; }
+.side-count.staff-count { background: var(--c-keeper); }
+.side-count.anes-count { background: var(--c-anes); }
 .side-toggle .side-count + small { margin-left: 4px; }
 .staff-pin { margin-left: 3px; font-size: 9px; color: #b45309; transform: rotate(30deg); }
 .staff-save-all { font-size: 11.5px; }
@@ -1239,11 +1249,11 @@ tr.drop-after > * { box-shadow: inset 0 -3px 0 var(--orb-primary) !important; }
 /* ---------- 커피 · 식사 교대: '교대' 버튼을 켜면 방마다 맨 위에 한 줄 ---------- */
 .orb-btn-pair { display: flex; gap: 6px; }
 .orb-btn-pair #reliefBtn { flex: 1; justify-content: center; }
-#reliefBtn.is-active { background: #fff; color: #7c4a2d; font-weight: 700; }
-#reliefBtn.is-active .orb-btn-count { background: #7c4a2d; color: #fff; }
-tr.relief-row > td { padding: 3px 6px !important; background: #fbf7f3 !important; border-bottom: 1px dashed #eadfd5; }
+#reliefBtn.is-active { background: #fff; color: var(--orb-primary); font-weight: 700; }
+#reliefBtn.is-active .orb-btn-count { background: var(--orb-primary); color: #fff; }
+tr.relief-row > td { padding: 3px 6px !important; background: #f7f9fc !important; border-bottom: 1px dashed var(--orb-border-soft); }
 .rl-slots { display: flex; flex-wrap: wrap; gap: 4px 6px; }
-.rl-room { flex: none; align-self: center; min-width: 30px; padding: 0 5px; border-radius: 5px; background: #ecdfd3; color: #7c4a2d; font-size: 11px; font-weight: 800; text-align: center; line-height: 18px; }
+.rl-room { flex: none; align-self: center; min-width: 30px; padding: 0 5px; border-radius: 5px; background: var(--c-keeper-bg); color: var(--orb-primary); font-size: 11px; font-weight: 800; text-align: center; line-height: 18px; }
 .rl-slot {
   display: inline-flex;
   align-items: center;
@@ -1255,9 +1265,9 @@ tr.relief-row > td { padding: 3px 6px !important; background: #fbf7f3 !important
   cursor: pointer;
   font-size: 11.5px;
 }
-.rl-slot:hover { background: #f3e9df; }
-.rl-label { flex: none; font-style: normal; font-size: 11px; font-weight: 700; color: #9a7a63; white-space: nowrap; }
-.rl-slot.is-now .rl-label { color: #7c4a2d; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.rl-slot:hover { background: #eef2f7; }
+.rl-label { flex: none; font-style: normal; font-size: 11px; font-weight: 700; color: var(--orb-muted); white-space: nowrap; }
+.rl-slot.is-now .rl-label { color: var(--orb-primary); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .rl-empty, .relief-name {
   flex: 1;
   min-width: 0;
@@ -1269,13 +1279,13 @@ tr.relief-row > td { padding: 3px 6px !important; background: #fbf7f3 !important
   white-space: nowrap;
   text-align: center;
 }
-.rl-empty { border: 1px dashed #dccbbd; color: #c2ab98; font-weight: 700; }
-.rl-slot:hover .rl-empty { border-color: #7c4a2d; color: #7c4a2d; }
+.rl-empty { border: 1px dashed #cfd8e3; color: #a9b6c6; font-weight: 700; }
+.rl-slot:hover .rl-empty { border-color: var(--orb-primary); color: var(--orb-primary); }
 .relief-name { padding: 0 4px; font-weight: 700; letter-spacing: -0.3px; border: 1px solid transparent; cursor: grab; touch-action: none; }
-.relief-name.rl-keeper { background: #e6f4f1; color: #0f766e; border-color: #b7dfd7; }
-.relief-name.rl-anes { background: #e8eefc; color: #1d4ed8; border-color: #c3d2f6; }
+.relief-name.rl-keeper { background: var(--c-keeper-bg); color: var(--c-keeper); border-color: var(--c-keeper-line); }
+.relief-name.rl-anes { background: var(--c-anes-bg); color: var(--c-anes); border-color: var(--c-anes-line); }
 .relief-name.is-off { text-decoration: line-through; text-decoration-thickness: 2px; }
-.rl-slot.is-drop { background: #f3e9df; box-shadow: inset 0 0 0 2px #7c4a2d; }
+.rl-slot.is-drop { background: #eef2f7; box-shadow: inset 0 0 0 2px var(--orb-primary); }
 /* 교대 이름을 명단 카드로 끌어올 때: 지움 안내 */
 body.drag-relief .side-staff.is-drop .staff-body::before,
 body.drag-relief .side-anes.is-drop .staff-body::before { content: "여기에 놓으면 교대 지움"; }
@@ -1287,19 +1297,19 @@ body.drag-relief .side-anes.is-drop .staff-body::before { content: "여기에 �
 .relief-pop .rm-kp {
   display: inline-flex;
   padding: 3px 9px;
-  border: 1px solid #0f766e;
+  border: 1px solid var(--c-keeper);
   border-radius: 999px;
   background: #fff;
-  color: #0f766e;
+  color: var(--c-keeper);
   font-size: 12px;
   font-weight: 600;
 }
-.relief-pop .rm-kp:hover { background: #e6f4f1; }
-.relief-pop .rm-kp.is-on { background: #0f766e; color: #fff; }
+.relief-pop .rm-kp:hover { background: var(--c-keeper-bg); }
+.relief-pop .rm-kp.is-on { background: var(--c-keeper); color: #fff; }
 .relief-pop .rm-kp.is-on::after { content: none; }
-.relief-pop .rm-kp.rm-an { border-color: #1d4ed8; color: #1d4ed8; }
-.relief-pop .rm-kp.rm-an:hover { background: #e8eefc; }
-.relief-pop .rm-kp.rm-an.is-on { background: #1d4ed8; color: #fff; }
+.relief-pop .rm-kp.rm-an { border-color: var(--c-anes); color: var(--c-anes); }
+.relief-pop .rm-kp.rm-an:hover { background: var(--c-anes-bg); }
+.relief-pop .rm-kp.rm-an.is-on { background: var(--c-anes); color: #fff; }
 .relief-pop .rm-group { padding: 4px 4px 1px; }
 .relief-pop .rp-clear { margin-top: 2px; border-top: 1px solid #eef1f5; border-radius: 0 0 7px 7px; color: #b3261e; font-size: 12.5px; }
 .relief-pop .rp-clear[hidden] { display: none; }
@@ -1307,3 +1317,20 @@ body.drag-relief .side-anes.is-drop .staff-body::before { content: "여기에 �
   .rl-slot { min-width: 88px; }
   .rl-empty, .relief-name { height: 26px; line-height: 24px; font-size: 12.5px; }   /* 손가락으로 누르기 쉽게 */
 }
+
+/* ---------- 색 통일: 사이드 카드 ----------
+   모든 카드 머리글은 같은 모양 (색은 아이콘이 아니라 위치·제목으로 구분).
+   인원 배지도 같은 남색, Hold 는 맡은 수술이 있을 때만 호박색으로 표시 */
+.side-head { color: var(--orb-primary); background: #f6f8fb; border-left-color: var(--orb-primary); }
+.side-head i { color: var(--orb-primary); opacity: 0.75; }
+.side-count, .side-count.staff-count, .side-count.anes-count { background: var(--orb-primary); }
+.side-hold.has-items .side-head { border-left-color: var(--st-hold); }
+.side-hold.has-items .side-head > i:first-child { color: var(--st-hold); opacity: 1; }
+#holdCount { background: var(--st-hold); }
+/* 사용법 안내: 평소엔 한 줄로 접어 둠 */
+.staff-help { font-size: 11px; color: var(--orb-muted); }
+.staff-help summary { cursor: pointer; width: max-content; list-style: none; user-select: none; }
+.staff-help summary::-webkit-details-marker { display: none; }
+.staff-help summary::before { content: "ⓘ "; }
+.staff-help summary:hover { color: var(--orb-primary); }
+.staff-help[open] summary { margin-bottom: 4px; }

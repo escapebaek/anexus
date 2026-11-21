@@ -98,7 +98,7 @@
           </form>
           <button type="button" class="staff-recent" id="staffRecent" hidden></button>
           <button type="button" class="staff-recent staff-save-all" id="staffSaveAll" hidden><i class="fas fa-thumbtack"></i> 오늘 명단 모두 고정</button>
-          <p class="staff-hint">이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 한 사람은 한 방만 — 다른 방으로 끌면 옮겨지고, 이 칸으로 끌어오면 해제돼요. 방 번호를 눌러 메뉴에서 골라도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근 · 📌 고정을 표시해요. <b>고정</b>한 사람은 다음 날에도 자동으로 들어오고, ×는 오늘만 빼요.</p>
+          <details class="staff-help"><summary>사용법</summary><p class="staff-hint">이름을 <b>방으로 끌어다 놓으면 방킵</b>으로 배정돼요. 한 사람은 한 방만 — 다른 방으로 끌면 옮겨지고, 이 칸으로 끌어오면 해제돼요. 방 번호를 눌러 메뉴에서 골라도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근 · 📌 고정을 표시해요. <b>고정</b>한 사람은 다음 날에도 자동으로 들어오고, ×는 오늘만 빼요.</p></details>
         </div>
       </section>
 
@@ -114,7 +114,7 @@
           </form>
           <button type="button" class="staff-recent" id="anesRecent" hidden></button>
           <button type="button" class="staff-recent staff-save-all" id="anesSaveAll" hidden><i class="fas fa-thumbtack"></i> 오늘 명단 모두 고정</button>
-          <p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근 · 📌 고정을 표시해요. <b>고정</b>한 사람은 다음 날에도 자동으로 들어오고, ×는 오늘만 빼요.</p>
+          <details class="staff-help"><summary>사용법</summary><p class="staff-hint">이름을 수술의 <b>마취의 칸으로 끌어다 놓으면</b> 배정돼요. 칸의 이름을 다른 수술로 끌면 옮겨지고, 이 칸으로 끌어오면 지워져요. 마취의 칸을 눌러 직접 입력해도 돼요. 이름을 <b>누르면</b> 😭 오늘 당직 · 💤 어제 당직 · 퇴근 · 📌 고정을 표시해요. <b>고정</b>한 사람은 다음 날에도 자동으로 들어오고, ×는 오늘만 빼요.</p></details>
         </div>
       </section>
 
@@ -725,6 +725,7 @@
     const held = [];
     BOARD.rooms.forEach(r => r.cases.forEach(c => { if (c.hold && c.group !== "finished") held.push([r, c]); }));
     document.getElementById("holdCount").textContent = held.length ? held.length : "";
+    document.getElementById("holdCard").classList.toggle("has-items", held.length > 0);
     document.getElementById("holdList").innerHTML = held.map(([r, c]) => `<li>
         <span class="side-room">${esc(r.room)}</span>
         <div class="side-main">
