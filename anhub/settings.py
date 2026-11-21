@@ -222,6 +222,12 @@ OPENROUTER_MODELS = config('OPENROUTER_MODELS', default='meta-llama/llama-3.3-70
 # 논문 요약(journal)에 먼저 쓸 Gemini 모델. 무료 한도에 걸리면 GEMINI_MODEL → GEMINI_FALLBACK_MODELS 순으로 넘어감
 # (모델마다 무료 한도가 따로라 하루에 요약할 수 있는 편수가 늘어남). Gemini 4 Hydrogen 은 무료 플랜에서도 사용 가능.
 JOURNAL_GEMINI_MODEL = config('JOURNAL_GEMINI_MODEL', default='gemini-4-hydrogen').strip()
+# JOURNAL_GEMINI_MODEL 이 한도·과부하일 때 차례로 쓸 무료 모델 (쉼표 구분). 2026-11 실측: 3.5 Flash-Lite 는 PDF 요약 2초,
+# 3.8 Flash·4 Hydrogen 은 몰려서 2~3분 안에 답하지 못하는 때가 많음 → 빠른 Lite 를 먼저. 그 뒤로 GEMINI_MODEL 계열도 이어서 시도
+JOURNAL_GEMINI_FALLBACK_MODELS = config(
+    'JOURNAL_GEMINI_FALLBACK_MODELS',
+    default='gemini-3.5-flash-lite,gemini-3.8-flash,gemini-3.1-flash-lite,gemini-flash-lite-latest',
+)
 # Gemini 3·4 계열의 생각 수준 (low · medium · high · xhigh). 요약은 low 로도 충분하고 빠름 - 비우면 모델 기본값
 JOURNAL_GEMINI_THINKING = config('JOURNAL_GEMINI_THINKING', default='low').strip()
 

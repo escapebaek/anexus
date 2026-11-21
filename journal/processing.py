@@ -220,11 +220,13 @@ def quota_wait(response, now=None):
 
 
 def journal_models():
-    """논문 요약에 쓸 모델 순서: JOURNAL_GEMINI_MODEL(기본 gemini-4-hydrogen) → GEMINI_MODEL → 대체 모델들."""
+    """논문 요약에 쓸 모델 순서: JOURNAL_GEMINI_MODEL(기본 gemini-4-hydrogen) → JOURNAL_GEMINI_FALLBACK_MODELS
+    (3.5 Flash-Lite, 3.8 Flash, ...) → 그래도 남은 GEMINI_MODEL 계열."""
     from schedule.gemini_client import model_chain
 
+    fallbacks = [m.strip() for m in str(settings.JOURNAL_GEMINI_FALLBACK_MODELS or "").split(",")]
     chain = []
-    for name in [settings.JOURNAL_GEMINI_MODEL] + model_chain():
+    for name in [settings.JOURNAL_GEMINI_MODEL] + fallbacks + model_chain():
         if name and name not in chain:
             chain.append(name)
     return chain
