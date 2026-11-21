@@ -9,6 +9,7 @@ urlpatterns = [
     path('upload/file/', views.upload_file, name='upload_file'),
     path('upload/status/', views.processing_status, name='processing_status'),
     path('upload/action/', views.processing_action, name='processing_action'),
+    path('process-tick/', views.process_tick, name='process_tick'),
     path('paper/<int:pk>/', views.paper_detail, name='paper_detail'),
     path('<slug:slug>/', views.journal_detail, name='journal_detail'),
     path('<slug:slug>/issue/<int:issue_pk>/', views.issue_detail, name='issue_detail'),

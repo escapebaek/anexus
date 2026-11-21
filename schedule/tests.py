@@ -560,9 +560,14 @@ class LocalAiTests(TestCase):
             self.assertEqual(ai_client.configured_providers(), [])
 
     def test_gemini_and_groq_are_switched_off(self):
+        # Gemini 키는 논문 요약(journal)에 다시 쓰지만, 수술 스케줄 분석은 여전히 로컬 AI 만
         from django.conf import settings
+        from django.test import override_settings
+        from . import ai_client
         self.assertEqual(settings.SCHEDULE_AI_PROVIDERS, 'localai')
-        self.assertEqual((settings.GEMINI_API_KEY, settings.GROQ_API_KEY, settings.OPENROUTER_API_KEY), ('', '', ''))
+        self.assertEqual((settings.GROQ_API_KEY, settings.OPENROUTER_API_KEY), ('', ''))
+        with override_settings(GEMINI_API_KEY='k', LOCALAI_URL='', LOCALAI_API_KEY=''):
+            self.assertNotIn('gemini', ai_client.configured_providers())
 
 
 class LocalAiDiagnosticsTests(TestCase):

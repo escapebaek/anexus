@@ -20,19 +20,35 @@
 
 `/journal/upload/` (Journal Stand 화면의 **논문 올리기** 버튼):
 
-1. 학술지를 고르고, 기존 호를 고르거나 **＋ 새 호 만들기**로 권/호/발행일 입력.
+1. 학술지를 고른다. 호는 기본값 **자동 · DOI 로 권·호 인식** 그대로 두면 된다.
+   - 논문마다 PDF 첫 두 쪽의 DOI → Crossref 에서 **권·호·발행일**을 읽어 맞는 호에 넣고, 그 호가 없으면 새로 만든다.
+   - DOI 가 없거나 아직 권·호가 없는(온라인 선공개) 논문은 올리지 않고 이유를 보여준다 → 호를 직접 골라 다시 올리면 됨.
+   - Crossref 의 학술지 이름이 고른 학술지와 달라 보이면 ⚠ 표시.
+   - 기존 호를 직접 고르거나 **＋ 새 호 직접 만들기**(권/호/발행일)도 그대로 쓸 수 있음.
 2. 다운받은 PDF들을 끌어다 놓기 (여러 개 한 번에, 파일 이름 순서가 목록 순서).
-3. 끝. 서버가 논문마다 백그라운드에서 차례로:
-   - PDF 첫 페이지의 DOI → Crossref 에서 정확한 제목·저자 (DOI 가 없으면 AI 가 PDF 에서 읽음)
-   - PDF 에서 뽑은 글자를 로컬 AI(Qwen, `LOCALAI_URL`)에 보내 한국어 한 줄 요약 + 항목별 요약
-     (연구 목적/방법/주요 결과/임상적 의미, 전체 900~1,300자) 작성. 스캔 이미지 PDF 는 글자가 없어 요약 불가.
-     (예전의 Gemini·Groq 방식은 `anhub/settings.py`, `journal/processing.py` 에 주석으로 남겨 둠)
-   - 끝나는 대로 바로 공개. 화면에 논문별 상태(대기/요약 중/완료/오류)가 표시됨.
+3. 끝. 서버가 논문마다 백그라운드에서 차례로 **Gemini 무료 API** 로 PDF 를 통째로 읽어 한국어 한 줄 요약 +
+   항목별 요약(연구 목적/방법/주요 결과/임상적 의미, 전체 900~1,300자)을 만들고, 끝나는 대로 바로 공개.
+   (예전 로컬 AI(Qwen) 방식은 `journal/processing.py` 의 `_text_provider_summary` 에 참고용으로 남겨 둠)
+
+### Gemini 무료 한도와 자동 다시 시도
+- 모델마다 한도가 따로라 한도에 걸리면 `GEMINI_MODEL` → `GEMINI_FALLBACK_MODELS` 순으로 다음 모델을 쓴다.
+- 모두 막히면 오류가 아니라 **한도 대기**로 두고, 남은 논문도 함께 미룬 뒤 자동으로 다시 시도:
+  - 하루 한도(RPD): Google 이 초기화하는 **미국 태평양 시각 자정 + 5분** (한국 시각 오후 4시 5분, 서머타임 땐 오후 5시 5분)
+  - 분당 한도(RPM·TPM): Google 이 알려준 대기 시간(최소 1분)
+  - 어떤 한도인지 모르면 3시간 / 과부하·시간 초과는 15분
+- 다시 해도 안 되는 경우(키 오류, 읽을 수 없는 PDF 등)만 **오류** → 화면의 **오류 다시 시도**.
+- Render 무료 서버는 접속이 없으면 잠들기 때문에, GitHub Actions(`.github/workflows/journal-tick.yml`)가
+  **30분마다** `/journal/process-tick/` 을 불러 서버를 깨우고 남은 논문을 이어서 처리한다. 컴퓨터를 꺼 둬도 됨.
+  - 준비(최초 1회): 아무 긴 임의 문자열을 하나 만들어 **Render 환경변수**와 **GitHub 저장소 Settings → Secrets and
+    variables → Actions** 에 같은 이름 `JOURNAL_CRON_TOKEN` 으로 넣는다. Render 에는 `GEMINI_API_KEY` 도 필요.
+  - 공개 저장소라 GitHub Actions 는 무료. 저장소에 60일 동안 활동이 없으면 GitHub 가 예약 실행을 멈추니,
+    그때는 Actions 탭에서 워크플로를 다시 켜면 됨.
+
 - 같은 PDF 를 다시 올리면 건너뜀 (파일 지문 비교).
 - **요약 없는 논문 요약**: 예전에 요약 없이 올린 논문들을 한 번에 요약.
-- **오류 다시 시도**: AI 서버가 꺼져 있었을 때 등 실패한 논문만 다시.
+- **오류 다시 시도**: 실패한 논문만 다시.
 - 제목·요약을 고치려면 목록의 연필 아이콘(관리자 화면). 요약에서 `### 제목` 줄은 항목 제목으로 표시됨.
-- 코드: `journal/processing.py` (처리), `journal/views.py` 아래쪽 (화면·API), `journal/templates/journal/upload.html`.
+- 코드: `journal/processing.py` (처리·대기열), `journal/views.py` 아래쪽 (화면·API·깨우기 주소), `journal/templates/journal/upload.html`.
 
 ## 2-1. Admin에서 수동으로 관리하기
 
