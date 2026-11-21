@@ -1,46 +1,109 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Question Bank · ANExUS{% endblock %}
+
 {% block custom_css %}
   <link href="{% static 'css/pages/exam_question_home.css' %}" rel="stylesheet" />
 {% endblock %}
 
 {% block page_content %}
+<div class="qh-page">
+  <!-- 머리: 제목 + 내 요약 -->
+  <header class="qh-head">
+    <div class="qh-head-text">
+      <p class="qh-kicker">문제은행</p>
+      <h1 class="qh-title">Question Bank</h1>
+      <p class="qh-sub">기출 회차·파트별로 풀고, 약한 곳을 채워요.</p>
+    </div>
+    <dl class="qh-stats" aria-label="내 요약">
+      <div><dt>응시</dt><dd>{{ attempts }}<small>회</small></dd></div>
+      <div><dt>평균 점수</dt><dd>{% if avg_pct is not None %}{{ avg_pct }}<small>%</small>{% else %}-{% endif %}</dd></div>
+      <div><dt>푼 문제</dt><dd>{{ answered }}<small>문제</small></dd></div>
+    </dl>
+  </header>
 
-<!-- Feature Cards -->
-<div id="features" class="features-section">
-  <div class="container">
-    <h2 class="section-title text-center mb-5">Anesthesia Question Bank</h2>
-    <div class="row g-3">
-      {% for section in sections %}
-      <div class="col-6 col-md-4 col-lg-3 col-xl-2">
-        <div class="feature-card">
-          <div class="feature-icon">
-            <i class="fas fa-{{ section.icon_class }}"></i>
-          </div>
-          <h3 class="feature-title">{{ section.title }}</h3>
-          <p class="feature-text">{{ section.text }}</p>
-          {% if user.is_authenticated and user.is_approved or user.is_authenticated and user.is_specially_approved %}
-          <a href="{{ section.url }}" class="btn btn-feature">
-            Access Now
-            <i class="fas fa-chevron-right ms-2"></i>
-          </a>
-          {% elif user.is_authenticated %}
-          <button class="btn btn-feature disabled" disabled title="관리자 승인 후 이용할 수 있습니다">
-            <span>승인 대기 중</span>
-            <i class="fas fa-user-clock ms-1"></i>
-          </button>
-          {% else %}
-          <a href="{% url 'login' %}?next={{ section.url|urlencode }}" class="btn btn-feature">
-            <span>로그인 후 이용</span>
-            <i class="fas fa-sign-in-alt ms-1"></i>
-          </a>
-          {% endif %}
-        </div>
-      </div>
+  <!-- 이어서 하기 -->
+  <section class="qh-next" aria-label="이어서 하기">
+    {% if latest %}
+    <a class="qh-next-card" href="{% url 'exam_results' %}?result_id={{ latest.id }}">
+      <span class="qh-next-icon"><i class="fas fa-history"></i></span>
+      <span class="qh-next-body">
+        <span class="qh-next-label">최근 응시 · {{ latest.date_taken|date:"m.d" }}</span>
+        <b>{% if latest.exam %}{{ latest.exam.title }}{% else %}{{ latest.category_name|default:"문제 풀이" }}{% endif %}</b>
+        <span class="qh-next-meta"><span class="qh-mini"><span style="width: {{ latest_pct }}%"></span></span>{{ latest_pct|floatformat:0 }}%</span>
+      </span>
+      <span class="qh-next-go">결과 보기 <i class="fas fa-chevron-right"></i></span>
+    </a>
+    {% if weak %}
+    {% if weak.can_practice %}<a class="qh-next-card is-weak" href="{% url 'category_questions' weak.name %}">{% else %}<a class="qh-next-card is-weak" href="{% url 'analytics_overview' %}">{% endif %}
+      <span class="qh-next-icon"><i class="fas fa-crosshairs"></i></span>
+      <span class="qh-next-body">
+        <span class="qh-next-label">가장 약한 파트</span>
+        <b>{{ weak.name }}</b>
+        <span class="qh-next-meta"><span class="qh-mini"><span style="width: {{ weak.pct }}%"></span></span>{{ weak.pct }}% · {{ weak.graded }}문제</span>
+      </span>
+      <span class="qh-next-go">{% if weak.can_practice %}이 파트 풀기{% else %}내 기록{% endif %} <i class="fas fa-chevron-right"></i></span>
+    </a>
+    {% endif %}
+    <a class="qh-next-card{% if wrong_total %} is-wrong{% endif %}" href="{% if wrong_total %}{% url 'review_wrong' %}{% else %}{% url 'analytics_overview' %}{% endif %}">
+      <span class="qh-next-icon"><i class="fas fa-{% if wrong_total %}redo{% else %}check{% endif %}"></i></span>
+      <span class="qh-next-body">
+        <span class="qh-next-label">오답노트</span>
+        <b>{% if wrong_total %}{{ wrong_total }}문제 남음{% else %}남은 오답 없음{% endif %}</b>
+        <span class="qh-next-meta">{% if wrong_total %}다시 맞히면 빠져요{% else %}잘하고 있어요{% endif %}</span>
+      </span>
+      <span class="qh-next-go">{% if wrong_total %}다시 풀기{% else %}내 기록{% endif %} <i class="fas fa-chevron-right"></i></span>
+    </a>
+    {% else %}
+    <a class="qh-next-card qh-start" href="{% url 'exam_list' %}">
+      <span class="qh-next-icon"><i class="fas fa-play"></i></span>
+      <span class="qh-next-body">
+        <span class="qh-next-label">처음이신가요?</span>
+        <b>기출 회차 하나를 골라 풀어 보세요</b>
+        <span class="qh-next-meta">제출하면 점수와 약한 파트가 쌓여요</span>
+      </span>
+      <span class="qh-next-go">시작하기 <i class="fas fa-chevron-right"></i></span>
+    </a>
+    {% endif %}
+  </section>
+
+  <!-- 메뉴 -->
+  <section class="qh-section" aria-labelledby="qhMenuTitle">
+    <h2 class="qh-section-title" id="qhMenuTitle">풀기 · 복습</h2>
+    <div class="qh-menu">
+      {% for m in menu %}
+      <a class="qh-tile" href="{{ m.url }}">
+        <span class="qh-tile-icon"><i class="fas fa-{{ m.icon }}"></i></span>
+        <span class="qh-tile-body">
+          <b>{{ m.title }}</b>
+          <small class="qh-tile-en">{{ m.en }}</small>
+          <span class="qh-tile-text">{{ m.text }}</span>
+        </span>
+        <span class="qh-tile-count">{{ m.count }}</span>
+      </a>
       {% endfor %}
     </div>
-  </div>
+  </section>
+
+  <!-- 회차 바로가기 -->
+  {% if exams %}
+  <section class="qh-section" aria-labelledby="qhExamTitle">
+    <h2 class="qh-section-title" id="qhExamTitle">회차 바로가기 <small>내 최근 점수</small></h2>
+    <div class="qh-exams">
+      {% for e in exams %}
+      <a class="qh-exam{% if not e.mine %} is-new{% endif %}" href="{% url 'exam_detail' e.id %}">
+        <span class="qh-exam-title">{{ e.title }}</span>
+        <span class="qh-exam-meta">{{ e.n }}문제{% if e.mine %} · {{ e.mine.count }}회 응시{% endif %}</span>
+        {% if e.mine %}
+        <span class="qh-exam-score"><span class="qh-mini"><span style="width: {{ e.mine.pct }}%"></span></span><b>{{ e.mine.pct|floatformat:0 }}%</b></span>
+        {% else %}
+        <span class="qh-exam-score qh-exam-todo">아직 안 풀었어요 <i class="fas fa-arrow-right"></i></span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}
-
