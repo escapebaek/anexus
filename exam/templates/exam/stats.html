@@ -62,7 +62,7 @@
 
       <!-- 약한 파트: 충분히 푼 카테고리 중 정답률 낮은 3개 -->
       {% if categories %}
-      <section class="st-card st-weak-card" aria-labelledby="stWeakTitle">
+      <section class="st-card st-weak-card" data-fold="weak" aria-labelledby="stWeakTitle">
         <div class="st-card-head">
           <h2 id="stWeakTitle"><i class="fas fa-crosshairs"></i> 약한 파트</h2>
           <span class="st-card-sub">5문제 이상 푼 카테고리 중 정답률이 낮은 순{% if exam %} · {{ exam.title }}{% endif %}</span>
@@ -89,12 +89,12 @@
       </section>
 
       <!-- 카테고리별 정답률: 낮은 순, 색으로 수준 구분, 세로선 = 전체 평균 -->
-      <section class="st-card" aria-labelledby="stCatTitle">
+      <section class="st-card" data-fold="cats" aria-labelledby="stCatTitle">
         <div class="st-card-head">
           <h2 id="stCatTitle">카테고리별 정답률</h2>
           <span class="st-card-sub">낮은 순 · 전체 평균 {{ overall_pct }}%{% if exam %} · {{ exam.title }}{% endif %}</span>
         </div>
-        <ul class="st-cats" style="--avg: {{ overall_pct }}%">
+        <ul class="st-cats" data-more="8" style="--avg: {{ overall_pct }}%">
           {% for c in categories %}
           <li class="lv-{{ c.level }}{% if c.few %} is-few{% endif %}">
             <span class="st-cats-name" title="{{ c.name }}">{{ c.name }}</span>
@@ -117,7 +117,7 @@
       {% endif %}
 
       <!-- 점수 추이 -->
-      <section class="st-card" aria-labelledby="stTrendTitle">
+      <section class="st-card" data-fold="trend" aria-labelledby="stTrendTitle">
         <div class="st-card-head">
           <h2 id="stTrendTitle">점수 추이</h2>
           <span class="st-card-sub">응시할 때마다 · 점수(%){% if not exam %} · 점선 = 최근 5회 평균{% endif %}</span>
@@ -149,7 +149,7 @@
       </section>
 
       <!-- 오답노트 -->
-      <section class="st-card" aria-labelledby="stWrongTitle">
+      <section class="st-card" data-fold="wrong" aria-labelledby="stWrongTitle">
         <div class="st-card-head">
           <h2 id="stWrongTitle">오답노트</h2>
           <span class="st-card-sub">마지막으로 풀었을 때 틀리거나 안 푼 문제{% if exam %} · {{ exam.title }}{% endif %}</span>
@@ -158,7 +158,7 @@
         <a class="rs-btn rs-btn-primary st-wrong-btn" href="{% url 'review_wrong' %}{% if exam %}?exam={{ exam.id }}{% endif %}">
           <i class="fas fa-redo"></i> 오답 {% if wrong_total > 100 %}100{% else %}{{ wrong_total }}{% endif %}문제 다시 풀기
         </a>
-        <ol class="st-wrong">
+        <ol class="st-wrong" data-more="5">
           {% for q in wrong_top %}
           <li>
             <span class="st-wrong-text">{{ q.question_text|striptags|truncatechars:90 }}</span>
@@ -179,10 +179,10 @@
     </div>
 
     <!-- 응시 기록 (예전 '응시 기록' 화면) -->
-    <aside class="rs-side st-history" id="history" aria-labelledby="stHistTitle">
-      <h2 class="rs-side-title" id="stHistTitle">응시 기록 <small>{{ history|length }}회</small></h2>
+    <aside class="rs-side st-history" id="history" data-fold="history" aria-labelledby="stHistTitle">
+      <h2 class="rs-side-title st-card-head" id="stHistTitle">응시 기록 <small>{{ history|length }}회</small></h2>
       <p class="rs-side-sub">최근 순 · 누르면 채점 결과</p>
-      <ul class="sh-list">
+      <ul class="sh-list" data-more="8">
         {% for r in history %}
         <li class="sh-item">
           <a class="sh-main" href="{% url 'exam_results' %}?result_id={{ r.id }}">
@@ -206,6 +206,50 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+// 카드 접기 (머리글 누르기, 이 브라우저에 기억) · 긴 목록은 처음 몇 개만 보이고 '더 보기'
+(function () {
+  document.querySelectorAll('[data-fold]').forEach(function (card) {
+    const head = card.querySelector('.st-card-head');
+    if (!head) return;
+    const key = 'st-fold-' + card.dataset.fold;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'st-fold';
+    btn.innerHTML = '<i class="fas fa-chevron-up"></i>';
+    head.appendChild(btn);
+    head.classList.add('st-fold-head');
+    const set = function (folded) {
+      card.classList.toggle('is-folded', folded);
+      btn.setAttribute('aria-expanded', String(!folded));
+      btn.title = folded ? '펼치기' : '접기';
+      try { localStorage.setItem(key, folded ? '1' : ''); } catch (e) { /* 저장 못 해도 동작 */ }
+    };
+    try { if (localStorage.getItem(key) === '1') set(true); } catch (e) { /* 기본: 펼침 */ }
+    head.addEventListener('click', function (e) {
+      if (e.target.closest('a')) return;
+      set(!card.classList.contains('is-folded'));
+    });
+  });
+  document.querySelectorAll('[data-more]').forEach(function (list) {
+    const n = +list.dataset.more, items = Array.prototype.slice.call(list.children);
+    if (items.length <= n + 1) return;   // 한두 개 더 있는 정도는 그냥 다 보여줌
+    const extra = items.slice(n);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'st-more';
+    const set = function (open) {
+      extra.forEach(function (li) { li.hidden = !open; });
+      btn.innerHTML = open ? '접기 <i class="fas fa-chevron-up"></i>' : '나머지 ' + extra.length + '개 더 보기 <i class="fas fa-chevron-down"></i>';
+      btn.setAttribute('aria-expanded', String(open));
+    };
+    set(false);
+    btn.addEventListener('click', function () { set(extra[0].hidden); });
+    list.after(btn);
+  });
+})();
+</script>
 
 {% if trend_count > 1 %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>

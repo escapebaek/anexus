@@ -333,6 +333,23 @@ class StatsTests(TestCase):
         # 푼 적 없는 회차·특별 시험은 범위로 고를 수 없다
         self.assertRedirects(self.client.get(reverse('analytics_overview') + f'?exam={self.special.id}'), reverse('analytics_overview'))
 
+    def test_question_home_summary(self):
+        empty = self.client.get(reverse('question_home'))
+        self.assertEqual(empty.status_code, 200)
+        self.assertIsNone(empty.context['latest'])
+        self.assertContains(empty, '처음이신가요?')
+        for _ in range(3):
+            self.take(self.exam, self.q, right=self.q[:2])     # 4문제 중 1·2번만 맞힘 (파트당 6문제 → 표본 충분)
+        page = self.client.get(reverse('question_home'))
+        c = page.context
+        self.assertEqual((c['attempts'], c['avg_pct'], c['answered'], c['wrong_total']), (3, 50, 12, 2))
+        self.assertIsNotNone(c['weak'])
+        mine = {e.title: e.mine for e in c['exams']}
+        self.assertEqual(mine['A회차']['pct'], 50.0)
+        self.assertIsNone(mine['B회차'])                         # 안 푼 회차
+        self.assertNotIn('특별', mine)                           # 특별 시험은 안 보임
+        self.assertContains(page, '가장 약한 파트')
+
     def test_weak_parts_and_recent_change(self):
         # 약리(홀수 문제) 는 처음엔 다 틀리다가 나중엔 다 맞힘, 생리(짝수) 는 늘 틀림 - 4번 x 4문제
         for i in range(6):

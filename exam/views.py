@@ -8,7 +8,7 @@ import csv
 from django.views.decorators.http import require_POST
 from .models import Question, Bookmark
 from urllib.parse import unquote
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch
 from django.core.paginator import Paginator
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -339,19 +339,45 @@ def toggle_bookmark(request, question_id):
 @login_required
 @user_is_approved
 def question_home(request):
-    sections = [
-        {"title": "Question Bank", "text": "시험 회차별로 풀기",
-         "url": reverse('exam_list'), "icon_class": "book"},
-        {"title": "Question Categories", "text": "카테고리별로 풀기",
-         "url": reverse('category_list'), "icon_class": "folder"},
-        {"title": "Bookmarked Questions", "text": "북마크한 문제 복습",
-         "url": reverse('bookmarked_questions'), "icon_class": "bookmark"},
-        {"title": "Wrong Answers", "text": "오답노트: 마지막에 틀린 문제 다시 풀기",
-         "url": reverse('review_wrong'), "icon_class": "redo"},
-        {"title": "My Records", "text": "응시 기록 · 점수 추이 · 약한 파트",
-         "url": reverse('analytics_overview'), "icon_class": "chart-line"},
+    """문제은행 홈: 내 요약(응시·평균·푼 문제) + 이어서 하기(최근 응시·약한 파트·오답) + 메뉴 + 회차 바로가기."""
+    user = request.user
+    results = list(ExamResult.objects.filter(user=user).select_related('exam').order_by('date_taken', 'id'))
+    exams = list(visible_exams(user).annotate(n=Count('questions')).order_by('display_order', 'date_created'))
+    scores = [result_counts(r)[2] for r in results]
+    latest_by_exam = {}
+    for r, pct in zip(results, scores):
+        if r.exam_id:
+            latest_by_exam[r.exam_id] = {'pct': pct, 'date': r.date_taken, 'count': latest_by_exam.get(r.exam_id, {}).get('count', 0) + 1}
+    for e in exams:
+        e.mine = latest_by_exam.get(e.id)
+    categories, _ = category_stats(results)
+    weak = [c for c in categories if not c['few'] and c['pct'] < GOOD_PCT]
+    wrong_total = len(still_wrong_questions(user)) if results else 0
+    bookmarks = Bookmark.objects.filter(user=user, question__in=visible_questions(user)).count()
+    category_count = Category.objects.filter(question__in=visible_questions(user)).distinct().count()
+    menu = [
+        {'title': '회차별 풀기', 'en': 'Question Bank', 'text': '기출 회차를 실제 시험처럼', 'url': reverse('exam_list'),
+         'icon': 'book-open', 'count': f'{len(exams)}개 회차'},
+        {'title': '카테고리별 풀기', 'en': 'Categories', 'text': '파트 하나만 골라 집중해서', 'url': reverse('category_list'),
+         'icon': 'layer-group', 'count': f'{category_count}개 파트'},
+        {'title': '오답노트', 'en': 'Wrong Answers', 'text': '마지막에 틀린 문제만 다시', 'url': reverse('review_wrong'),
+         'icon': 'redo', 'count': f'{wrong_total}문제 남음' if wrong_total else '남은 오답 없음'},
+        {'title': '북마크', 'en': 'Bookmarks', 'text': '표시해 둔 문제 복습', 'url': reverse('bookmarked_questions'),
+         'icon': 'bookmark', 'count': f'{bookmarks}문제'},
+        {'title': '내 기록', 'en': 'My Records', 'text': '응시 기록 · 점수 추이 · 약한 파트', 'url': reverse('analytics_overview'),
+         'icon': 'chart-line', 'count': f'{len(results)}회 응시'},
     ]
-    return render(request, 'exam/question_home.html', {'sections': sections})
+    context = {
+        'menu': menu, 'exams': exams,
+        'attempts': len(results),
+        'avg_pct': round(sum(scores) / len(scores)) if scores else None,
+        'answered': sum((r.num_correct or 0) + (r.num_incorrect or 0) for r in results),
+        'latest': results[-1] if results else None,
+        'latest_pct': scores[-1] if scores else None,
+        'weak': weak[0] if weak else None,
+        'wrong_total': wrong_total,
+    }
+    return render(request, 'exam/question_home.html', context)
 
 # ============ Results History & Analytics ============
 @login_required

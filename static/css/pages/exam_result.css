@@ -462,3 +462,33 @@ a.st-kpi:hover { border-color: #c8d3e1; color: var(--rs-ink); }
   .st-cats li { grid-template-columns: minmax(60px, 86px) minmax(0, 1fr) 38px 44px 22px; gap: 6px; font-size: 0.82rem; }
   .st-cats-n { display: none; }
 }
+
+/* ---------- 내 기록: 카드 접기 · 긴 목록 더 보기 ---------- */
+.st-fold-head { cursor: pointer; user-select: none; }
+.st-fold { margin-left: auto; width: 28px; height: 28px; border: none; border-radius: 8px; background: none; color: var(--rs-muted); font-size: 0.75rem; cursor: pointer; flex: none; }
+.st-fold:hover { background: var(--rs-soft); color: var(--rs-navy); }
+.st-fold i { transition: transform 0.15s; }
+.is-folded .st-fold i { transform: rotate(180deg); }
+.st-card.is-folded > :not(.st-card-head), .st-history.is-folded > :not(.st-card-head) { display: none !important; }
+.st-card.is-folded .st-card-head { margin-bottom: 0; }
+.st-history .st-card-head { display: flex; align-items: center; gap: 4px; margin: 0; }
+.st-history:not(.is-folded) .st-card-head { margin-bottom: 2px; }
+.st-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px;
+  border: 1px dashed var(--rs-line);
+  border-radius: 9px;
+  background: none;
+  color: var(--rs-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.st-more:hover { border-color: #c8d3e1; color: var(--rs-navy); background: var(--rs-soft); }
+.st-more i { font-size: 0.7rem; }
+.st-history .sh-list { max-height: none; }   /* 처음 8개 + '더 보기' 로 길이를 줄이므로 따로 스크롤하지 않음 */
