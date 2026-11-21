@@ -31,7 +31,10 @@
    (예전 로컬 AI(Qwen) 방식은 `journal/processing.py` 의 `_text_provider_summary` 에 참고용으로 남겨 둠)
 
 ### Gemini 무료 한도와 자동 다시 시도
-- 모델마다 한도가 따로라 한도에 걸리면 `GEMINI_MODEL` → `GEMINI_FALLBACK_MODELS` 순으로 다음 모델을 쓴다.
+- 모델 순서: `JOURNAL_GEMINI_MODEL`(기본 `gemini-4-hydrogen`) → `JOURNAL_GEMINI_FALLBACK_MODELS`
+  (기본 `gemini-3.5-flash-lite, gemini-3.8-flash, gemini-3.1-flash-lite, gemini-flash-lite-latest`) → `GEMINI_MODEL` 계열.
+  모델마다 무료 한도가 따로라 한도에 걸리면 다음 모델로. 과부하(503)·시간 초과 모델은 30분 건너뜀.
+  (2026-11 실측: 3.5 Flash-Lite 는 PDF 요약 약 2초, 4 Hydrogen·3.8 Flash 는 몰려서 2~3분 안에 답하지 못할 때가 많음)
 - 모두 막히면 오류가 아니라 **한도 대기**로 두고, 남은 논문도 함께 미룬 뒤 자동으로 다시 시도:
   - 하루 한도(RPD): Google 이 초기화하는 **미국 태평양 시각 자정 + 5분** (한국 시각 오후 4시 5분, 서머타임 땐 오후 5시 5분)
   - 분당 한도(RPM·TPM): Google 이 알려준 대기 시간(최소 1분)

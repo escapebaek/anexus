@@ -213,7 +213,7 @@ class ProcessingTests(JournalTestBase):
         self.assertEqual(processing.quota_wait(resp([{"retryDelay": "90s"}]), now), timedelta(seconds=105))
         self.assertEqual(processing.quota_wait(resp([]), now), timedelta(hours=3))      # 알 수 없음 → 3시간
 
-    @override_settings(JOURNAL_GEMINI_MODEL="model-a", GEMINI_MODEL="model-b", GEMINI_FALLBACK_MODELS="")
+    @override_settings(JOURNAL_GEMINI_MODEL="model-a", JOURNAL_GEMINI_FALLBACK_MODELS="", GEMINI_MODEL="model-b", GEMINI_FALLBACK_MODELS="")
     def test_next_model_on_quota_and_retry_when_all_limited(self):
         limited = mock.Mock(status_code=429, text="quota")
         limited.json.return_value = {"error": {"details": [{"violations": [{"quotaId": "PerMinute"}]}, {"retryDelay": "20s"}]}}
@@ -236,7 +236,8 @@ class ProcessingTests(JournalTestBase):
             with self.assertRaisesMessage(processing.ProcessingError, "GEMINI_API_KEY"):
                 processing._gemini_post({})
 
-    @override_settings(JOURNAL_GEMINI_MODEL="gemini-4-hydrogen", GEMINI_MODEL="gemini-3.1-flash-lite", GEMINI_FALLBACK_MODELS="")
+    @override_settings(JOURNAL_GEMINI_MODEL="gemini-4-hydrogen", JOURNAL_GEMINI_FALLBACK_MODELS="gemini-3.1-flash-lite",
+                       GEMINI_MODEL="gemini-3.1-flash-lite", GEMINI_FALLBACK_MODELS="")
     def test_busy_model_is_skipped_for_a_while(self):
         busy = mock.Mock(status_code=503, text="high demand")
         ok = mock.Mock(status_code=200)
@@ -252,9 +253,11 @@ class ProcessingTests(JournalTestBase):
         self.assertIn("gemini-4-hydrogen", post.call_args.args[0])
 
     def test_model_order_and_thinking_only_for_new_models(self):
-        with override_settings(JOURNAL_GEMINI_MODEL="gemini-4-hydrogen", GEMINI_MODEL="gemini-3.1-flash-lite",
-                               GEMINI_FALLBACK_MODELS="gemini-2.5-flash,gemini-4-hydrogen"):
-            self.assertEqual(processing.journal_models(), ["gemini-4-hydrogen", "gemini-3.1-flash-lite", "gemini-2.5-flash"])
+        with override_settings(JOURNAL_GEMINI_MODEL="gemini-4-hydrogen",
+                               JOURNAL_GEMINI_FALLBACK_MODELS="gemini-3.5-flash-lite, gemini-3.8-flash",
+                               GEMINI_MODEL="gemini-3.1-flash-lite", GEMINI_FALLBACK_MODELS="gemini-2.5-flash,gemini-4-hydrogen"):
+            self.assertEqual(processing.journal_models(), ["gemini-4-hydrogen", "gemini-3.5-flash-lite", "gemini-3.8-flash",
+                                                           "gemini-3.1-flash-lite", "gemini-2.5-flash"])
         base = {"generationConfig": {"temperature": 0.2}}
         self.assertIn("thinkingConfig", processing._payload_for("gemini-3.1-flash-lite", base)["generationConfig"])
         self.assertEqual(processing._payload_for("gemini-2.5-flash", base), base)     # 2.5 는 thinkingLevel 을 모름

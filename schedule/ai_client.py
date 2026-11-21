@@ -5,11 +5,11 @@ unusual layouts). Providers are tried in SCHEDULE_AI_PROVIDERS order, skipping a
 without an API key; each provider also walks its own list of models, so one busy
 model or an exhausted free quota doesn't fail the upload.
 
-- localai: 직접 띄운 로컬 AI 서버 (Qwen, Tailscale). 지금은 이것만 사용 (settings.py 참고).
+- localai: 직접 띄운 로컬 AI 서버 (Qwen, Tailscale). [감춰 둠] 코드만 남겨 둠 (settings.py 참고).
 - groq / openrouter: OpenAI-compatible chat completions API (free tiers, no card). [사용 중지]
   Groq is very fast but its free tier caps tokens per minute, so it suits small
   files; bigger tables are normally handled by table_parser without AI.
-- gemini: see gemini_client.py.
+- gemini: see gemini_client.py. 지금은 이것만 사용.
 """
 import hashlib
 import json
@@ -386,8 +386,8 @@ def extract_schedules(source_text, filename="", progress=None):
     providers = configured_providers()
     if not providers:
         raise ScheduleExtractionError(
-            "이 파일은 표(열 이름) 형식이 아니라 AI 분석이 필요한데, 서버에 AI 가 설정되어 있지 않습니다. "
-            "LOCALAI_URL 과 LOCALAI_API_KEY 를 설정하거나, 날짜·방·시간·수술명·환자명 열이 있는 엑셀로 올려주세요."
+            "이 파일은 표(열 이름) 형식이 아니라 AI 분석이 필요한데, 지금은 AI 를 사용할 수 없어요 "
+            "(서버에 GEMINI_API_KEY 가 없음). " + gemini_client.TABLE_TIP
         )
 
     budget = settings.LOCALAI_SCHEDULE_BUDGET if "localai" in providers else settings.SCHEDULE_AI_TIME_BUDGET
@@ -424,18 +424,33 @@ COLUMN_QUESTION = (
 
 
 def _ask_gemini_json(system, prompt, timeout):
-    response = requests.post(
-        gemini_client.GEMINI_ENDPOINT.format(model=settings.GEMINI_MODEL),
-        params={"key": settings.GEMINI_API_KEY},
-        json={
-            "systemInstruction": {"parts": [{"text": system}]},
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"responseMimeType": "application/json", "temperature": 0},
-        },
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    """짧은 질문: 무료 모델을 앞에서부터 시도 (한도·과부하·없는 모델이면 다음 모델)."""
+    deadline = time.monotonic() + timeout
+    payload = {
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0},
+    }
+    last = "no model"
+    for model in gemini_client.model_chain():
+        remaining = deadline - time.monotonic()
+        if remaining < 2:
+            break
+        try:
+            response = requests.post(
+                gemini_client.GEMINI_ENDPOINT.format(model=model),
+                params={"key": settings.GEMINI_API_KEY}, json=payload, timeout=remaining,
+            )
+        except requests.Timeout:
+            last = f"{model}: timeout"
+            continue
+        if response.status_code == 200:
+            return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        last = f"{model}: {response.status_code}"
+        if response.status_code in (400, 404, 429, 500, 502, 503, 504):
+            continue
+        break
+    raise ValueError(f"Gemini 응답 없음 ({last})")
 
 
 def _ask_openai_compatible_json(name, system, prompt, timeout):
