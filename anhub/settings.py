@@ -136,6 +136,9 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),  # 프로젝트 루트의 static 폴더 추가
     os.path.join(BASE_DIR, 'schedule', 'static'),  # schedule 앱의 static 폴더
 ]
+# collectstatic 결과(staticfiles/)가 없어도 WhiteNoise 가 static/ 과 각 앱 static 폴더에서 바로 서빙.
+# staticfiles/ 는 git 에서 뺐고, Render 빌드 명령에 collectstatic 이 없어도 디자인이 깨지지 않도록.
+WHITENOISE_USE_FINDERS = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
