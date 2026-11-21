@@ -112,6 +112,22 @@ function calculateAll() {
     (getValue("amio_load") / getValue("amio_load_conc")) *
       (60 / getValue("amio_load_min"))
   );
+  // ----- 추가 약물 (2026-11): 승압·유도·근이완·강압 -----
+  updateResult("ephed_bolus", getValue("ephed_bolus") / getValue("ephed_conc"));
+  updateResult("ket_dose", (weight * getValue("ket_dose")) / getValue("ket_conc"));
+  updateResult("etom_dose", (weight * getValue("etom_dose")) / getValue("etom_conc"));
+  updateResult("ftn_dose", (weight * getValue("ftn_dose")) / getValue("ftn_conc"));
+  updateResult("roc_dose", (weight * getValue("roc_dose")) / getValue("roc_conc"));
+  updateResult("roc_rsi", (weight * 1.2) / getValue("roc_conc"));
+  updateResult("sgx2", (weight * 2) / getValue("sgx_conc"));
+  updateResult("sgx4", (weight * 4) / getValue("sgx_conc"));
+  updateResult("sgx16", (weight * 16) / getValue("sgx_conc"));
+  // Nicardipine: bolus mcg/kg → mg, C.I. mg/hr (체중 무관)
+  updateResult("nicar_bolus", (weight * getValue("nicar_bolus")) / 1000 / getValue("nicar_conc"));
+  updateResult("nicar_infusion", getValue("nicar_infusion") / getValue("nicar_inf_conc"));
+  updateResult("esmo_bolus", (weight * getValue("esmo_bolus")) / getValue("esmo_conc"));
+  updateResult("esmo_cont", (60 * weight * getValue("esmo_dr")) / (getValue("esmo_conc") * 1000));
+  updateResult("labe_bolus", getValue("labe_bolus") / getValue("labe_conc"));
   updateResult("amio_inf1", (1 * 60) / getValue("amio_conc"));
   updateResult("amio_inf2", (0.5 * 60) / getValue("amio_conc"));
 }
@@ -184,7 +200,26 @@ const MIX = {
   amio_load_conc: { amt: 150, unit: "mg", vol: 3, n: 1, cu: "mg", label: "150mg/3ml amp", dil: "D5W", title: "Load",
     std: "1@ + D5W 97ml = 100ml (1.5mg/ml) · 10분 이상", note: "only D5W" },
   amio_conc: { amt: 150, unit: "mg", vol: 3, n: 6, cu: "mg", label: "150mg/3ml amp", dil: "D5W", title: "C.I.",
-    std: "6@ + D5W 432ml = 450ml (2mg/ml)", note: "only D5W · &gt;2mg/ml은 중심정맥" }
+    std: "6@ + D5W 432ml = 450ml (2mg/ml)", note: "only D5W · &gt;2mg/ml은 중심정맥" },
+  ephed_conc: { amt: 40, unit: "mg", vol: 1, n: 1, cu: "mg", label: "40mg/1ml amp", dil: "NS",
+    std: "1@ + NS 9ml = 10ml (4mg/ml)" },
+  ket_conc: { amt: 500, unit: "mg", vol: 10, n: 1, cu: "mg", label: "500mg/10ml vial", dil: "NS",
+    std: "원액 50mg/ml · 희석 시 원액 1ml + NS 4ml = 10mg/ml" },
+  etom_conc: { neat: true, cu: "mg", std: "원액 사용 — 20mg/10ml (2mg/ml)" },
+  ftn_conc: { amt: 100, unit: "mcg", vol: 2, n: 1, cu: "mcg", label: "100mcg/2ml amp", dil: "NS",
+    std: "원액 50mcg/ml 그대로" },
+  roc_conc: { amt: 50, unit: "mg", vol: 5, n: 1, cu: "mg", label: "50mg/5ml vial", dil: "NS",
+    std: "원액 10mg/ml 그대로" },
+  sgx_conc: { amt: 200, unit: "mg", vol: 2, n: 1, cu: "mg", label: "200mg/2ml vial", dil: "NS",
+    std: "원액 100mg/ml 그대로 (16 mg/kg 은 여러 바이알)" },
+  nicar_conc: { amt: 10, unit: "mg", vol: 10, n: 1, cu: "mg", label: "10mg/10ml amp", dil: "NS", title: "Bolus",
+    std: "원액 1mg/ml 그대로" },
+  nicar_inf_conc: { amt: 10, unit: "mg", vol: 10, n: 1, cu: "mg", label: "10mg/10ml amp", dil: "NS", title: "C.I.", syr: true,
+    std: "1@ + NS 40ml = 50ml (0.2mg/ml)", note: "말초 정맥은 12시간마다 부위 교체" },
+  esmo_conc: { amt: 100, unit: "mg", vol: 10, n: 1, cu: "mg", label: "100mg/10ml vial", dil: "NS",
+    std: "원액 10mg/ml 그대로 (premix 2500mg/250ml 도 10mg/ml)" },
+  labe_conc: { amt: 100, unit: "mg", vol: 20, n: 1, cu: "mg", label: "100mg/20ml vial", dil: "NS",
+    std: "원액 5mg/ml 그대로" }
 };
 
 const MASS = { mcg: 0.001, mg: 1, g: 1000 };
@@ -259,7 +294,16 @@ const drugImages = {
   'dant': { name: 'Dantrolene', image: 'images/dant.jpg' },
   'lido': { name: 'Lidocaine', image: 'images/lido.jpg' },
   'atropine': { name: 'Atropine', image: 'images/atropine.jpg' },
-  'amio': { name: 'Amiodarone', image: 'images/amio.jpg' }
+  'amio': { name: 'Amiodarone', image: 'images/amio.jpg' },
+  'ephed': { name: 'Ephedrine', image: 'images/ephed.jpg' },
+  'ket': { name: 'Ketamine', image: 'images/ket.jpg' },
+  'etom': { name: 'Etomidate', image: 'images/etom.jpg' },
+  'ftn': { name: 'Fentanyl (FTN)', image: 'images/ftn.jpg' },
+  'roc': { name: 'Rocuronium (ROC)', image: 'images/roc.jpg' },
+  'sgx': { name: 'Sugammadex (Bridion)', image: 'images/sgx.jpg' },
+  'nicar': { name: 'Nicardipine', image: 'images/nicar.jpg' },
+  'esmo': { name: 'Esmolol', image: 'images/esmo.jpg' },
+  'labe': { name: 'Labetalol', image: 'images/labe.jpg' }
 };
 
 function openDrugModal(drugId) {

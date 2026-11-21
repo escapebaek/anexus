@@ -33,9 +33,9 @@ class CalculatorPageTests(TestCase):
         self.assertContains(res, 'type="button" class="cx-btn-calc"')
         self.assertNotContains(res, 'type="submit" class="cx-')
         # 종류별 묶음 + 칩 자리, 권장 범위(벗어나면 경고), 내 농도 안내
-        for cat in ('pressor', 'vasodil', 'tiva', 'lytes', 'crisis'):
+        for cat in ('pressor', 'vasodil', 'tiva', 'muscle', 'lytes', 'crisis'):
             self.assertContains(res, f'id="adult-{cat}" data-cat="{cat}"')
-        self.assertContains(res, 'class="cx-card"', count=19)
+        self.assertContains(res, 'class="cx-card"', count=28)
         self.assertContains(res, 'id="calcChips"')
         self.assertContains(res, 'id="nep_dr" data-range="0.01,0.2"')
         self.assertContains(res, 'id="concNote" hidden')

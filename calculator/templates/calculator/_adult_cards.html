@@ -88,6 +88,30 @@
         <!-- VASO Card -->
         <div class="cx-card">
           <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-syringe"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('ephed')">Ephedrine</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="ephed_conc" value="4" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (mg)</label>
+              <input type="number" id="ephed_bolus" data-range="5,10" value="5" step="1" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="ephed_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 5–10mg IV, 필요 시 반복 (빈맥 동반 저혈압엔 Phenylephrine 고려)</p>
+          <div class="cx-results">
+            <div class="cx-res" id="ephed_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="ephed_bolus_result">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="cx-card">
+          <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
             <h3 onclick="AdultCalc.openDrugModal('vaso')">Vasopressin (VASO)</h3>
           </div>
@@ -170,8 +194,8 @@
         </div>
   </div>
 </section>
-<section class="cx-group" id="adult-vasodil" data-cat="vasodil" data-label="혈관확장·항부정맥">
-  <h2 class="cx-group-title"><i class="fas fa-wave-square"></i> 혈관확장·항부정맥 <small>Vasodilators · Antiarrhythmics</small></h2>
+<section class="cx-group" id="adult-vasodil" data-cat="vasodil" data-label="강압·항부정맥">
+  <h2 class="cx-group-title"><i class="fas fa-wave-square"></i> 강압·항부정맥 <small>Antihypertensives · Antiarrhythmics</small></h2>
   <div class="cx-grid">
         <!-- NTG Card -->
         <div class="cx-card">
@@ -224,6 +248,99 @@
           </div>
         </div>
         <!-- Amiodarone Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-tachometer-alt"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('nicar')">Nicardipine</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Bolus conc (mg/ml)</label>
+              <input type="number" id="nicar_conc" value="1" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (mcg/kg)</label>
+              <input type="number" id="nicar_bolus" data-range="10,30" value="10" step="1" />
+            </div>
+            <div class="cx-input">
+              <label>C.I. conc (mg/ml)</label>
+              <input type="number" id="nicar_inf_conc" value="0.2" step="0.01" />
+            </div>
+            <div class="cx-input">
+              <label>Infusion (mg/hr)</label>
+              <input type="number" id="nicar_infusion" data-range="5,15" value="5" step="0.5" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="nicar_conc_mix"></div></details>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="nicar_inf_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 10–30 mcg/kg (국내 허가) | C.I.: 5–15 mg/hr, 5–15분마다 2.5 mg/hr 증량 (체중 무관)</p>
+          <div class="cx-results">
+            <div class="cx-res" id="nicar_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="nicar_bolus_result">-</div>
+            </div>
+            <div class="cx-res" id="nicar_infusion_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="nicar_infusion_result">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-heart"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('esmo')">Esmolol</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="esmo_conc" value="10" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (mg/kg)</label>
+              <input type="number" id="esmo_bolus" data-range="0.5,1" value="0.5" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Rate (mcg/kg/min)</label>
+              <input type="number" id="esmo_dr" data-range="50,300" value="50" step="10" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="esmo_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 0.5–1 mg/kg (1분) | C.I.: 50–300 mcg/kg/min · 서맥·심부전 주의</p>
+          <div class="cx-results">
+            <div class="cx-res" id="esmo_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="esmo_bolus_result">-</div>
+            </div>
+            <div class="cx-res" id="esmo_cont_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> C.I. (ml/hr)</div>
+              <div class="cx-res-value" id="esmo_cont_result">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-heart"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('labe')">Labetalol</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="labe_conc" value="5" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Bolus (mg)</label>
+              <input type="number" id="labe_bolus" data-range="5,20" value="10" step="1" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="labe_conc_mix"></div></details>
+          <p class="cx-info">Bolus: 5–20mg (2분에 걸쳐), 10분마다 반복 · 총 300mg 이내 · 천식·서맥 주의</p>
+          <div class="cx-results">
+            <div class="cx-res" id="labe_bolus_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Bolus (ml)</div>
+              <div class="cx-res-value" id="labe_bolus_result">-</div>
+            </div>
+          </div>
+        </div>
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
@@ -313,8 +430,8 @@
         </div>
   </div>
 </section>
-<section class="cx-group" id="adult-tiva" data-cat="tiva" data-label="마취·진통">
-  <h2 class="cx-group-title"><i class="fas fa-bed"></i> 마취·진통 <small>TIVA · Analgesia</small></h2>
+<section class="cx-group" id="adult-tiva" data-cat="tiva" data-label="유도·진통">
+  <h2 class="cx-group-title"><i class="fas fa-bed"></i> 유도·마취·진통 <small>Induction · TIVA · Analgesia</small></h2>
   <div class="cx-grid">
         <!-- PPF Card -->
         <div class="cx-card">
@@ -342,6 +459,78 @@
           </div>
         </div>
         <!-- RFTN Card -->
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-syringe"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('ket')">Ketamine</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="ket_conc" value="50" step="1" />
+            </div>
+            <div class="cx-input">
+              <label>Dose (mg/kg)</label>
+              <input type="number" id="ket_dose" data-range="0.1,2" value="1" step="0.1" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="ket_conc_mix"></div></details>
+          <p class="cx-info">Induction: 1–2 mg/kg IV | 진통(저용량): 0.1–0.5 mg/kg · 분비물 ↑, ICP·안압 상승 주의</p>
+          <div class="cx-results">
+            <div class="cx-res" id="ket_dose_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Dose (ml)</div>
+              <div class="cx-res-value" id="ket_dose_result">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-syringe"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('etom')">Etomidate</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="etom_conc" value="2" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Dose (mg/kg)</label>
+              <input type="number" id="etom_dose" data-range="0.2,0.3" value="0.3" step="0.05" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="etom_conc_mix"></div></details>
+          <p class="cx-info">Induction: 0.2–0.3 mg/kg · 혈역학 안정 · 부신 억제(단회 투여) · 근간대 경련</p>
+          <div class="cx-results">
+            <div class="cx-res" id="etom_dose_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Dose (ml)</div>
+              <div class="cx-res-value" id="etom_dose_result">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-band-aid"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('ftn')">Fentanyl (FTN)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mcg/ml)</label>
+              <input type="number" id="ftn_conc" value="50" step="1" />
+            </div>
+            <div class="cx-input">
+              <label>Dose (mcg/kg)</label>
+              <input type="number" id="ftn_dose" data-range="0.5,2" value="1" step="0.1" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="ftn_conc_mix"></div></details>
+          <p class="cx-info">Induction: 1–2 mcg/kg | 진통 추가: 0.5–1 mcg/kg · 고용량 시 흉벽 강직</p>
+          <div class="cx-results">
+            <div class="cx-res" id="ftn_dose_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Dose (ml)</div>
+              <div class="cx-res-value" id="ftn_dose_result">-</div>
+            </div>
+          </div>
+        </div>
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-prescription"></i></div>
@@ -388,6 +577,67 @@
             <div class="cx-res" id="suftn2_result_item">
               <div class="cx-res-label"><i class="fas fa-tint"></i> MAX (ml/hr)</div>
               <div class="cx-res-value" id="suftn2_result">-</div>
+            </div>
+          </div>
+        </div>
+  </div>
+</section>
+<section class="cx-group" id="adult-muscle" data-cat="muscle" data-label="근이완·역전">
+  <h2 class="cx-group-title"><i class="fas fa-capsules"></i> 근이완·역전 <small>Neuromuscular block · Reversal</small></h2>
+  <div class="cx-grid">
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-capsules"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('roc')">Rocuronium (ROC)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="roc_conc" value="10" step="0.1" />
+            </div>
+            <div class="cx-input">
+              <label>Dose (mg/kg)</label>
+              <input type="number" id="roc_dose" data-range="0.6,1.2" value="0.6" step="0.1" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="roc_conc_mix"></div></details>
+          <p class="cx-info">Intubation: 0.6 mg/kg | RSI: 1.2 mg/kg | 추가: 0.1–0.2 mg/kg · 비만은 IBW 기준</p>
+          <div class="cx-results">
+            <div class="cx-res" id="roc_dose_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> Dose (ml)</div>
+              <div class="cx-res-value" id="roc_dose_result">-</div>
+            </div>
+            <div class="cx-res" id="roc_rsi_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> RSI 1.2 mg/kg (ml)</div>
+              <div class="cx-res-value" id="roc_rsi_result">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="cx-card">
+          <div class="cx-card-head">
+            <div class="cx-icon"><i class="fas fa-undo"></i></div>
+            <h3 onclick="AdultCalc.openDrugModal('sgx')">Sugammadex (Bridion)</h3>
+          </div>
+          <div class="cx-card-body">
+            <div class="cx-input">
+              <label>Conc (mg/ml)</label>
+              <input type="number" id="sgx_conc" value="100" step="1" />
+            </div>
+          </div>
+        <details class="cx-mix"><summary>MIX 조제법</summary><div class="cx-mix-body" id="sgx_conc_mix"></div></details>
+          <p class="cx-info">TOF ≥2: 2 mg/kg | PTC 1–2: 4 mg/kg | Roc 투여 직후 즉시 역전: 16 mg/kg · 실제 체중 기준</p>
+          <div class="cx-results">
+            <div class="cx-res" id="sgx2_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> 2 mg/kg (ml)</div>
+              <div class="cx-res-value" id="sgx2_result">-</div>
+            </div>
+            <div class="cx-res" id="sgx4_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> 4 mg/kg (ml)</div>
+              <div class="cx-res-value" id="sgx4_result">-</div>
+            </div>
+            <div class="cx-res" id="sgx16_result_item">
+              <div class="cx-res-label"><i class="fas fa-tint"></i> 16 mg/kg (ml)</div>
+              <div class="cx-res-value" id="sgx16_result">-</div>
             </div>
           </div>
         </div>
