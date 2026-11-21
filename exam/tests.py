@@ -155,8 +155,11 @@ class ExamViewTests(TestCase):
 
     def test_my_results_shows_score_percent(self):
         self.save({'exam_id': self.exam.id, 'question_ids': [self.q1.id, self.q2.id], 'answers': {str(self.q1.id): 3}})
-        page = self.client.get(reverse('my_results'))
-        row = page.context['results'][0]
+        # 예전 '응시 기록' 주소는 '내 기록'(통계와 합친 화면)의 응시 기록으로
+        self.assertRedirects(self.client.get(reverse('my_results')), reverse('analytics_overview') + '#history',
+                             fetch_redirect_response=False)
+        page = self.client.get(reverse('analytics_overview'))
+        row = page.context['history'][0]
         self.assertEqual((row['correct'], row['total'], row['score_percent'], row['wrong']), (1, 2, 50.0, 1))
         self.assertContains(page, 'width: 50.0%')
 
@@ -323,12 +326,39 @@ class StatsTests(TestCase):
         c = page.context
         self.assertEqual(c['exam'], self.exam)
         self.assertEqual(c['attempts'], 2)
-        self.assertEqual([t['pct'] for t in c['trend']], [50.0, 100.0])
-        self.assertEqual(json.loads(c['trend_json'])[1]['y'], 100.0)
+        self.assertEqual([t['y'] for t in json.loads(c['trend_json'])], [50.0, 100.0])
+        self.assertEqual([h['score_percent'] for h in c['history']], [100.0, 50.0])   # 응시 기록은 이 회차만, 최근 순
         self.assertContains(page, 'id="stTrend"')
         self.assertEqual(c['wrong_total'], 0)                # 두 번째에 다 맞혔으므로 오답 없음
         # 푼 적 없는 회차·특별 시험은 범위로 고를 수 없다
         self.assertRedirects(self.client.get(reverse('analytics_overview') + f'?exam={self.special.id}'), reverse('analytics_overview'))
+
+    def test_weak_parts_and_recent_change(self):
+        # 약리(홀수 문제) 는 처음엔 다 틀리다가 나중엔 다 맞힘, 생리(짝수) 는 늘 틀림 - 4번 x 4문제
+        for i in range(6):
+            self.take(self.exam, self.q, right=[q for q in self.q if q.category == self.cat and i >= 3])
+        c = self.client.get(reverse('analytics_overview')).context
+        cats = {x['name']: x for x in c['categories']}
+        self.assertEqual((cats['생리']['pct'], cats['생리']['level']), (0, 'weak'))
+        self.assertEqual((cats['약리']['pct'], cats['약리']['graded']), (50, 12))
+        # 최근 10문제(약리: 마지막 6문제 맞음 + 그 전 4문제 틀림 → 60%) vs 그 전 2문제(0%) → 표본이 5 미만이라 변화 없음
+        self.assertIsNone(cats['약리']['delta'])
+        self.assertEqual([w['name'] for w in c['weak_top']], ['생리', '약리'])   # 낮은 순
+        self.assertEqual(c['overall_pct'], 25)
+        # 다시 6번 다 맞히면 약리 변화가 보임 (최근 10문제 100% vs 그 전 14문제 8/14 ≈ 57%)
+        for _ in range(6):
+            self.take(self.exam, self.q, right=[q for q in self.q if q.category == self.cat])
+        cats = {x['name']: x for x in self.client.get(reverse('analytics_overview')).context['categories']}
+        self.assertEqual(cats['약리']['delta'], 43)
+
+    def test_delete_returns_to_same_scope(self):
+        rid = self.take(self.exam, self.q, right=[])
+        back = reverse('analytics_overview') + f'?exam={self.exam.id}#history'
+        res = self.client.post(reverse('delete_result', args=[rid]), {'next': back})
+        self.assertRedirects(res, back, fetch_redirect_response=False)
+        rid = self.take(self.exam, self.q, right=[])
+        res = self.client.post(reverse('delete_result', args=[rid]), {'next': 'https://evil.example/'})
+        self.assertRedirects(res, reverse('analytics_overview') + '#history', fetch_redirect_response=False)
 
     def test_wrong_notebook_tracks_last_result(self):
         self.take(self.exam, self.q, right=[])               # 4문제 모두 틀림

@@ -14,6 +14,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 import re
 
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.timezone import localtime
 
 from .grading import grade, MAX_QUESTIONS_PER_RESULT
@@ -347,9 +348,7 @@ def question_home(request):
          "url": reverse('bookmarked_questions'), "icon_class": "bookmark"},
         {"title": "Wrong Answers", "text": "오답노트: 마지막에 틀린 문제 다시 풀기",
          "url": reverse('review_wrong'), "icon_class": "redo"},
-        {"title": "My Results", "text": "응시 기록과 채점 결과",
-         "url": reverse('my_results'), "icon_class": "list-alt"},
-        {"title": "My Stats", "text": "점수 추이·카테고리 정답률",
+        {"title": "My Records", "text": "응시 기록 · 점수 추이 · 약한 파트",
          "url": reverse('analytics_overview'), "icon_class": "chart-line"},
     ]
     return render(request, 'exam/question_home.html', {'sections': sections})
@@ -358,27 +357,61 @@ def question_home(request):
 @login_required
 @user_is_approved
 def my_results(request):
-    results = (
-        ExamResult.objects
-        .filter(user=request.user)
-        .select_related('exam')
-        .order_by('-date_taken')
-    )
-    display = []
-    for r in results:
+    """예전 '응시 기록' 주소 — '내 기록'(통계와 합친 화면)의 응시 기록으로."""
+    return redirect(f"{reverse('analytics_overview')}#history")
+
+
+def history_rows(results):
+    """응시 기록 목록 (최근 순)."""
+    rows = []
+    for r in sorted(results, key=lambda r: (r.date_taken, r.id), reverse=True):
         correct, total, pct = result_counts(r)
-        display.append({
-            'id': r.id,
-            'title': result_title(r),
-            'is_exam': bool(r.exam_id),
-            'exam_id': r.exam_id,
-            'date_taken': r.date_taken,
-            'correct': correct,
-            'total': total,
-            'score_percent': pct,
+        rows.append({
+            'id': r.id, 'title': result_title(r), 'exam_id': r.exam_id, 'date_taken': r.date_taken,
+            'correct': correct, 'total': total, 'score_percent': pct,
             'wrong': (r.num_incorrect or 0) + (r.num_unanswered or 0),
         })
-    return render(request, 'exam/my_results.html', {'results': display})
+    return rows
+
+
+WEAK_PCT = 60       # 이보다 낮으면 약함 (빨강)
+GOOD_PCT = 80       # 이 이상이면 잘함 (남색), 그 사이는 보통
+MIN_SAMPLE = 5      # 이보다 적게 푼 카테고리는 '표본 적음' (약한 파트 순위에서 뺌)
+RECENT_N = 10       # 최근 변화: 마지막 N문제 정답률 vs 그 전
+
+
+def category_stats(results):
+    """카테고리별 정답률 + 최근 변화. 정답 미정 문제 제외, 안 푼 문제는 틀린 것으로.
+    results 는 시간순이어야 함 (최근 변화 계산)."""
+    outcomes = defaultdict(list)
+    for r in results:
+        for d in r.detailed_results or []:
+            if not isinstance(d, dict) or d.get('result') == 'noanswer':
+                continue
+            name = d.get('category') if d.get('category') not in (None, '', 'N/A') else '미분류'
+            outcomes[name].append(d.get('result') == 'correct')
+    # 카테고리 풀기 링크는 실제 카테고리이고 주소 패턴(urls.py)에 맞는 이름에만 단다
+    category_names = {n for n in Category.objects.filter(name__in=outcomes).values_list('name', flat=True)
+                      if re.fullmatch(r'[\w\s\(\)가-힣%-]+', n)}
+    rows = []
+    for name, seq in outcomes.items():
+        graded, correct = len(seq), sum(seq)
+        pct = round(correct / graded * 100)
+        delta = None
+        before = seq[:-RECENT_N]
+        if len(seq) >= RECENT_N and len(before) >= MIN_SAMPLE:
+            recent_pct = sum(seq[-RECENT_N:]) / RECENT_N * 100
+            delta = round(recent_pct - sum(before) / len(before) * 100)
+        rows.append({
+            'name': name, 'correct': correct, 'graded': graded, 'pct': pct, 'delta': delta,
+            'level': 'weak' if pct < WEAK_PCT else 'good' if pct >= GOOD_PCT else 'mid',
+            'few': graded < MIN_SAMPLE, 'can_practice': name in category_names,
+        })
+    rows.sort(key=lambda c: (c['pct'], -c['graded'], c['name']))
+    total_graded = sum(c['graded'] for c in rows)
+    overall = round(sum(c['correct'] for c in rows) / total_graded * 100) if total_graded else 0
+    return rows, overall
+
 
 WRONG_RESULTS = ('incorrect', 'unanswered')
 
@@ -417,7 +450,7 @@ def still_wrong_questions(user, exam=None):
 @login_required
 @user_is_approved
 def analytics_overview(request):
-    """내 통계: 전체 또는 회차 하나를 골라 점수·카테고리 정답률·오답노트를 한 화면에."""
+    """내 기록: 전체 또는 회차 하나를 골라 점수 추이·약한 파트·카테고리 정답률·오답노트·응시 기록을 한 화면에."""
     all_results = list(ExamResult.objects.filter(user=request.user).select_related('exam').order_by('date_taken', 'id'))
     exam_ids = {r.exam_id for r in all_results if r.exam_id}
     exams = list(visible_exams(request.user).filter(id__in=exam_ids).order_by('display_order', 'date_created'))
@@ -444,24 +477,21 @@ def analytics_overview(request):
         'answered': sum((r.num_correct or 0) + (r.num_incorrect or 0) for r in results),
     })
 
-    # 카테고리 정답률 (정답 미정 문제 제외, 안 푼 문제는 틀린 것으로)
-    by_category = defaultdict(lambda: {'correct': 0, 'graded': 0})
-    for r in results:
-        for d in r.detailed_results or []:
-            if not isinstance(d, dict) or d.get('result') == 'noanswer':
-                continue
-            name = d.get('category') if d.get('category') not in (None, '', 'N/A') else '미분류'
-            by_category[name]['graded'] += 1
-            by_category[name]['correct'] += d.get('result') == 'correct'
-    # 카테고리 풀기 링크는 실제 카테고리이고 주소 패턴(urls.py)에 맞는 이름에만 단다
-    category_names = {n for n in Category.objects.filter(name__in=by_category).values_list('name', flat=True)
-                      if re.fullmatch(r'[\w\s\(\)가-힣%-]+', n)}
-    context['categories'] = sorted(
-        ({'name': name, 'correct': c['correct'], 'graded': c['graded'],
-          'pct': round(c['correct'] / c['graded'] * 100) if c['graded'] else 0,
-          'can_practice': name in category_names}
-         for name, c in by_category.items() if c['graded']),
-        key=lambda c: (c['pct'], -c['graded'], c['name']))
+    categories, overall_pct = category_stats(results)
+    context['categories'] = categories
+    context['overall_pct'] = overall_pct
+    # 약한 파트: 충분히 푼(표본 5문제 이상) 카테고리 중 80% 미만, 낮은 순 3개
+    context['weak_top'] = [c for c in categories if not c['few'] and c['pct'] < GOOD_PCT][:3]
+    context['history'] = history_rows(results)
+    # 점수 추이 (전체·회차 모두): 응시마다 점수, 전체는 최근 5회 이동평균도
+    trend = [{'x': localtime(r.date_taken).strftime('%m/%d'), 'y': result_counts(r)[2],
+              'label': f"{localtime(r.date_taken).strftime('%Y.%m.%d %H:%M')} · {result_title(r)}",
+              'score': f'{result_counts(r)[0]}/{result_counts(r)[1]}'} for r in results]
+    for i, t in enumerate(trend):
+        window = trend[max(0, i - 4):i + 1]
+        t['avg'] = round(sum(w['y'] for w in window) / len(window), 1)
+    context['trend_json'] = json.dumps(trend)
+    context['trend_count'] = len(trend)
 
     if exam is None:
         # 회차별 요약 (시험 회차가 아닌 카테고리·북마크·다시 풀기 기록은 합계에만 들어간다)
@@ -475,12 +505,6 @@ def analytics_overview(request):
                          'avg_pct': round(sum(ep) / len(ep), 1), 'last_date': er[-1].date_taken})
         context['exam_rows'] = rows
         context['other_attempts'] = sum(1 for r in results if not r.exam_id)
-    else:
-        context['trend'] = [{'id': r.id, 'date': r.date_taken, 'pct': result_counts(r)[2],
-                             'correct': result_counts(r)[0], 'total': result_counts(r)[1]} for r in results]
-        context['trend_json'] = json.dumps([{'x': localtime(r.date_taken).strftime('%m/%d'), 'y': result_counts(r)[2],
-                                             'label': localtime(r.date_taken).strftime('%Y.%m.%d %H:%M'),
-                                             'score': f'{result_counts(r)[0]}/{result_counts(r)[1]}'} for r in results])
 
     wrong = still_wrong_questions(request.user, exam)
     context['wrong_total'] = len(wrong)
@@ -526,7 +550,10 @@ def review_wrong(request):
 def delete_result(request, result_id: int):
     r = get_object_or_404(ExamResult, pk=result_id, user=request.user)
     r.delete()
-    return redirect('my_results')
+    next_url = request.POST.get('next', '')
+    if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+    return redirect(f"{reverse('analytics_overview')}#history")
 
 @login_required
 @user_is_approved
