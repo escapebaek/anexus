@@ -135,3 +135,15 @@ class VisitCounterTests(TestCase):
         res = self.client.get(reverse('home'), **self.UA)
         self.assertContains(res, 'TOTAL VISITS')
         self.assertContains(res, 'data-count="41"')
+
+
+class RootIconTests(TestCase):
+    """도메인 바로 아래의 아이콘 주소 (새 탭·즐겨찾기·검색 결과·아이폰 홈 화면이 찾는 곳)."""
+
+    def test_root_icons_are_served(self):
+        for url, ctype in [('/favicon.ico', 'image/'), ('/favicon.svg', 'image/svg+xml'),
+                           ('/apple-touch-icon.png', 'image/png'), ('/apple-touch-icon-precomposed.png', 'image/png')]:
+            res = self.client.get(url)
+            self.assertEqual(res.status_code, 200, url)
+            self.assertTrue(res['Content-Type'].startswith(ctype), (url, res['Content-Type']))
+            self.assertGreater(len(b''.join(res.streaming_content)), 100, url)

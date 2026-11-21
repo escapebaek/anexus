@@ -61,6 +61,25 @@ class BoardImprovementTests(TestCase):
         from .models import Board
         return Board.objects.create(title=title, contents=contents, author=author or self.user)
 
+    def test_index_title_views_new_badge_and_back_link(self):
+        from datetime import timedelta
+        from django.urls import reverse
+        from django.utils import timezone
+        old = self.post('예전 글')
+        old.created_date = timezone.now() - timedelta(days=3)
+        old.view_count = 42
+        old.save()
+        self.post('방금 쓴 글')
+        res = self.client.get(reverse('board_index'))
+        html = res.content.decode()
+        self.assertNotIn('ANExUS Board', html)                 # 사이트 이름 반복 없이 'Board'
+        self.assertIn('<title>Board · ANExUS</title>', html)
+        self.assertIn('>42</div>', html.replace('<i class="far fa-eye d-md-none"></i>', ''))   # 조회수 열
+        self.assertEqual(html.count('class="new-badge"'), 1)    # 24시간 안의 글에만 N
+        detail = self.client.get(reverse('board_detail', args=[old.pk]))
+        self.assertContains(detail, 'class="post-back"')
+        self.assertContains(detail, '<title>예전 글 · ANExUS</title>', html=False)
+
     def test_editor_image_upload_goes_to_supabase_with_safe_name(self):
         import io
         from unittest import mock

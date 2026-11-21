@@ -22,7 +22,8 @@ from accounts.decorators import user_is_approved
 from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import HttpResponse
+from django.contrib.staticfiles import finders
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -31,6 +32,26 @@ from urllib.parse import urlencode
 
 def health(request):
     return HttpResponse('ok')
+
+
+# 브라우저 새 탭·즐겨찾기, 검색 결과, 아이폰 홈 화면, 링크 미리보기는 페이지의 <link rel="icon"> 대신
+# 도메인 바로 아래(/favicon.ico, /apple-touch-icon.png)에서 아이콘을 찾는다. 없으면 404 → 기본 아이콘.
+# (도메인을 옮긴 뒤 브라우저에 저장된 아이콘이 없어지면서 드러남) 정적 파일을 그대로 돌려준다.
+ROOT_ICONS = {
+    'favicon.ico': 'favicon.ico',
+    'favicon.svg': 'favicon.svg',
+    'apple-touch-icon.png': 'apple-touch-icon.png',
+    'apple-touch-icon-precomposed.png': 'apple-touch-icon.png',
+}
+
+
+def root_icon(request, name):
+    path = finders.find(ROOT_ICONS[name])
+    if not path:
+        raise Http404
+    response = FileResponse(open(path, 'rb'))
+    response['Cache-Control'] = 'public, max-age=86400'
+    return response
 
 
 def admin_login(request):
@@ -47,6 +68,7 @@ def admin_login(request):
 
 urlpatterns = [
     path('health/', health),
+    *[path(name, root_icon, {'name': name}) for name in ROOT_ICONS],
     path('admin/login/', admin_login),
     path('admin/', admin.site.urls),
     path('', include('land.urls')),

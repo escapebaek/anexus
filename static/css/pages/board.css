@@ -80,6 +80,49 @@
   .post-item:hover { transform: none; box-shadow: none; }
 }
 
+/* ---------- 제목: 'Board' + 한 줄 설명 ---------- */
+.board-heading { display: flex; flex-direction: column; gap: 2px; }
+.board-header .section-title { margin: 0; }
+.board-sub { margin: 0; color: #6b7a8c; font-size: 0.92rem; }
+
+/* ---------- 목록: 조회 열 · 댓글 수 · 새 글 표시 ---------- */
+.post-views { flex-basis: 70px; flex-shrink: 0; text-align: center; font-size: 0.85rem; color: #8a97a8; font-variant-numeric: tabular-nums; }
+.post-views i { margin-right: 3px; }
+.comment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #2b5876;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.comment-count i { font-size: 0.7rem; }
+.new-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  background: #4e4376;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+.post-title-col { min-width: 0; }
+.post-title-link { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 행에 마우스를 올려도 커지지 않게 (글자가 흔들려 읽기 어려움) - 배경만 */
+.post-item:hover { transform: none; box-shadow: none; }
+
+/* 바탕: 사이트 본문 폭 안에서만 칠해져 양옆이 띠처럼 보이던 그라데이션 제거 */
+.board-container { background: none; }
+
 /* ---------- 휴대폰: 여백을 줄이고, 한 글을 두 줄(제목 / 작성자·날짜)로 ---------- */
 @media (max-width: 767.98px) {
   .board-container { padding: 1rem 0 2rem; }
@@ -119,9 +162,13 @@
     overflow-wrap: anywhere;
   }
   .comment-count { flex: 0 0 auto; margin-left: 2px !important; }
-  .post-author, .post-date { grid-row: 2; flex: none; font-size: 0.78rem; }
+  .post-item { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .post-author, .post-date, .post-views { grid-row: 2; flex: none; font-size: 0.78rem; }
   .post-author { grid-column: 1 / 3; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .post-date { grid-column: 3; text-align: right; }
+  .post-views { grid-column: 4; text-align: right; min-width: 38px; }
+  .post-title-link { white-space: normal; }
+  .board-sub { font-size: 0.85rem; }
   .empty-board { padding: 3rem 1rem; }
   .pagination-container { margin-top: 1.5rem; }
 }
