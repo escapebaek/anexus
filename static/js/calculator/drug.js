@@ -332,5 +332,5 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
-window.AdultCalc = { calculateAll, openDrugModal, closeDrugModal, closeDrugModalOnOverlay };
+window.AdultCalc = { calculateAll, updateMixes, openDrugModal, closeDrugModal, closeDrugModalOnOverlay };
 })();

@@ -32,6 +32,13 @@ class CalculatorPageTests(TestCase):
         # 사이트 공통 스크립트가 submit 버튼을 'Loading...' 으로 바꾸지 않게 계산 버튼은 type=button
         self.assertContains(res, 'type="button" class="cx-btn-calc"')
         self.assertNotContains(res, 'type="submit" class="cx-')
+        # 종류별 묶음 + 칩 자리, 권장 범위(벗어나면 경고), 내 농도 안내
+        for cat in ('pressor', 'vasodil', 'tiva', 'lytes', 'crisis'):
+            self.assertContains(res, f'id="adult-{cat}" data-cat="{cat}"')
+        self.assertContains(res, 'class="cx-card"', count=19)
+        self.assertContains(res, 'id="calcChips"')
+        self.assertContains(res, 'id="nep_dr" data-range="0.01,0.2"')
+        self.assertContains(res, 'id="concNote" hidden')
         res = self.client.get(reverse('calculator') + '?mode=ped')
         self.assertContains(res, '<div class="calc" data-mode="ped"')
         res = self.client.get(reverse('calculator') + '?mode=weird')

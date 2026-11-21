@@ -7,7 +7,7 @@
 //  doses : 1회 용량. d = 체중당 용량, max = 1회 상한(cu),
 //          pick(w, age) 가 있으면 체중·나이에 따라 { d | fixed, l } 을 고름,
 //          over = 분 단위 주입 시간 (loading 속도 ml/hr 표시)
-//  inf   : 지속주입 (Rate 입력 → ml/hr). conc 가 있으면 별도 주사기 농도
+//  inf   : 지속주입 (Rate 입력 → ml/hr). conc 가 있으면 별도 주사기 농도, range = 권장 속도(벗어나면 경고)
 //  mix   : 조제 방법 (아래 mixText 참고)
 //  ageWarn : [{ lt: 나이(세), msg }] — 해당 나이 미만이면 카드에 경고 표시
 //  용량·조제 기준: anesthesia-manual 소아 탭(부서 기준) + 일반 소아 참고값
@@ -97,7 +97,7 @@ const DRUGS = [
     id: "remifentanil", name: "Remifentanil (RFTN)", icon: "fa-band-aid", cat: "analgesic",
     cu: "mcg", conc: 20,
     doses: [{ l: "Bolus 0.5 mcg/kg", d: 0.5 }],
-    inf: { l: "Rate (mcg/kg/min)", def: 0.2, step: 0.01, perMin: true },
+    inf: { l: "Rate (mcg/kg/min)", def: 0.2, step: 0.01, perMin: true, range: [0.05, 0.5] },
     info: "C.I. 0.05–0.5 mcg/kg/min (부서 시작 0.2) · Bolus 0.5–1 mcg/kg 30–60초",
     caution: "<b>신생아부터</b> 사용. 에스터 분해 — 축적 없음. Minto 모델은 성인 전용 → 15세 미만은 dose rate 로 설정. 중단 시 진통이 급격히 사라지므로 다른 진통제를 미리 준비.",
     mix: { amt: 1, unit: "mg", vol: 0, n: 1, cu: "mcg", label: "1mg 분말", dil: "NS", syr: 50,
@@ -108,7 +108,7 @@ const DRUGS = [
     cu: "mcg", conc: 5,
     doses: [{ l: "0.1 mcg/kg (짧은 수술)", d: 0.1 }, { l: "0.2 mcg/kg (기본)", d: 0.2 }],
     inf: {
-      l: "Rate (mcg/kg/hr)", def: 0.3, step: 0.05, perMin: false, conc: 1,
+      l: "Rate (mcg/kg/hr)", def: 0.3, step: 0.05, perMin: false, conc: 1, range: [0.1, 1.5],
       mix: { amt: 50, unit: "mcg", vol: 1, n: 1, cu: "mcg", label: "50mcg/1ml", dil: "NS", title: "C.I.",
         std: "30kg 미만 50mcg/1ml + NS 49ml = 1mcg/ml · 30kg 이상 250mcg/5ml + NS 45ml = 5mcg/ml" }
     },
@@ -171,7 +171,7 @@ const DRUGS = [
     id: "dexmedetomidine", name: "Dexmedetomidine (DEX)", icon: "fa-moon", cat: "sedation",
     cu: "mcg", conc: 4,
     doses: [{ l: "Loading 1 mcg/kg", d: 1, over: 10 }],
-    inf: { l: "Rate (mcg/kg/hr)", def: 0.5, step: 0.1, perMin: false },
+    inf: { l: "Rate (mcg/kg/hr)", def: 0.5, step: 0.1, perMin: false, range: [0.2, 1] },
     info: "Loading 0.5–1 mcg/kg <b>10분</b> → 유지 0.2–1 mcg/kg/hr",
     caution: "허가: 비삽관 소아 1개월–18세 비침습 시술 진정 — 전신마취 보조는 허가 외. <b>서맥·저혈압</b>: 급속 bolus 금지. 원액(100mcg/ml)을 그대로 쓰지 말 것.",
     ageWarn: [{ lt: 1 / 12, msg: "⚠ 1개월 미만 — 허가 외" }],
@@ -289,7 +289,7 @@ function cardHtml(drug) {
         ${inf.conc ? concInputHtml(drug.id + "_inf_conc", inf.conc, drug.cu) : ""}
         <div class="cx-input">
           <label>${inf.l}</label>
-          <input type="number" id="${drug.id}_inf_rate" value="${inf.def}" step="${inf.step}" min="0" />
+          <input type="number" id="${drug.id}_inf_rate" value="${inf.def}" step="${inf.step}" min="0"${inf.range ? ` data-range="${inf.range.join(",")}"` : ""} />
         </div>
       </div>
       ${inf.mix ? mixBoxHtml(drug.id + "_inf_conc", inf.mix) : ""}`;
@@ -317,8 +317,25 @@ function cardHtml(drug) {
     </div>`;
 }
 
+// 종류별 묶음 (위 칩으로 바로 이동). 순서 = 화면 순서
+const GROUPS = [
+  { cat: "induction", ko: "유도제", en: "Induction", icon: "fa-syringe" },
+  { cat: "muscle", ko: "근이완·역전", en: "Muscle relaxants · Reversal", icon: "fa-capsules" },
+  { cat: "analgesic", ko: "진통제", en: "Analgesics", icon: "fa-band-aid" },
+  { cat: "sedation", ko: "진정제", en: "Sedation", icon: "fa-moon" },
+  { cat: "emergency", ko: "응급·기타", en: "Emergency · Others", icon: "fa-heartbeat" },
+];
+
 function renderCards() {
-  document.getElementById("drugGrid").innerHTML = DRUGS.map(cardHtml).join("");
+  document.getElementById("drugGrid").innerHTML = GROUPS.map((g) => {
+    const cards = DRUGS.filter((d) => d.cat === g.cat);
+    if (!cards.length) return "";
+    return `
+    <section class="cx-group" id="ped-${g.cat}" data-cat="${g.cat}" data-label="${g.ko}">
+      <h2 class="cx-group-title"><i class="fas ${g.icon}"></i> ${g.ko} <small>${g.en}</small></h2>
+      <div class="cx-grid">${cards.map(cardHtml).join("")}</div>
+    </section>`;
+  }).join("");
 }
 
 // ===== MIX (조제 방법) — 성인 계산기와 같은 방식 =====
@@ -529,7 +546,11 @@ function closeSettings() {
 function saveSettings() {
   document.querySelectorAll(".cx-modal .cx-conc-input").forEach((input) => {
     const value = parseFloat(input.value);
-    if (value > 0) document.getElementById(input.dataset.target).value = value;
+    const target = document.getElementById(input.dataset.target);
+    if (value > 0 && String(value) !== target.value) {
+      target.value = value;
+      target.dispatchEvent(new Event("change", { bubbles: true }));   // calculator.js 가 '내 농도'로 기억
+    }
   });
   closeSettings();
   updateMixes();
@@ -561,5 +582,5 @@ document.addEventListener("keydown", function (event) {
   if (event.key === "Escape") closeSettings();
 });
 
-window.PedCalc = { calculateAll, openSettings, closeSettings, saveSettings };
+window.PedCalc = { calculateAll, updateMixes, openSettings, closeSettings, saveSettings };
 })();
