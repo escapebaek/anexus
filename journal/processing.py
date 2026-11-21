@@ -40,7 +40,8 @@ MAX_INLINE_PDF_BYTES = 15 * 1024 * 1024     # Gemini 요청 한도(20MB) 안쪽
 MAX_TEXT_CHARS = 60_000                     # 글자로 보낼 때 (Gemini)
 MAX_TEXT_CHARS_SMALL = 24_000               # 분당 토큰 한도가 작은 무료 제공자용
 STALE_AFTER = timedelta(minutes=12)         # 이보다 오래 '처리 중' 이면 서버 재시작 등으로 끊긴 것
-GEMINI_TIMEOUT = 180                        # 요청 하나 (PDF 를 읽어 요약하는 데 1분 넘게 걸리기도 함)
+GEMINI_TIMEOUT = 150                        # 요청 하나 (PDF 를 읽어 요약하는 데 1분 넘게 걸리기도 함)
+MODEL_COOLDOWN = timedelta(minutes=30)      # 과부하·시간 초과가 난 모델은 이 동안 건너뛰고 다음 모델로
 GAP_BETWEEN_PAPERS = 5                      # 초. 무료 분당 요청 한도 보호 (논문 사이 쉬는 시간)
 WAIT_SOON = timedelta(minutes=5)            # 다음 시도가 이 안이면 스레드가 기다렸다 이어서 처리
 RETRY_OVERLOAD = timedelta(minutes=15)      # 과부하·시간 초과
@@ -238,18 +239,37 @@ def _payload_for(model, payload):
     return dict(payload, generationConfig=config)
 
 
+# 모델별 '이때까지 건너뜀' (서버가 켜져 있는 동안만 기억). 새 모델(예: gemini-4-hydrogen)은 무료 사용자가 몰려
+# 과부하(503)·시간 초과가 잦아서, 한 번 막히면 논문마다 몇 분씩 기다리지 않고 바로 다음 모델을 씀.
+# 하루 한도에 걸린 모델은 한도가 풀리는 시각까지 건너뜀 (헛되이 요청하지 않게).
+_model_skip_until = {}
+
+
+def _skip(model, wait):
+    _model_skip_until[model] = max(_model_skip_until.get(model, timezone.now()), timezone.now() + wait)
+
+
 def _gemini_post(payload):
     """설정한 모델부터 차례로 (모델마다 무료 한도가 따로). 성공한 응답을 돌려주고,
     모두 한도·과부하로 막히면 RetryLater, 키 오류 등은 ProcessingError."""
     from schedule.gemini_client import GEMINI_ENDPOINT
 
     waits, problems = [], []
-    for model in journal_models():
+    now = timezone.now()
+    models = journal_models()
+    active = [m for m in models if _model_skip_until.get(m, now) <= now]
+    for model in models:
+        if model not in active:
+            until = _model_skip_until[model]
+            waits.append(until - now)
+            problems.append(f"{model}: {timezone.localtime(until):%H:%M} 까지 건너뜀")
+            continue
         try:
             response = requests.post(GEMINI_ENDPOINT.format(model=model), params={"key": settings.GEMINI_API_KEY},
                                      json=_payload_for(model, payload), timeout=GEMINI_TIMEOUT)
         except requests.Timeout:
             problems.append(f"{model}: 시간 초과")
+            _skip(model, MODEL_COOLDOWN)
             continue
         except requests.RequestException as exc:
             raise RetryLater(RETRY_OVERLOAD, f"Gemini 에 연결하지 못했습니다 ({exc.__class__.__name__})") from exc
@@ -258,10 +278,13 @@ def _gemini_post(payload):
         text = response.text[:300]
         logger.warning("Gemini %s for paper summary: %s %s", model, response.status_code, text)
         if response.status_code == 429:
-            waits.append(quota_wait(response))
+            wait = quota_wait(response)
+            waits.append(wait)
+            _skip(model, wait)
             problems.append(f"{model}: 무료 한도 초과")
         elif response.status_code in (500, 502, 503, 504):
             problems.append(f"{model}: 과부하({response.status_code})")
+            _skip(model, MODEL_COOLDOWN)
         elif response.status_code == 404 or (response.status_code == 400 and ("model" in text.lower() or "thinking" in text.lower())):
             problems.append(f"{model}: 사용할 수 없는 모델")
         elif response.status_code in (401, 403) or (response.status_code == 400 and "api key" in text.lower()):

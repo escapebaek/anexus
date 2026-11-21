@@ -44,6 +44,8 @@ SUMMARY = {
 class JournalTestBase(TestCase):
     def setUp(self):
         # 테스트가 실제 Gemini 를 부르지 않게 (환경변수에 키가 있어도) · 논문 사이 쉬는 시간 없이
+        processing._model_skip_until.clear()
+        self.addCleanup(processing._model_skip_until.clear)
         for target in ("journal.processing.requests.post", "journal.processing.time.sleep"):
             patcher = mock.patch(target)
             patcher.start()
@@ -219,14 +221,35 @@ class ProcessingTests(JournalTestBase):
         with mock.patch("journal.processing.requests.post", side_effect=[limited, ok]) as post:
             self.assertIs(processing._gemini_post({}), ok)          # 모델마다 한도가 따로 → 다음 모델
         self.assertIn("model-b", post.call_args.args[0])
+        with mock.patch("journal.processing.requests.post", return_value=ok) as post:
+            processing._gemini_post({})                              # 한도에 걸린 model-a 는 1분 동안 건너뜀
+        self.assertEqual(post.call_count, 1)
+        self.assertIn("model-b", post.call_args.args[0])
+        processing._model_skip_until.clear()
         with mock.patch("journal.processing.requests.post", return_value=limited):
             with self.assertRaises(processing.RetryLater) as ctx:
                 processing._gemini_post({})
         self.assertEqual(ctx.exception.wait, timedelta(seconds=60))
+        processing._model_skip_until.clear()                         # (한도로 둘 다 건너뛰는 중이라 비우고)
         bad_key = mock.Mock(status_code=400, text="API key not valid")
         with mock.patch("journal.processing.requests.post", return_value=bad_key):
             with self.assertRaisesMessage(processing.ProcessingError, "GEMINI_API_KEY"):
                 processing._gemini_post({})
+
+    @override_settings(JOURNAL_GEMINI_MODEL="gemini-4-hydrogen", GEMINI_MODEL="gemini-3.1-flash-lite", GEMINI_FALLBACK_MODELS="")
+    def test_busy_model_is_skipped_for_a_while(self):
+        busy = mock.Mock(status_code=503, text="high demand")
+        ok = mock.Mock(status_code=200)
+        with mock.patch("journal.processing.requests.post", side_effect=[busy, ok]):
+            processing._gemini_post({})
+        with mock.patch("journal.processing.requests.post", return_value=ok) as post:
+            processing._gemini_post({})                              # 과부하 난 Hydrogen 은 30분 건너뛰고 바로 다음 모델
+        self.assertEqual(post.call_count, 1)
+        self.assertIn("gemini-3.1-flash-lite", post.call_args.args[0])
+        processing._model_skip_until["gemini-4-hydrogen"] = timezone.now() - timedelta(seconds=1)
+        with mock.patch("journal.processing.requests.post", return_value=ok) as post:
+            processing._gemini_post({})                              # 시간이 지나면 다시 Hydrogen 먼저
+        self.assertIn("gemini-4-hydrogen", post.call_args.args[0])
 
     def test_model_order_and_thinking_only_for_new_models(self):
         with override_settings(JOURNAL_GEMINI_MODEL="gemini-4-hydrogen", GEMINI_MODEL="gemini-3.1-flash-lite",
