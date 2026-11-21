@@ -14,7 +14,12 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['.onrender.com', 'www.anexus.cloud', 'anexus.cloud', '127.0.0.1']
+ALLOWED_HOSTS = [
+    '.onrender.com',
+    'www.anexus.live', 'anexus.live',
+    'www.anexus.cloud', 'anexus.cloud',  # 옛 도메인 - 이전 기간 동안만 유지
+    '127.0.0.1',
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -264,7 +269,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_TIMEOUT = 15
 EMAIL_CONFIGURED = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=f'ANExUS <{EMAIL_HOST_USER}>' if EMAIL_HOST_USER else 'ANExUS <noreply@anexus.cloud>')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=f'ANExUS <{EMAIL_HOST_USER}>' if EMAIL_HOST_USER else 'ANExUS <noreply@anexus.live>')
 if EMAIL_CONFIGURED:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 elif DEBUG:
@@ -318,7 +323,9 @@ SECURE_HSTS_PRELOAD = False
 
 # CSRF 신뢰 도메인 설정
 CSRF_TRUSTED_ORIGINS = [
-    'https://www.anexus.cloud',
+    'https://www.anexus.live',
+    'https://anexus.live',
+    'https://www.anexus.cloud',  # 옛 도메인 - 이전 기간 동안만 유지
     'https://anexus.cloud',
 ]
 
