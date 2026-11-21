@@ -427,6 +427,32 @@ class TableParserTests(TestCase):
         self.assertEqual(SurgerySchedule.objects.get(user=user).patient_name, '홍길동')
 
 
+    def test_table_still_applies_when_gemini_quota_is_exhausted(self):
+        # 표 형식이 우선: 예상 시간 열을 AI 에 묻다가 Gemini 가 한도(429)여도 표는 그대로 반영되고
+        # 무거운 AI 분석(extract_schedules)은 부르지 않음
+        from unittest import mock
+        from django.core.cache import cache
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from . import ai_client
+        cache.clear()
+        user = get_user_model().objects.create_user('doc2', password='x')
+        user.is_specially_approved = True
+        user.save()
+        self.client.force_login(user)
+        csv_bytes = '방,시간,수술명,집도의,환자명,기타\n101,08:00,TKRA,김의사,홍길동,90\n'.encode('cp949')
+        limited = mock.Mock(status_code=429, text='{"error": {"code": 429}}')
+        with override_settings(GEMINI_API_KEY='k', SCHEDULE_GEMINI_MODELS='m1'), \
+                mock.patch('schedule.ai_client.requests.post', return_value=limited) as asked, \
+                mock.patch('schedule.views.find_duration_column', ai_client.find_duration_column), \
+                mock.patch('schedule.views.extract_schedules') as ai:
+            res = self.client.post(reverse('schedule_dashboard'),
+                                   {'file': SimpleUploadedFile('s.csv', csv_bytes), 'action': 'update'})
+        self.assertTrue(asked.called)   # 헷갈리는 열만 AI 에 짧게 물어봄
+        ai.assert_not_called()
+        self.assertRedirects(res, reverse('schedule_dashboard'), fetch_redirect_response=False)
+        self.assertEqual(SurgerySchedule.objects.get(user=user).surgery_name, 'TKRA')
+
 class AiProviderTests(TestCase):
     """무료 AI 제공자: 키가 있는 것만 순서대로, 실패하면 다음 모델/제공자로."""
 
