@@ -56,7 +56,7 @@ VISIT_COOKIE = "anx_visit"
 VISIT_GAP_SECONDS = 30 * 60           # 30분 안에 다시 오면 같은 방문
 VISIT_TOTAL_CACHE_KEY = "land:visit-totals"
 _BOT_UA = re.compile(r"bot|crawl|spider|slurp|preview|monitor|uptime|curl|wget|python-requests|httpx|headless", re.I)
-_SKIP_PREFIXES = ("/static/", "/admin/", "/api/", "/health", "/ckeditor5/", "/favicon")
+_SKIP_PREFIXES = ("/static/", "/admin/", "/api/", "/health", "/ckeditor5/", "/favicon", "/apple-touch-icon")
 
 
 def visit_totals():

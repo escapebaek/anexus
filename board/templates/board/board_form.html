@@ -97,6 +97,7 @@
 </script>
 {% endblock %}
 
+{% block title %}{% if form.instance.pk %}글 수정{% else %}새 글{% endif %} · ANExUS{% endblock %}
 {% block page_content %}
 <div class="board-container">
   <div class="board-wrapper">

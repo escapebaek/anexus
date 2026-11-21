@@ -78,3 +78,6 @@
   .form-actions .btn { flex: 1 1 0; padding: 0.65rem 0.75rem; font-size: 0.95rem; }
   .form-actions .btn-lg { flex: 2 1 0; }
 }
+
+/* 바탕: 사이트 본문 폭 안에서만 칠해져 양옆이 띠처럼 보이던 그라데이션 제거 */
+.board-container { background: none; }

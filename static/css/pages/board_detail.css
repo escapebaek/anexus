@@ -362,6 +362,23 @@
 .post-content li[data-list="checked"]::before { content: "☑ "; color: #2b5876; }
 .post-content li[data-list="unchecked"]::before { content: "☐ "; color: #6b7a8c; }
 
+/* ---------- 목록으로 돌아가기 · 바탕 · 본문 빈 공간 ---------- */
+.post-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px 4px;
+  color: #6b7a8c;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.post-back:hover { color: #2b5876; }
+.post-back i { font-size: 0.8rem; transition: transform 0.15s; }
+.post-back:hover i { transform: translateX(-3px); }
+.board-container { background: none; }
+.post-content { min-height: 120px; }
+
 /* ---------- 휴대폰: 좌우 여백을 줄이고 본문 폭을 넓게 ---------- */
 @media (max-width: 767.98px) {
   .board-container { padding: 1rem 0 2rem; }

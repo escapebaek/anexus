@@ -3,12 +3,14 @@
 {% load board_extras %}
 
 
+{% block title %}{{ board.title }} · ANExUS{% endblock %}
 {% block custom_css %}
   <link href="{% static 'css/pages/board_detail.css' %}" rel="stylesheet" />
 {% endblock %}
 {% block page_content %}
 <div class="board-container">
   <div class="board-wrapper">
+    <a href="{% url 'board_index' %}" class="post-back"><i class="fas fa-arrow-left"></i> 목록으로</a>
     <!-- 게시글 컨테이너 -->
     <div class="post-container {% if board.is_notice %}notice-post{% endif %}">
       <!-- 게시글 헤더 -->

@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Board · ANExUS{% endblock %}
+
 {% block custom_css %}
 <link href="{% static 'css/pages/board.css' %}" rel="stylesheet" />
 {% endblock %}
@@ -11,7 +13,10 @@
 
     <!-- 페이지 헤더 -->
     <div class="board-header">
-      <h2 class="section-title text-gradient" style="margin-bottom: 0;">ANExUS Board</h2>
+      <div class="board-heading">
+        <h2 class="section-title text-gradient">Board</h2>
+        <p class="board-sub">질문하고, 정보를 나누는 곳</p>
+      </div>
       <div class="board-header-actions">
         <form method="get" class="board-search" role="search">
           <input type="search" name="q" value="{{ query }}" placeholder="제목·내용·작성자 검색" aria-label="게시글 검색" />
@@ -35,6 +40,7 @@
         <div class="post-title-col">제목</div>
         <div class="post-author">작성자</div>
         <div class="post-date">작성일</div>
+        <div class="post-views">조회</div>
       </div>
 
       <!-- 게시글 목록 -->
@@ -50,14 +56,15 @@
           </div>
           <div class="post-title-col">
             <a href="{% url 'board_detail' notice.pk %}" class="post-title-link notice-title">
-              <i class="fas fa-pin me-1"></i>{{ notice.title }}
+              {{ notice.title }}
             </a>
             {% if notice.comment_count > 0 %}
-            <span class="comment-count ms-1">[{{ notice.comment_count }}]</span>
+            <span class="comment-count" title="댓글 {{ notice.comment_count }}개"><i class="far fa-comment"></i>{{ notice.comment_count }}</span>
             {% endif %}
           </div>
           <div class="post-author">{{ notice.author }}</div>
           <div class="post-date">{{ notice.created_date|date:"y.m.d" }}</div>
+          <div class="post-views" title="조회수"><i class="far fa-eye d-md-none"></i>{{ notice.view_count }}</div>
         </li>
         {% endfor %}
         
@@ -70,11 +77,13 @@
               {{ board.title }}
             </a>
             {% if board.comment_count > 0 %}
-            <span class="comment-count ms-1">[{{ board.comment_count }}]</span>
+            <span class="comment-count" title="댓글 {{ board.comment_count }}개"><i class="far fa-comment"></i>{{ board.comment_count }}</span>
             {% endif %}
+            {% if board.created_date > new_since %}<span class="new-badge" title="24시간 안에 올라온 글">N</span>{% endif %}
           </div>
           <div class="post-author">{{ board.author }}</div>
           <div class="post-date">{{ board.created_date|date:"y.m.d" }}</div>
+          <div class="post-views" title="조회수"><i class="far fa-eye d-md-none"></i>{{ board.view_count }}</div>
         </li>
         {% empty %}
         {% if not notices %}

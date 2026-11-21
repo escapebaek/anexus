@@ -1,5 +1,7 @@
 # board/views.py
 
+from datetime import timedelta
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from .models import Board, Comment
@@ -7,6 +9,7 @@ from .forms import BoardForm, CommentForm
 from django.core.paginator import Paginator
 from django.db.models import F, Count, Q
 from django.views.decorators.http import require_POST
+from django.utils import timezone
 from accounts.decorators import user_is_approved
 
 VIEWED_SESSION_KEY = 'board_viewed'  # 조회수: 같은 사람이 새로고침할 때마다 오르지 않게
@@ -31,6 +34,7 @@ def board_index(request):
         'notices': notices,  # 공지사항 목록
         'page_obj': page_obj,  # 페이지네이션된 일반 글 목록
         'query': query,
+        'new_since': timezone.now() - timedelta(days=1),  # 이보다 최근 글은 N 표시
     }
     return render(request, 'board/board_index.html', context)
 
