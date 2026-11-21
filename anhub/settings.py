@@ -174,7 +174,7 @@ SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET')
 FDA_API_KEY = config('FDA_API_KEY', default='')
 
 # ---------------------------------------------------------------------------
-# 로컬 AI (Qwen, Tailscale) - 지금 쓰는 AI. 수술 스케줄 분석·논문 요약 모두 여기로 보냄.
+# 로컬 AI (Qwen, Tailscale) - [감춰 둠] 지금은 쓰지 않음 (SCHEDULE_AI_PROVIDERS 참고). 코드는 그대로 남겨 둠.
 # OpenAI 호환 API (/v1/chat/completions). LOCALAI_URL 은 /v1 을 붙이든 안 붙이든 됨.
 # 붙여넣을 때 섞여 들어간 앞뒤 공백·따옴표는 떼어냄 (키가 한 글자만 달라도 401)
 LOCALAI_URL = config('LOCALAI_URL', default='').strip().strip('\'"').strip()
@@ -199,8 +199,7 @@ LOCALAI_THINKING = config('LOCALAI_THINKING', default=False, cast=bool)   # Qwen
 # SCHEDULE_AI_PROVIDERS = 'localai' 줄을 지우면 예전처럼 동작함 (Render 의 키는 그대로 두면 됨).
 # GROQ_API_KEY = config('GROQ_API_KEY', default='')
 # OPENROUTER_API_KEY = config('OPENROUTER_API_KEY', default='')
-# Gemini 무료 API: 논문 요약(journal)에 다시 사용. 수술 스케줄 분석은 SCHEDULE_AI_PROVIDERS 에 'gemini' 가
-# 없으므로 여전히 쓰지 않음.
+# Gemini 무료 API: 논문 요약(journal)과 수술 스케줄 AI 분석에 사용.
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='').strip().strip('\'"').strip()
 GROQ_API_KEY = ''         # 사용 중지
 OPENROUTER_API_KEY = ''   # 사용 중지
@@ -214,8 +213,15 @@ GEMINI_FALLBACK_MODELS = config(
 # 수술 스케줄 AI 분석: 표 형식 파일은 AI 없이 읽고, 그 밖의 파일만 아래 순서로 무료 AI 에 요청.
 # API 키가 설정된 제공자만 사용됨.
 # SCHEDULE_AI_PROVIDERS = config('SCHEDULE_AI_PROVIDERS', default='groq,gemini,openrouter')   # [사용 중지]
-SCHEDULE_AI_PROVIDERS = 'localai'
-SCHEDULE_AI_TIME_BUDGET = config('SCHEDULE_AI_TIME_BUDGET', default=420, cast=int)  # 초, 백그라운드 작업 기준 (로컬 AI 는 느려서 넉넉히)
+# 지금은 Gemini 무료 API 만 사용. 로컬 AI(localai) 코드는 남겨 두었고, 다시 쓰려면 'gemini' 를 'localai' 로 바꾸면 됨.
+SCHEDULE_AI_PROVIDERS = 'gemini'
+SCHEDULE_AI_TIME_BUDGET = config('SCHEDULE_AI_TIME_BUDGET', default=180, cast=int)  # 초, 백그라운드 작업 기준
+# 수술 스케줄 분석에 먼저 쓸 Gemini 모델 (쉼표 구분, 앞에서부터). 모두 무료 한도·과부하면 GEMINI_MODEL →
+# GEMINI_FALLBACK_MODELS 순으로 넘어감. 2026-11 실측: Flash-Lite 계열이 빠르고 무료 한도도 넉넉함.
+SCHEDULE_GEMINI_MODELS = config(
+    'SCHEDULE_GEMINI_MODELS',
+    default='gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-2.5-flash-lite',
+)
 GROQ_MODELS = config('GROQ_MODELS', default='llama-3.3-70b-versatile,openai/gpt-oss-120b,openai/gpt-oss-20b')
 OPENROUTER_MODELS = config('OPENROUTER_MODELS', default='meta-llama/llama-3.3-70b-instruct:free,deepseek/deepseek-chat-v3-0324:free')
 

@@ -212,9 +212,11 @@ class ScheduleExtractionError(Exception):
     """Raised when Gemini can't be reached or its response isn't usable."""
 
 
-def model_chain():
-    """GEMINI_MODEL first, then GEMINI_FALLBACK_MODELS (comma separated), without duplicates."""
-    names = [settings.GEMINI_MODEL] + [m.strip() for m in str(settings.GEMINI_FALLBACK_MODELS or "").split(",")]
+def _split(value):
+    return [m.strip() for m in str(value or "").split(",")]
+
+
+def _dedupe_names(names):
     chain = []
     for name in names:
         if name and name not in chain:
@@ -222,10 +224,21 @@ def model_chain():
     return chain
 
 
+def base_model_chain():
+    """GEMINI_MODEL, then GEMINI_FALLBACK_MODELS (comma separated), without duplicates."""
+    return _dedupe_names([settings.GEMINI_MODEL] + _split(settings.GEMINI_FALLBACK_MODELS))
+
+
+def model_chain():
+    """수술 스케줄용: SCHEDULE_GEMINI_MODELS 먼저, 그다음 base_model_chain()."""
+    return _dedupe_names(_split(getattr(settings, "SCHEDULE_GEMINI_MODELS", "")) + base_model_chain())
+
+
 def _post_with_fallback(api_key, payload):
     """POSTs payload to each model in model_chain() until one answers 200.
     Returns that response; raises ScheduleExtractionError describing why all failed."""
     deadline = time.monotonic() + TOTAL_TIME_BUDGET_SECONDS
+    quota_responses = []
     failures = []  # (model, status code or "timeout")
     for model in model_chain():
         url = GEMINI_ENDPOINT.format(model=model)
@@ -252,6 +265,8 @@ def _post_with_fallback(api_key, payload):
                 return response
             logger.warning("Gemini model %s returned %s: %s", model, response.status_code, response.text[:300])
             failures.append((model, response.status_code))
+            if response.status_code in QUOTA_STATUS_CODES:
+                quota_responses.append(response)
             if response.status_code in OVERLOADED_STATUS_CODES and attempt == 0:
                 if deadline - time.monotonic() > OVERLOAD_RETRY_WAIT_SECONDS + 5:
                     time.sleep(OVERLOAD_RETRY_WAIT_SECONDS)
@@ -268,15 +283,40 @@ def _post_with_fallback(api_key, payload):
 
     codes = {code for _, code in failures}
     tried = ", ".join(sorted({model for model, _ in failures})) or "-"
+    logger.warning("All Gemini models failed: %s", failures)
     if codes and codes <= QUOTA_STATUS_CODES:
-        raise ScheduleExtractionError(
-            "Gemini 무료 사용량 한도에 도달했습니다 (분당 또는 일일 요청 수). 1분쯤 뒤에 다시 시도하고, "
-            f"계속되면 오늘 무료 할당량을 다 쓴 것이니 내일 다시 시도해주세요. (시도한 모델: {tried})"
-        )
+        raise ScheduleExtractionError(quota_message(quota_responses))
     raise ScheduleExtractionError(
-        "Gemini 서버가 혼잡해 무료 모델들이 모두 응답하지 않았습니다. 1~2분 뒤 다시 시도해주세요. "
-        f"(시도한 모델: {tried})"
+        "지금은 AI 서버가 혼잡해 AI 분석을 사용할 수 없어요. 1~2분 뒤 다시 시도해 주세요. " + TABLE_TIP
+        + f" (시도한 모델: {tried})"
     )
+
+
+TABLE_TIP = "날짜·방·시간·수술명·환자명 열이 있는 엑셀·CSV 파일은 AI 없이 바로 읽혀요."
+
+
+def quota_message(responses, now=None):
+    """모든 모델이 429(무료 한도 초과)일 때 화면에 보여줄 안내. 하루 한도면 초기화 시각(한국 시각)을 알려줌."""
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+
+    from django.utils import timezone
+
+    from journal.processing import quota_wait
+
+    now = now or timezone.now()
+    waits = [quota_wait(r, now) for r in responses] or [timedelta(hours=3)]
+    wait = min(waits)
+    daily = any("PerDay" in str(getattr(r, "text", "")) for r in responses)
+    if not daily and wait <= timedelta(minutes=10):
+        return "지금은 AI 요청이 몰려 잠시 AI 분석을 사용할 수 없어요. 1분쯤 뒤 다시 시도해 주세요. " + TABLE_TIP
+    if not daily:
+        return ("지금은 AI 무료 사용 한도를 모두 써서 AI 분석을 사용할 수 없어요. 한도는 매일 한국 시각 "
+                "오후 4~5시쯤 다시 채워져요. 그 전에는 " + TABLE_TIP)
+    reset = (now + wait).astimezone(ZoneInfo("Asia/Seoul"))
+    when = f"{reset.month}월 {reset.day}일 {reset:%H:%M}"
+    return ("지금은 AI 무료 사용 한도를 모두 써서 AI 분석을 사용할 수 없어요. "
+            f"한도는 {when}(한국 시각)쯤 다시 채워져요. 그 전에는 " + TABLE_TIP)
 
 
 def _example_turns():
@@ -303,7 +343,11 @@ def extract_schedules_from_text(source_text, source_filename=""):
     if not source_text.strip():
         raise ScheduleExtractionError("파일에서 읽을 수 있는 내용이 없습니다.")
 
-    final_text = f"--- 업로드된 파일 ({source_filename}) 내용 ---\n{source_text}"
+    from django.utils import timezone
+
+    today = timezone.localdate().isoformat()
+    final_text = (f"(오늘 날짜: {today}. 파일에 연도가 없으면 오늘과 가장 가까운 날짜가 되는 연도를 쓰세요)\n"
+                  f"--- 업로드된 파일 ({source_filename}) 내용 ---\n{source_text}")
 
     contents = _example_turns()
     contents.append({"role": "user", "parts": [{"text": final_text}]})

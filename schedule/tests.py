@@ -338,7 +338,7 @@ class GeminiFallbackTests(TestCase):
             code = responses[model].pop(0) if isinstance(responses[model], list) else responses[model]
             return Resp(code, ok_body if code == 200 else 'error')
 
-        with override_settings(GEMINI_API_KEY='k', GEMINI_MODEL='m1', GEMINI_FALLBACK_MODELS='m2, m3,m1'), \
+        with override_settings(GEMINI_API_KEY='k', SCHEDULE_GEMINI_MODELS='', GEMINI_MODEL='m1', GEMINI_FALLBACK_MODELS='m2, m3,m1'), \
                 mock.patch.object(gemini_client.requests, 'post', side_effect=fake_post), \
                 mock.patch.object(gemini_client.time, 'sleep'):
             try:
@@ -363,7 +363,7 @@ class GeminiFallbackTests(TestCase):
 
     def test_all_quota_exhausted_message(self):
         calls, exc = self.run_with({'m1': 429, 'm2': 429, 'm3': 429})
-        self.assertIn('무료 사용량 한도', str(exc))
+        self.assertIn('AI 무료 사용 한도를 모두 써서', str(exc))
 
     def test_all_overloaded_message(self):
         calls, exc = self.run_with({'m1': 503, 'm2': 503, 'm3': 503})
@@ -481,7 +481,7 @@ class AiProviderTests(TestCase):
     def test_no_keys_gives_clear_message(self):
         calls, exc = self.run_with({}, keys={'GROQ_API_KEY': '', 'OPENROUTER_API_KEY': '', 'GEMINI_API_KEY': ''})
         self.assertEqual(calls, [])
-        self.assertIn('AI 가 설정되어 있지 않습니다', str(exc))
+        self.assertIn('AI 를 사용할 수 없어요', str(exc))
 
     def test_only_gemini_configured_hints_other_keys(self):
         calls, exc = self.run_with({}, providers='groq,gemini,openrouter',
@@ -559,15 +559,106 @@ class LocalAiTests(TestCase):
         with override_settings(SCHEDULE_AI_PROVIDERS='localai', LOCALAI_URL='https://x/v1', LOCALAI_API_KEY=''):
             self.assertEqual(ai_client.configured_providers(), [])
 
-    def test_gemini_and_groq_are_switched_off(self):
-        # Gemini 키는 논문 요약(journal)에 다시 쓰지만, 수술 스케줄 분석은 여전히 로컬 AI 만
+    def test_schedule_ai_uses_gemini_and_hides_local_ai(self):
+        # 수술 스케줄 분석은 이제 Gemini 만 사용. 로컬 AI 는 키가 있어도 쓰지 않음 (코드만 남김)
         from django.conf import settings
         from django.test import override_settings
         from . import ai_client
-        self.assertEqual(settings.SCHEDULE_AI_PROVIDERS, 'localai')
+        self.assertEqual(settings.SCHEDULE_AI_PROVIDERS, 'gemini')
         self.assertEqual((settings.GROQ_API_KEY, settings.OPENROUTER_API_KEY), ('', ''))
-        with override_settings(GEMINI_API_KEY='k', LOCALAI_URL='', LOCALAI_API_KEY=''):
-            self.assertNotIn('gemini', ai_client.configured_providers())
+        with override_settings(GEMINI_API_KEY='k', LOCALAI_URL='https://x/v1', LOCALAI_API_KEY='k'):
+            self.assertEqual(ai_client.configured_providers(), ['gemini'])
+        with override_settings(GEMINI_API_KEY=''):
+            self.assertEqual(ai_client.configured_providers(), [])
+
+
+class GeminiScheduleTests(TestCase):
+    """수술 스케줄 AI = Gemini 무료 모델. 한도가 다 차면 '지금은 사용할 수 없음' 안내."""
+
+    def resp(self, code, body):
+        from unittest import mock
+        r = mock.Mock(status_code=code, text=json.dumps(body))
+        r.json.return_value = body
+        return r
+
+    def quota(self, quota_id):
+        return self.resp(429, {"error": {"code": 429, "details": [
+            {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+             "violations": [{"quotaId": quota_id}]},
+            {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "20s"}]}})
+
+    def test_model_order_starts_with_schedule_models(self):
+        from django.test import override_settings
+        from . import gemini_client
+        with override_settings(SCHEDULE_GEMINI_MODELS='a,b', GEMINI_MODEL='b', GEMINI_FALLBACK_MODELS='c,a'):
+            self.assertEqual(gemini_client.model_chain(), ['a', 'b', 'c'])
+
+    def test_daily_quota_says_unavailable_with_reset_time(self):
+        from unittest import mock
+        from django.test import override_settings
+        from . import ai_client, gemini_client
+        with override_settings(GEMINI_API_KEY='k', SCHEDULE_GEMINI_MODELS='m1,m2', GEMINI_MODEL='m1',
+                               GEMINI_FALLBACK_MODELS=''), \
+                mock.patch.object(gemini_client.requests, 'post',
+                                  return_value=self.quota("GenerateRequestsPerDayPerProjectPerModel-FreeTier")) as post:
+            with self.assertRaises(gemini_client.ScheduleExtractionError) as ctx:
+                ai_client.extract_schedules("메모 형식 일정", "memo.txt")
+        message = str(ctx.exception)
+        self.assertEqual(post.call_count, 2)
+        self.assertIn("AI 분석을 사용할 수 없어요", message)
+        self.assertIn("한국 시각", message)
+        self.assertIn("엑셀·CSV", message)
+        self.assertNotIn("LOCALAI", message)
+
+    def test_minute_quota_says_try_again_shortly(self):
+        from unittest import mock
+        from django.test import override_settings
+        from . import gemini_client
+        with override_settings(GEMINI_API_KEY='k', SCHEDULE_GEMINI_MODELS='m1', GEMINI_MODEL='m1',
+                               GEMINI_FALLBACK_MODELS=''), \
+                mock.patch.object(gemini_client.requests, 'post',
+                                  return_value=self.quota("GenerateRequestsPerMinutePerProjectPerModel-FreeTier")):
+            with self.assertRaises(gemini_client.ScheduleExtractionError) as ctx:
+                gemini_client.extract_schedules_from_text("메모", "memo.txt")
+        self.assertIn("1분쯤 뒤", str(ctx.exception))
+
+    def test_falls_back_to_next_model_on_quota(self):
+        from unittest import mock
+        from django.test import override_settings
+        from . import gemini_client
+        ok = self.resp(200, {"candidates": [{"content": {"parts": [{"text": json.dumps({"schedules": [
+            {"date": "2026-11-21", "room": "1", "time_slot": "08:00", "surgery_name": "TKA"}]})}]}}]})
+        with override_settings(GEMINI_API_KEY='k', SCHEDULE_GEMINI_MODELS='m1,m2', GEMINI_MODEL='m1',
+                               GEMINI_FALLBACK_MODELS=''), \
+                mock.patch.object(gemini_client.requests, 'post',
+                                  side_effect=[self.quota("PerDay"), ok]) as post:
+            records = gemini_client.extract_schedules_from_text("메모", "memo.txt")
+        self.assertEqual(records[0]["surgery_name"], "TKA")
+        self.assertIn("/m2:", post.call_args.args[0])
+
+    def test_no_key_message_does_not_mention_local_ai(self):
+        from django.test import override_settings
+        from . import ai_client, gemini_client
+        with override_settings(GEMINI_API_KEY=''):
+            with self.assertRaises(gemini_client.ScheduleExtractionError) as ctx:
+                ai_client.extract_schedules("메모", "memo.txt")
+        self.assertNotIn("LOCAL", str(ctx.exception))
+        self.assertIn("GEMINI_API_KEY", str(ctx.exception))
+
+    def test_ai_check_shows_gemini_when_local_ai_hidden(self):
+        from unittest import mock
+        from django.contrib.auth import get_user_model
+        from django.test import override_settings
+        from django.urls import reverse
+        from . import ai_client
+        admin = get_user_model().objects.create_user(username='adm', password='pw', is_staff=True)
+        self.client.force_login(admin)
+        ok = self.resp(200, {"candidates": [{"content": {"parts": [{"text": '{"ok": true}'}]}}]})
+        with override_settings(GEMINI_API_KEY='k', SCHEDULE_GEMINI_MODELS='m1'), \
+                mock.patch.object(ai_client.requests, 'post', return_value=ok):
+            data = self.client.get(reverse('schedule_ai_check')).json()
+        self.assertIn("정상", data["결론"])
+        self.assertNotIn("LOCALAI_URL", data)
 
 
 class LocalAiDiagnosticsTests(TestCase):

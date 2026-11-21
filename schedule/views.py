@@ -473,7 +473,7 @@ def run_upload_job(job_id, source_text):
 
 
 # 이보다 오래 '처리 중'(진행 표시 갱신 없음)이면 서버 재시작 등으로 작업이 끊긴 것으로 봄.
-# 로컬 AI 요청 하나가 최대 LOCALAI_TIMEOUT(기본 10분) 걸릴 수 있어 그보다 길게.
+# (감춰 둔) 로컬 AI 요청 하나가 최대 LOCALAI_TIMEOUT(기본 10분) 걸릴 수 있어 그보다 길게. Gemini 는 3분 안에 끝남.
 STALE_JOB_AFTER = timedelta(minutes=12)
 
 
@@ -987,6 +987,9 @@ def ai_check(request):
         return JsonResponse({"error": "관리자만 볼 수 있습니다."}, status=403)
     from django.conf import settings
 
+    if "localai" not in ai_client.configured_providers():
+        return _gemini_check()
+
     name = "localai"
     result = {
         "providers": ai_client.configured_providers(),
@@ -1021,6 +1024,33 @@ def ai_check(request):
         result["2. 테스트 질문"] = f"실패 - {exc}"
         result["결론"] = ("모델 목록까지는 됐지만 질문에 답하지 못했습니다." if models
                         else f"로컬 AI 에 연결하지 못했습니다: {exc}")
+    return JsonResponse(result, json_dumps_params={"ensure_ascii": False, "indent": 2})
+
+
+def _gemini_check():
+    """관리자용 Gemini 점검: 키 설정 여부와 모델 순서, 짧은 테스트 질문 1개 (무료 한도 1회 사용)."""
+    import time as _time
+
+    from django.conf import settings
+
+    from . import ai_client, gemini_client
+
+    result = {
+        "providers": ai_client.configured_providers(),
+        "GEMINI_API_KEY": "설정됨" if settings.GEMINI_API_KEY else "(없음)",
+        "모델 순서": gemini_client.model_chain(),
+    }
+    if not settings.GEMINI_API_KEY:
+        result["결론"] = "Render 환경변수에 GEMINI_API_KEY 를 넣어야 AI 분석을 쓸 수 있습니다."
+        return JsonResponse(result, json_dumps_params={"ensure_ascii": False, "indent": 2})
+    started = _time.monotonic()
+    try:
+        answer = ai_client._ask_gemini_json('Respond with ONLY this JSON: {"ok": true}', "ping", 60)
+        result["테스트 질문"] = {"답": answer[:200], "걸린 시간(초)": round(_time.monotonic() - started, 1)}
+        result["결론"] = "정상 - Gemini 에 연결되어 답을 받았습니다."
+    except Exception as exc:  # 점검 화면이므로 어떤 실패든 원인을 그대로 보여줌
+        result["테스트 질문"] = f"실패 - {exc}"
+        result["결론"] = "Gemini 가 답하지 않았습니다 (429 면 무료 한도 소진, 503 이면 혼잡)."
     return JsonResponse(result, json_dumps_params={"ensure_ascii": False, "indent": 2})
 
 
