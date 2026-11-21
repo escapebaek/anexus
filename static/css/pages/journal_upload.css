@@ -85,3 +85,13 @@
   .ju-papers li { flex-wrap: wrap; }
   .ju-pmain { flex-basis: 100%; }
 }
+
+/* 자동 호 인식 · 한도 대기 */
+.ju-auto-note { padding: 10px 12px; border-radius: 10px; background: #eef2f8; color: #3b4a5c; line-height: 1.55; }
+.ju-auto-note i { color: #4e4376; margin-right: 4px; }
+.ju-auto-note[hidden] { display: none; }
+.ju-pissue { font-size: 0.78rem; color: #4e4376; font-weight: 600; }
+.ju-pissue i { margin-right: 3px; font-size: 0.72rem; }
+.ju-pwait { font-size: 0.8rem; color: #8a5a12; }
+.st-waiting .ju-chip { background: #fdf3e1; color: #8a5a12; }
+.ju-files .ju-fstate { overflow-wrap: anywhere; }

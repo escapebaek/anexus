@@ -1,0 +1,33 @@
+# Journal Stand 논문 요약 대기열 깨우기
+# Render 무료 서버는 접속이 없으면 잠들어 요약 작업도 멈춤. 30분마다 사이트의 깨우기 주소를 불러
+# 서버를 깨우고, Gemini 무료 한도가 풀려 다시 시도할 때가 된 논문을 이어서 처리하게 한다.
+# 준비: GitHub 저장소 Settings > Secrets and variables > Actions 에 JOURNAL_CRON_TOKEN 추가,
+#       Render 환경변수에도 같은 값으로 JOURNAL_CRON_TOKEN 추가. (없으면 이 작업은 아무것도 안 하고 끝남)
+# 공개 저장소의 GitHub Actions 는 무료. 다만 저장소에 60일 동안 활동(커밋 등)이 없으면 GitHub 가 예약 실행을 멈춤.
+name: Journal summary queue tick
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"   # 30분마다 (정각은 GitHub 예약 실행이 몰려 늦어지기 쉬워 7분·37분)
+  workflow_dispatch: {}       # Actions 탭에서 손으로도 실행
+
+permissions: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake the site and resume pending summaries
+        env:
+          TOKEN: ${{ secrets.JOURNAL_CRON_TOKEN }}
+          SITE: https://www.anexus.live
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "JOURNAL_CRON_TOKEN secret is not set - skipping."
+            exit 0
+          fi
+          # 잠든 Render 서버는 깨어나는 데 1분 가까이 걸릴 수 있어 넉넉히 기다리고, 실패하면 몇 번 더
+          curl --fail --silent --show-error --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors \
+            -X POST -H "X-Cron-Token: $TOKEN" "$SITE/journal/process-tick/"
+          echo

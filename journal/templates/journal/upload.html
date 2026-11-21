@@ -14,7 +14,7 @@
     <div>
       <p class="ju-kicker"><a href="{% url 'journal:journal_stand' %}">Journal Stand</a> · 관리자</p>
       <h1>논문 올리기</h1>
-      <p class="ju-sub">PDF 를 끌어다 놓으면 제목·저자(Crossref)와 AI 요약이 자동으로 채워지고, 끝나는 대로 바로 공개됩니다.</p>
+      <p class="ju-sub">PDF 를 끌어다 놓으면 권·호와 제목·저자(Crossref), AI 요약(Gemini)이 자동으로 채워지고, 끝나는 대로 바로 공개됩니다.</p>
     </div>
   </header>
 
@@ -30,6 +30,8 @@
         <select id="issueSelect"></select>
       </label>
     </div>
+    <p class="ju-note ju-auto-note" id="autoNote"><i class="fas fa-magic"></i> 논문마다 PDF 의 DOI 로 Crossref 에서 <b>권·호·발행일</b>을 읽어 맞는 호에 넣습니다. 그 호가 없으면 새로 만듭니다.
+      DOI 가 없거나 아직 권·호가 없는(온라인 선공개) 논문은 건너뛰니, 호를 직접 골라 다시 올려 주세요.</p>
     <div class="ju-grid ju-new-issue" id="newIssueFields">
       <label class="ju-field">권 (Volume) <input type="text" id="volumeInput" maxlength="50" placeholder="예: 137" /></label>
       <label class="ju-field">호 (Issue) <input type="text" id="numberInput" maxlength="50" placeholder="예: 2 (없으면 비움)" /></label>
@@ -76,6 +78,8 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   let currentIssue = null;   // 올리는 대상 호 (새 호는 첫 파일이 올라간 뒤 정해짐)
+  let autoMode = true;       // 자동: 논문마다 Crossref 권·호로 호를 정함 → 현황은 이번에 올린 논문들
+  let uploaded = [];         // 자동 모드에서 이번에 올린 논문 id
   let pollTimer = null;
 
   // ----- 1. 학술지 · 호 선택 -----
@@ -83,15 +87,19 @@
     const jid = $("journalSelect").value;
     const options = ISSUES.filter(i => String(i.journal) === jid)
       .map(i => `<option value="${i.id}">${esc(i.label)} (${i.date})</option>`);
-    $("issueSelect").innerHTML = '<option value="">＋ 새 호 만들기</option>' + options.join("");
-    if (options.length) $("issueSelect").selectedIndex = 1;
+    $("issueSelect").innerHTML = '<option value="auto">자동 · DOI 로 권·호 인식 (Crossref)</option>'
+      + '<option value="">＋ 새 호 직접 만들기</option>' + options.join("");
+    $("issueSelect").value = "auto";
     onIssueChange();
   }
   function onIssueChange() {
     const id = $("issueSelect").value;
-    $("newIssueFields").hidden = !!id;
-    currentIssue = id || null;
-    if (currentIssue) loadStatus(); else { $("statusCard").hidden = true; }
+    autoMode = id === "auto";
+    $("newIssueFields").hidden = id !== "";
+    $("autoNote").hidden = !autoMode;
+    currentIssue = autoMode ? null : (id || null);
+    if (autoMode) { if (uploaded.length) loadStatus(); else $("statusCard").hidden = true; }
+    else if (currentIssue) loadStatus(); else { $("statusCard").hidden = true; }
   }
   $("journalSelect").addEventListener("change", fillIssues);
   $("issueSelect").addEventListener("change", onIssueChange);
@@ -106,7 +114,7 @@
   async function uploadAll(files) {
     files = files.filter(f => /\.pdf$/i.test(f.name)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     if (!files.length) return;
-    if (!currentIssue && !$("volumeInput").value.trim()) { alert("새 호의 권(Volume)을 입력하세요."); $("volumeInput").focus(); return; }
+    if (!autoMode && !currentIssue && !$("volumeInput").value.trim()) { alert("새 호의 권(Volume)을 입력하세요."); $("volumeInput").focus(); return; }
     const rows = files.map(f => {
       const li = document.createElement("li");
       li.innerHTML = `<span class="ju-fname">${esc(f.name)}</span><span class="ju-fstate">대기</span>`;
@@ -118,7 +126,8 @@
       li.className = "is-uploading"; state.textContent = "올리는 중…";
       const body = new FormData();
       body.append("file", files[i]);
-      if (currentIssue) body.append("issue_id", currentIssue);
+      if (autoMode) { body.append("mode", "auto"); body.append("journal_id", $("journalSelect").value); }
+      else if (currentIssue) body.append("issue_id", currentIssue);
       else {
         body.append("journal_id", $("journalSelect").value);
         body.append("volume", $("volumeInput").value);
@@ -130,8 +139,11 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
         li.className = data.duplicate ? "is-dup" : "is-done";
-        state.textContent = data.duplicate ? "이미 올린 파일" : "완료";
-        if (!currentIssue) adoptIssue(data.issue_id);
+        state.textContent = (data.duplicate ? "이미 올린 파일" : "완료") + (autoMode ? ` → ${data.issue.label}${data.created_issue ? " (새 호)" : ""}` : "");
+        if (data.journal_mismatch) state.textContent += ` ⚠ Crossref 학술지: ${data.crossref_journal}`;
+        rememberIssue(data.issue);
+        if (autoMode) { if (!uploaded.includes(data.paper.id)) uploaded.push(data.paper.id); }
+        else if (!currentIssue) adoptIssue(data.issue.id);
         loadStatus();
       } catch (err) {
         li.className = "is-error"; state.textContent = "실패: " + err.message;
@@ -139,14 +151,16 @@
     }
   }
 
+  function rememberIssue(issue) {
+    // 새로 생긴 호는 호 목록에도 넣어 둠 (나중에 직접 고를 수 있게)
+    if (ISSUES.some(i => i.id === issue.id)) return;
+    ISSUES.push(issue);
+    if (String(issue.journal) === $("journalSelect").value)
+      $("issueSelect").insertAdjacentHTML("beforeend", `<option value="${issue.id}">${esc(issue.label)} (${issue.date})</option>`);
+  }
   function adoptIssue(issueId) {
     // 새 호가 만들어졌으면 이후 파일도 같은 호로
     currentIssue = String(issueId);
-    if (![...$("issueSelect").options].some(o => o.value === currentIssue)) {
-      const label = `Volume ${$("volumeInput").value}${$("numberInput").value ? " Issue " + $("numberInput").value : ""}`;
-      ISSUES.push({ id: issueId, journal: +$("journalSelect").value, label, date: $("dateInput").value });
-      $("issueSelect").insertAdjacentHTML("beforeend", `<option value="${issueId}">${esc(label)}</option>`);
-    }
     $("issueSelect").value = currentIssue;
     $("newIssueFields").hidden = true;
   }
@@ -154,17 +168,20 @@
   // ----- 3. 처리 현황 -----
   const STATUS = {
     pending: ["대기", "fa-hourglass-half"], running: ["요약 중", "fa-spinner fa-spin"],
+    waiting: ["한도 대기", "fa-clock"],
     error: ["오류", "fa-exclamation-triangle"], done: ["완료", "fa-check"], no_summary: ["요약 없음", "fa-minus-circle"],
   };
   async function loadStatus() {
-    if (!currentIssue) return;
+    const query = autoMode ? (uploaded.length ? `papers=${uploaded.join(",")}` : "") : (currentIssue ? `issue=${currentIssue}` : "");
+    if (!query) return;
     clearTimeout(pollTimer);
-    const res = await fetch(`${URLS.status}?issue=${currentIssue}`, { credentials: "same-origin" });
+    const res = await fetch(`${URLS.status}?${query}`, { credentials: "same-origin" });
     const data = await res.json().catch(() => ({}));
     if (!data.ok) return;
     $("statusCard").hidden = false;
-    $("issueLabel").textContent = data.issue.label;
-    $("issueLink").href = data.issue.url;
+    $("issueLabel").textContent = data.issue ? data.issue.label : "이번에 올린 논문";
+    $("issueLink").hidden = !data.issue;
+    if (data.issue) $("issueLink").href = data.issue.url;
     const papers = data.papers;
     $("paperList").innerHTML = papers.map(p => {
       const [label, icon] = STATUS[p.status] || [p.status, "fa-circle"];
@@ -172,29 +189,35 @@
         <div class="ju-pmain">
           <a href="${esc(p.url)}" target="_blank" rel="noopener" class="ju-ptitle">${esc(p.title)}</a>
           <span class="ju-pauthors">${esc(p.authors)}</span>
+          ${data.issue ? "" : `<span class="ju-pissue"><i class="fas fa-book-open"></i> ${esc(p.issue_label)}</span>`}
           ${p.short_summary ? `<span class="ju-psum">${esc(p.short_summary)}</span>` : ""}
           ${p.status === "error" ? `<span class="ju-perr">${esc(p.message)}</span>` : ""}
+          ${p.status === "waiting" ? `<span class="ju-pwait">${esc(p.message)}</span>` : ""}
         </div>
         <span class="ju-chip"><i class="fas ${icon}"></i> ${label}</span>
         <a class="ju-edit" href="${esc(p.admin_url)}" target="_blank" rel="noopener" title="관리자 화면에서 고치기"><i class="fas fa-pen"></i></a>
       </li>`;
     }).join("") || '<li class="ju-empty">아직 논문이 없습니다.</li>';
     const busy = papers.filter(p => p.status === "pending" || p.status === "running").length;
+    const waiting = papers.filter(p => p.status === "waiting").length;
     const errors = papers.filter(p => p.status === "error").length;
     const missing = papers.filter(p => p.status === "no_summary").length;
     $("retryBtn").hidden = !errors;
     $("summarizeMissingBtn").hidden = !missing;
     $("statusNote").textContent = busy
-      ? `${busy}편 처리 중 · 한 편에 30초~1분 정도 걸립니다. 이 화면을 닫아도 서버에서 계속 처리됩니다.`
+      ? `${busy}편 처리 중${waiting ? ` · 한도 대기 ${waiting}편` : ""} · 한 편에 30초~1분 정도 걸립니다. 이 화면을 닫아도 서버에서 계속 처리됩니다.`
+      : waiting
+      ? `Gemini 무료 한도로 ${waiting}편이 대기 중입니다. 표시된 시각 이후 서버가 자동으로 다시 시도하니 이 화면을 닫아도 됩니다.`
       : `모두 ${papers.length}편${errors ? ` · 오류 ${errors}편` : ""}${missing ? ` · 요약 없음 ${missing}편` : ""}`;
     if (busy) pollTimer = setTimeout(loadStatus, 4000);
+    else if (waiting) pollTimer = setTimeout(loadStatus, 60000);
   }
 
   async function action(name) {
     const res = await fetch(URLS.action, {
       method: "POST", credentials: "same-origin",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
-      body: JSON.stringify({ action: name, issue: currentIssue }),
+      body: JSON.stringify(autoMode ? { action: name, papers: uploaded } : { action: name, issue: currentIssue }),
     });
     const data = await res.json().catch(() => ({}));
     if (!data.ok) alert(data.error || "요청하지 못했습니다.");

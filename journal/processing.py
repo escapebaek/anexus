@@ -1,12 +1,17 @@
 """논문 자동 처리: 올린 PDF 한 편마다
-1) PDF 앞부분 글자에서 DOI 를 찾아 Crossref(무료 논문 정보 DB)로 정확한 제목·저자를 가져오고
-2) AI 로 한국어 요약(한 줄 요약 + 항목별 요약)을 만든다.
+1) PDF 앞부분 글자에서 DOI 를 찾아 Crossref(무료 논문 정보 DB)로 정확한 제목·저자·권·호·발행일을 가져오고
+   (권·호·발행일은 올릴 때 바로 써서 맞는 호에 넣음 - views.upload_file)
+2) Gemini(무료 API)가 PDF 를 통째로 읽고 한국어 요약(한 줄 요약 + 항목별 요약)을 만든다.
 
-AI 는 로컬 AI 서버(Qwen, settings.LOCALAI_*)에 PDF 에서 뽑은 글자를 보내 요약한다.
-실패하면 '오류' 로 남기고 화면의 '다시 시도' 로 재처리한다.
-[사용 중지] 예전에는 Gemini 가 PDF 를 통째로 읽고, 안 되면 Groq 에 글자로 물었다 (summarize() 의 주석 참고).
+무료 한도: 모델마다 따로라 한도에 걸리면 다음 모델로 넘어가고, 모두 막히면 '대기' 로 두고 나중에 다시 시도한다.
+  - 분당 한도(RPM·TPM): 1분 남짓 뒤 (Google 이 알려준 retryDelay 를 따름)
+  - 하루 한도(RPD): Google 이 하루 한도를 초기화하는 미국 태평양 시각 자정 직후 (한국 시각 오후 4~5시)
+  - 종류를 알 수 없으면 3시간 뒤
+  과부하(503)·시간 초과는 15분 뒤. PDF 를 읽을 수 없는 등 다시 해도 안 되는 경우만 '오류'.
 
-처리는 백그라운드 스레드 하나가 대기 중인 논문을 한 편씩 차례로 가져가 처리한다 (무료 AI 한도 보호).
+처리는 백그라운드 스레드 하나가 '지금 시도할 차례인' 대기 논문을 한 편씩 차례로 처리한다.
+Render 무료 서버는 접속이 없으면 잠들어 스레드도 멈추므로, GitHub Actions 가 30분마다
+/journal/process-tick/ 을 불러 서버를 깨우고 남은 논문을 이어서 처리한다 (.github/workflows/journal-tick.yml).
 여러 gunicorn 워커가 동시에 돌아도 DB 에서 '대기 → 처리 중' 으로 바꾸는 데 성공한 쪽만 처리한다.
 """
 import base64
@@ -15,7 +20,9 @@ import json
 import logging
 import re
 import threading
-from datetime import timedelta
+import time
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import requests
 from django.conf import settings
@@ -33,6 +40,12 @@ MAX_INLINE_PDF_BYTES = 15 * 1024 * 1024     # Gemini 요청 한도(20MB) 안쪽
 MAX_TEXT_CHARS = 60_000                     # 글자로 보낼 때 (Gemini)
 MAX_TEXT_CHARS_SMALL = 24_000               # 분당 토큰 한도가 작은 무료 제공자용
 STALE_AFTER = timedelta(minutes=12)         # 이보다 오래 '처리 중' 이면 서버 재시작 등으로 끊긴 것
+GEMINI_TIMEOUT = 180                        # 요청 하나 (PDF 를 읽어 요약하는 데 1분 넘게 걸리기도 함)
+GAP_BETWEEN_PAPERS = 5                      # 초. 무료 분당 요청 한도 보호 (논문 사이 쉬는 시간)
+WAIT_SOON = timedelta(minutes=5)            # 다음 시도가 이 안이면 스레드가 기다렸다 이어서 처리
+RETRY_OVERLOAD = timedelta(minutes=15)      # 과부하·시간 초과
+RETRY_UNKNOWN_QUOTA = timedelta(hours=3)    # 어떤 한도인지 모를 때
+QUOTA_TZ = ZoneInfo("America/Los_Angeles")  # Gemini 하루 한도가 초기화되는 시간대 (자정)
 
 SECTION_GUIDE = "연구 목적, 연구 방법, 주요 결과, 임상적 의미"
 
@@ -71,7 +84,15 @@ RESPONSE_SCHEMA = {
 
 
 class ProcessingError(Exception):
-    pass
+    """다시 해도 안 되는 실패 (PDF 를 읽을 수 없음, API 키 오류 등) → '오류'."""
+
+
+class RetryLater(Exception):
+    """잠시 뒤 다시 하면 될 실패 (무료 한도, 과부하) → '대기' 로 두고 wait 뒤에 다시."""
+
+    def __init__(self, wait, message):
+        super().__init__(message)
+        self.wait = wait
 
 
 # ---------------------------------------------------------------------------
@@ -100,8 +121,21 @@ def find_doi(text):
     return match.group(1).rstrip(".,;)]}").rstrip("'")
 
 
+def _crossref_date(item):
+    """인쇄 발행일 → 발행일 → 온라인 발행일 순. 연·월만 있으면 1일로."""
+    for key in ("published-print", "issued", "published-online", "published"):
+        parts = ((item.get(key) or {}).get("date-parts") or [[None]])[0]
+        if parts and parts[0]:
+            try:
+                return date(int(parts[0]), int(parts[1]) if len(parts) > 1 else 1, int(parts[2]) if len(parts) > 2 else 1)
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
 def crossref_metadata(doi):
-    """DOI -> {'title', 'authors'} (Crossref). 실패하면 None."""
+    """DOI -> {'title', 'authors', 'volume', 'issue', 'date', 'journal'} (Crossref). 실패하면 None.
+    volume·issue 는 온라인 선공개(아직 호에 실리지 않은) 논문이면 빈 문자열."""
     if not doi:
         return None
     try:
@@ -121,7 +155,20 @@ def crossref_metadata(doi):
     authors = ", ".join(names[:6]) + (", et al." if len(names) > 6 else "")
     if not title:
         return None
-    return {"title": title, "authors": authors}
+    return {
+        "title": title,
+        "authors": authors,
+        "volume": str(item.get("volume") or "").strip()[:50],
+        "issue": str(item.get("issue") or "").strip()[:50],
+        "date": _crossref_date(item),
+        "journal": " ".join(((item.get("container-title") or [""])[0]).split()),
+    }
+
+
+def pdf_metadata(pdf_bytes):
+    """올릴 때 바로 쓰는 정보: PDF 앞 두 쪽의 DOI → Crossref. (doi, meta 또는 None)"""
+    doi = find_doi(extract_text(pdf_bytes, max_pages=2))
+    return doi, crossref_metadata(doi)
 
 
 # ---------------------------------------------------------------------------
@@ -141,9 +188,77 @@ def _parse_summary(raw):
     return data
 
 
+def _seconds_until_quota_reset(now=None):
+    """Gemini 하루 한도가 초기화되는 다음 태평양 시각 자정(+5분 여유)까지 남은 초."""
+    now = (now or timezone.now()).astimezone(QUOTA_TZ)
+    reset = datetime.combine(now.date() + timedelta(days=1), datetime.min.time(), tzinfo=QUOTA_TZ) + timedelta(minutes=5)
+    return max(60, int((reset - now).total_seconds()))
+
+
+def quota_wait(response, now=None):
+    """429 응답 → 다시 시도까지 기다릴 시간(timedelta). 하루 한도면 초기화 시각까지,
+    분당 한도면 Google 이 알려준 retryDelay(최소 1분), 알 수 없으면 3시간."""
+    try:
+        details = (response.json().get("error") or {}).get("details") or []
+    except ValueError:
+        details = []
+    quota_ids, retry_delay = [], None
+    for d in details:
+        if not isinstance(d, dict):
+            continue
+        for v in d.get("violations") or []:
+            quota_ids.append(str((v or {}).get("quotaId") or ""))
+        m = re.fullmatch(r"([\d.]+)s", str(d.get("retryDelay") or ""))
+        if m:
+            retry_delay = float(m.group(1))
+    if any("PerDay" in q for q in quota_ids):
+        return timedelta(seconds=_seconds_until_quota_reset(now))
+    if any("PerMinute" in q for q in quota_ids) or retry_delay is not None:
+        return timedelta(seconds=max(60, int((retry_delay or 0) + 15)))
+    return RETRY_UNKNOWN_QUOTA
+
+
+def _gemini_post(payload):
+    """설정한 모델부터 차례로 (모델마다 무료 한도가 따로). 성공한 응답을 돌려주고,
+    모두 한도·과부하로 막히면 RetryLater, 키 오류 등은 ProcessingError."""
+    from schedule.gemini_client import GEMINI_ENDPOINT, model_chain
+
+    waits, problems = [], []
+    for model in model_chain():
+        try:
+            response = requests.post(GEMINI_ENDPOINT.format(model=model), params={"key": settings.GEMINI_API_KEY},
+                                     json=payload, timeout=GEMINI_TIMEOUT)
+        except requests.Timeout:
+            problems.append(f"{model}: 시간 초과")
+            continue
+        except requests.RequestException as exc:
+            raise RetryLater(RETRY_OVERLOAD, f"Gemini 에 연결하지 못했습니다 ({exc.__class__.__name__})") from exc
+        if response.status_code == 200:
+            return response
+        text = response.text[:300]
+        logger.warning("Gemini %s for paper summary: %s %s", model, response.status_code, text)
+        if response.status_code == 429:
+            waits.append(quota_wait(response))
+            problems.append(f"{model}: 무료 한도 초과")
+        elif response.status_code in (500, 502, 503, 504):
+            problems.append(f"{model}: 과부하({response.status_code})")
+        elif response.status_code == 404 or (response.status_code == 400 and "model" in text.lower()):
+            problems.append(f"{model}: 사용할 수 없는 모델")
+        elif response.status_code in (401, 403) or (response.status_code == 400 and "api key" in text.lower()):
+            raise ProcessingError("Gemini API 키가 올바르지 않습니다 (Render 의 GEMINI_API_KEY 확인)")
+        else:
+            raise ProcessingError(f"Gemini 오류 {response.status_code}: {text[:200]}")
+    if waits and len(waits) == len(problems):
+        raise RetryLater(min(waits), "Gemini 무료 한도 초과 (" + ", ".join(problems) + ")")
+    if waits:
+        # 일부는 한도, 일부는 과부하 → 둘 중 먼저 풀릴 쪽에 맞춤
+        raise RetryLater(min(min(waits), RETRY_OVERLOAD), "Gemini 한도·과부하 (" + ", ".join(problems) + ")")
+    raise RetryLater(RETRY_OVERLOAD, "Gemini 가 응답하지 않습니다 (" + ", ".join(problems) + ")")
+
+
 def _gemini_summary(pdf_bytes, text):
     if not settings.GEMINI_API_KEY:
-        raise ProcessingError("Gemini 키 없음")
+        raise ProcessingError("서버에 Gemini API 키가 없습니다 (Render 환경변수 GEMINI_API_KEY)")
     if len(pdf_bytes) <= MAX_INLINE_PDF_BYTES:
         part = {"inline_data": {"mime_type": "application/pdf", "data": base64.b64encode(pdf_bytes).decode()}}
     elif text.strip():
@@ -156,10 +271,11 @@ def _gemini_summary(pdf_bytes, text):
         "generationConfig": {"responseMimeType": "application/json", "responseSchema": RESPONSE_SCHEMA,
                              "temperature": 0.2},
     }
-    response = gemini_client._post_with_fallback(settings.GEMINI_API_KEY, payload)
+    response = _gemini_post(payload)
     try:
         return _parse_summary(response.json()["candidates"][0]["content"]["parts"][0]["text"])
     except (KeyError, IndexError, TypeError, ValueError) as exc:
+        # 내용 거부·빈 응답 등: 같은 PDF 로 다시 해도 같을 가능성이 커서 오류로 (화면의 '다시 시도' 로 재요청)
         raise ProcessingError(f"Gemini 응답을 해석하지 못했습니다 ({exc})") from exc
 
 
@@ -186,18 +302,8 @@ def _text_provider_summary(text):
 
 
 def summarize(pdf_bytes, text):
-    # [사용 중지] Gemini 가 PDF 를 통째로 먼저 읽던 방식. 되돌리려면 아래 주석을 풀고
-    # 맨 아래 'return _text_provider_summary(text)' 줄을 지움 (settings.py 의 Gemini 키도 되살려야 함).
-    # try:
-    #     return _gemini_summary(pdf_bytes, text)
-    # except Exception as exc:
-    #     logger.warning("Gemini summary failed, trying text providers: %s", exc)
-    #     first_error = str(exc)
-    # try:
-    #     return _text_provider_summary(text)
-    # except ProcessingError as exc:
-    #     raise ProcessingError(f"요약 실패 - Gemini: {first_error[:300]} / {exc}") from exc
-    return _text_provider_summary(text)
+    """Gemini 가 PDF 를 통째로 읽어 요약 (로컬 AI 는 더 쓰지 않음 - _text_provider_summary 는 참고용으로 남김)."""
+    return _gemini_summary(pdf_bytes, text)
 
 
 def format_sections(sections):
@@ -237,11 +343,17 @@ def process_paper(paper):
     paper.save()
 
 
+def _due_pending(now):
+    from django.db.models import Q
+    return Paper.objects.filter(processing_status="pending").filter(
+        Q(next_attempt_at__isnull=True) | Q(next_attempt_at__lte=now))
+
+
 def _claim_next():
     now = timezone.now()
     Paper.objects.filter(processing_status="running", processing_updated__lt=now - STALE_AFTER) \
         .update(processing_status="pending")
-    for pid in Paper.objects.filter(processing_status="pending").order_by("issue_id", "order", "id") \
+    for pid in _due_pending(now).order_by("next_attempt_at", "issue_id", "order", "id") \
             .values_list("id", flat=True)[:10]:
         if Paper.objects.filter(id=pid, processing_status="pending") \
                 .update(processing_status="running", processing_updated=now):
@@ -249,21 +361,44 @@ def _claim_next():
     return None
 
 
+def next_due_at():
+    """아직 때가 안 된 대기 논문 중 가장 이른 다음 시도 시각 (없으면 None)."""
+    return Paper.objects.filter(processing_status="pending", next_attempt_at__gt=timezone.now()) \
+        .order_by("next_attempt_at").values_list("next_attempt_at", flat=True).first()
+
+
 def run_pending():
-    """대기 중인 논문을 모두 처리 (한 편씩)."""
+    """지금 시도할 차례인 대기 논문을 모두 처리 (한 편씩, 사이에 잠깐 쉼).
+    무료 한도에 걸리면 그 시각까지 다른 논문도 같은 한도라 모두 미룸."""
     while True:
         paper = _claim_next()
         if paper is None:
             return
+        paper.attempts += 1      # process_paper 가 paper.save() 하므로 객체 값도 올려 둠
+        Paper.objects.filter(pk=paper.pk).update(attempts=paper.attempts)
         try:
             process_paper(paper)
+            Paper.objects.filter(pk=paper.pk).update(next_attempt_at=None)
+        except RetryLater as exc:
+            when = timezone.now() + exc.wait
+            logger.info("paper %s: retry at %s (%s)", paper.pk, when, exc)
+            local = timezone.localtime(when)
+            Paper.objects.filter(pk=paper.pk).update(
+                processing_status="pending", next_attempt_at=when, processing_updated=timezone.now(),
+                processing_message=f"{exc} - {local:%m/%d %H:%M} 이후 자동으로 다시 시도")
+            # 같은 한도를 쓰는 나머지 대기 논문도 그때까지 미룸 (헛되이 한도를 두드리지 않게)
+            _due_pending(timezone.now()).update(
+                next_attempt_at=when, processing_message=f"Gemini 한도 대기 - {local:%m/%d %H:%M} 이후 자동으로 처리")
+            return
         except Exception as exc:
             if isinstance(exc, ProcessingError):
                 logger.warning("paper %s processing failed: %s", paper.pk, exc)
             else:
                 logger.exception("paper %s processing failed", paper.pk)
             Paper.objects.filter(pk=paper.pk).update(
-                processing_status="error", processing_message=str(exc)[:1000], processing_updated=timezone.now())
+                processing_status="error", processing_message=str(exc)[:1000], processing_updated=timezone.now(),
+                next_attempt_at=None)
+        time.sleep(GAP_BETWEEN_PAPERS)
 
 
 _worker_lock = threading.Lock()
@@ -282,11 +417,16 @@ def start_worker():
             try:
                 while True:
                     run_pending()
-                    # 끝내기 직전에 새로 올라온 논문이 있으면 이어서 처리
+                    # 끝내기 직전에 새로 올라온(또는 곧 다시 시도할) 논문이 있으면 이어서 처리.
+                    # 몇 시간 뒤에 다시 할 것은 스레드를 끝내고 GitHub Actions 의 깨우기(process-tick)에 맡김
                     with _worker_lock:
-                        if not Paper.objects.filter(processing_status="pending").exists():
+                        if _due_pending(timezone.now()).exists():
+                            continue
+                        upcoming = next_due_at()
+                        if upcoming is None or upcoming - timezone.now() > WAIT_SOON:
                             _worker_thread = None
                             return
+                    time.sleep(max(1, (upcoming - timezone.now()).total_seconds()))
             finally:
                 connection.close()
 

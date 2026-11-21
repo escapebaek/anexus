@@ -90,6 +90,9 @@ class Paper(models.Model):
                                          verbose_name='자동 처리 상태')
     processing_message = models.TextField(blank=True, verbose_name='자동 처리 메시지')
     processing_updated = models.DateTimeField(null=True, blank=True)
+    # 무료 AI 한도에 걸리면 '대기' 로 두고 이 시각 이후에 다시 시도 (journal/processing.py)
+    next_attempt_at = models.DateTimeField(null=True, blank=True, verbose_name='다음 시도 시각')
+    attempts = models.PositiveIntegerField(default=0, verbose_name='시도 횟수')
 
     class Meta:
         ordering = ['order', '-created_date']

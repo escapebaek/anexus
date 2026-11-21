@@ -197,10 +197,11 @@ LOCALAI_THINKING = config('LOCALAI_THINKING', default=False, cast=bool)   # Qwen
 # [사용 중지] Gemini / Groq / OpenRouter
 # 되돌리려면: 아래 '# ' 로 막아 둔 줄들의 주석을 풀고, 바로 밑의 '사용 중지' 빈 값 세 줄과
 # SCHEDULE_AI_PROVIDERS = 'localai' 줄을 지우면 예전처럼 동작함 (Render 의 키는 그대로 두면 됨).
-# GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 # GROQ_API_KEY = config('GROQ_API_KEY', default='')
 # OPENROUTER_API_KEY = config('OPENROUTER_API_KEY', default='')
-GEMINI_API_KEY = ''       # 사용 중지
+# Gemini 무료 API: 논문 요약(journal)에 다시 사용. 수술 스케줄 분석은 SCHEDULE_AI_PROVIDERS 에 'gemini' 가
+# 없으므로 여전히 쓰지 않음.
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='').strip().strip('\'"').strip()
 GROQ_API_KEY = ''         # 사용 중지
 OPENROUTER_API_KEY = ''   # 사용 중지
 GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-3.1-flash-lite')
@@ -217,6 +218,11 @@ SCHEDULE_AI_PROVIDERS = 'localai'
 SCHEDULE_AI_TIME_BUDGET = config('SCHEDULE_AI_TIME_BUDGET', default=420, cast=int)  # 초, 백그라운드 작업 기준 (로컬 AI 는 느려서 넉넉히)
 GROQ_MODELS = config('GROQ_MODELS', default='llama-3.3-70b-versatile,openai/gpt-oss-120b,openai/gpt-oss-20b')
 OPENROUTER_MODELS = config('OPENROUTER_MODELS', default='meta-llama/llama-3.3-70b-instruct:free,deepseek/deepseek-chat-v3-0324:free')
+
+# 논문 요약 대기열 깨우기: GitHub Actions(.github/workflows/journal-tick.yml)가 30분마다
+# /journal/process-tick/ 을 부를 때 함께 보내는 비밀 값. GitHub 저장소 Secrets 의 JOURNAL_CRON_TOKEN 과 같게.
+# 비어 있으면 깨우기 주소는 꺼짐 (404).
+JOURNAL_CRON_TOKEN = config('JOURNAL_CRON_TOKEN', default='').strip()
 
 # Supabase - media storage
 MEDIA_URL = f'{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}/'
