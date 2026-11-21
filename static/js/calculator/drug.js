@@ -1,4 +1,6 @@
 // 성인 마취 약물 계산기 (예전 escapebaek.github.io/anesthesia-calculator 에서 옮김)
+// 소아 계산기(pediatric.js)와 한 페이지에 함께 올라가므로 함수는 감싸 두고 window.AdultCalc 로만 내보냄.
+(function () {
 function calculateAll() {
   const weight = parseFloat(document.getElementById("weight").value);
   if (!weight || weight <= 0) {
@@ -312,7 +314,7 @@ document.addEventListener('keydown', function(event) {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
-  const inputs = document.querySelectorAll(".calc input");
+  const inputs = document.querySelectorAll("#calcPatient input, #adultGrid input");
   let calculationTimeout;
 
   updateMixes();
@@ -329,3 +331,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
+window.AdultCalc = { calculateAll, openDrugModal, closeDrugModal, closeDrugModalOnOverlay };
+})();

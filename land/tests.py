@@ -14,13 +14,13 @@ class HomeTests(TestCase):
         titles = [s['title'] for s in res.context['sections']]
         self.assertEqual(titles, ['ANExUS', 'Calculators & Simulators', 'Resources'])
         cards = [c for s in res.context['sections'] for c in s['cards']]
-        self.assertEqual(len(cards), 17)
+        self.assertEqual(len(cards), 16)
         self.assertNotIn('Trends in Anesthesia', [c['title'] for c in cards])   # 추후 개발 후 다시 추가
         # 섹션별 순서 (요청한 순서), 외부 링크는 external 로 표시 (새 탭)
         order = [[c['title'] for c in s['cards']] for s in res.context['sections'][:2]]
         self.assertEqual(order, [
             ['Board', 'Schedule', 'Record', 'Anes Chat', 'Questions', 'Journal Stand'],
-            ['Drug Calculator', 'Pediatric Calculator', 'Coagulation Guideline', 'Drug Dictionary', 'Virtual TEE', 'Virtual FOB'],
+            ['Drug Calculator', 'Coagulation Guideline', 'Drug Dictionary', 'Virtual TEE', 'Virtual FOB'],
         ])
         external = {c['title'] for c in cards if c['external']}
         self.assertIn('Anes Chat', external)
@@ -29,7 +29,7 @@ class HomeTests(TestCase):
 
     def test_anonymous_cards_go_to_login(self):
         res = self.client.get(reverse('home'))
-        self.assertContains(res, '로그인 후 이용', count=17)
+        self.assertContains(res, '로그인 후 이용', count=16)
         self.assertContains(res, 'href="%s?next=/board/"' % reverse('login'))
         self.assertContains(res, '?next=https%3A//www.nysora.com/')
         self.assertNotContains(res, 'href="https://www.nysora.com/"')
@@ -37,7 +37,7 @@ class HomeTests(TestCase):
     def test_pending_member_sees_locked_cards(self):
         self.client.force_login(self.make_user(is_approved=False))
         res = self.client.get(reverse('home'))
-        self.assertContains(res, 'is-locked', count=17)
+        self.assertContains(res, 'is-locked', count=16)
         self.assertNotContains(res, 'href="/board/"')
 
     def test_member_gets_links_and_new_tabs_are_safe(self):

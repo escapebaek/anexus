@@ -43,21 +43,6 @@
 .cx-panel-head { text-align: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2); }
 .cx-panel-head h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.2rem; color: #fff; }
 .cx-panel-head p { font-size: 0.72rem; opacity: 0.8; }
-.cx-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 0.55rem;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-.cx-switch:hover { background: rgba(255, 255, 255, 0.26); color: #fff; text-decoration: none; }
 
 .cx-form { display: flex; flex-direction: column; gap: 0.75rem; }
 .cx-field { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -340,3 +325,58 @@
   .cx-conc-row { grid-template-columns: 1fr 1fr; }
   .cx-conc-label { grid-column: 1 / -1; }
 }
+
+/* ===== 성인 · 소아 토글 (한 화면) ===== */
+.calc[data-mode="adult"] [data-show="ped"],
+.calc[data-mode="ped"] [data-show="adult"] { display: none !important; }
+
+.cx-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin: 0.6rem 0 0.45rem;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+.cx-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cx-mode-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.cx-mode-btn[aria-selected="true"] {
+  background: #fff;
+  color: var(--cx-dark);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.cx-mode-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.cx-mode-sub { font-size: 0.72rem; opacity: 0.8; margin: 0; }
+
+.cx-mode-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cx-mode-hint[hidden] { display: none; }
+.cx-mode-hint:hover { background: rgba(255, 255, 255, 0.22); }

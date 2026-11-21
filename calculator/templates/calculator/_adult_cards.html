@@ -1,49 +1,9 @@
-{% extends 'base.html' %}
-{% load static %}
-{% block title %}Drug Calculator · ANExUS{% endblock %}
-{% block custom_css %}
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@600;700&display=swap" rel="stylesheet" />
-  <link href="{% static 'css/pages/calculator.css' %}" rel="stylesheet" />
-{% endblock %}
-
-{% block page_content %}
-<div class="calc" data-img-base="{% static 'img/drugs/' %}">
-  <div class="cx-layout">
-    <!-- Left Sidebar - Patient Info -->
-    <aside class="cx-panel">
-      <div class="cx-panel-head">
-        <h1><i class="fas fa-stethoscope"></i> Drug Calculator</h1>
-        <p>Anesthesia Dosage</p>
-        <a class="cx-switch" href="{% url 'calculator_pediatric' %}"><i class="fas fa-child"></i> Pediatric Calculator</a>
-      </div>
-      <form class="cx-form" onsubmit="event.preventDefault(); calculateAll();">
-        <div class="cx-field">
-          <label for="age">Age (years)</label>
-          <input type="number" id="age" placeholder="Age" />
-        </div>
-        <div class="cx-field">
-          <label for="height">Height (cm)</label>
-          <input type="number" id="height" placeholder="Height" />
-        </div>
-        <div class="cx-field">
-          <label for="weight">Weight (kg) *</label>
-          <input type="number" id="weight" placeholder="Weight" step="0.1" required />
-        </div>
-        <!-- type=button: 사이트 공통 스크립트가 submit 버튼을 10초간 'Loading...' 으로 바꾸지 않게 (입력하면 자동 계산) -->
-        <button type="button" class="cx-btn-calc" onclick="calculateAll()">
-          <i class="fas fa-calculator"></i> Calculate
-        </button>
-      </form>
-    </aside>
-
-    <!-- Main Content - Drug Cards -->
-    <main class="cx-main">
-      <div class="cx-grid">
+{# 성인 약물 카드 (calculator/calculator.html 의 성인 모드). 계산은 static/js/calculator/drug.js #}
         <!-- NEP Card -->
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-syringe"></i></div>
-            <h3 onclick="openDrugModal('nep')">Norepinephrine (NEP)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('nep')">Norepinephrine (NEP)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -69,7 +29,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-heartbeat"></i></div>
-            <h3 onclick="openDrugModal('epi')">Epinephrine (EPI)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('epi')">Epinephrine (EPI)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -95,7 +55,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('phen')">Phenylephrine</h3>
+            <h3 onclick="AdultCalc.openDrugModal('phen')">Phenylephrine</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -129,7 +89,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('vaso')">Vasopressin (VASO)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('vaso')">Vasopressin (VASO)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -163,7 +123,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-pills"></i></div>
-            <h3 onclick="openDrugModal('dopa')">Dopamine (DOPA)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('dopa')">Dopamine (DOPA)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -189,7 +149,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-pump-medical"></i></div>
-            <h3 onclick="openDrugModal('dobu')">Dobutamine (DOBU)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('dobu')">Dobutamine (DOBU)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -215,7 +175,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-prescription-bottle"></i></div>
-            <h3 onclick="openDrugModal('ntg')">Nitroglycerin (NTG)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('ntg')">Nitroglycerin (NTG)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -241,7 +201,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('amio')">Amiodarone</h3>
+            <h3 onclick="AdultCalc.openDrugModal('amio')">Amiodarone</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-section">Loading (stable VT·AF)</div>
@@ -292,7 +252,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-filter"></i></div>
-            <h3 onclick="openDrugModal('txa')">Tranexamic Acid (TXA)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('txa')">Tranexamic Acid (TXA)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -318,7 +278,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-capsules"></i></div>
-            <h3 onclick="openDrugModal('ppf')">Propofol (PPF)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('ppf')">Propofol (PPF)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -344,7 +304,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-prescription"></i></div>
-            <h3 onclick="openDrugModal('rftn')">Remifentanil (RFTN)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('rftn')">Remifentanil (RFTN)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -370,7 +330,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-tablets"></i></div>
-            <h3 onclick="openDrugModal('suftn')">Sufentanil (SuFTN)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('suftn')">Sufentanil (SuFTN)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -396,7 +356,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('ca')">Calcium Gluconate</h3>
+            <h3 onclick="AdultCalc.openDrugModal('ca')">Calcium Gluconate</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -430,7 +390,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-flask"></i></div>
-            <h3 onclick="openDrugModal('snp')">Nitroprusside (SNP)</h3>
+            <h3 onclick="AdultCalc.openDrugModal('snp')">Nitroprusside (SNP)</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -456,7 +416,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('mg')">Magnesium Sulfate</h3>
+            <h3 onclick="AdultCalc.openDrugModal('mg')">Magnesium Sulfate</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -490,7 +450,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('sbic')">Sodium Bicarbonate</h3>
+            <h3 onclick="AdultCalc.openDrugModal('sbic')">Sodium Bicarbonate</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -516,7 +476,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('dant')">Dantrolene</h3>
+            <h3 onclick="AdultCalc.openDrugModal('dant')">Dantrolene</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -554,7 +514,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('lido')">Lidocaine</h3>
+            <h3 onclick="AdultCalc.openDrugModal('lido')">Lidocaine</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -593,7 +553,7 @@
         <div class="cx-card">
           <div class="cx-card-head">
             <div class="cx-icon"><i class="fas fa-vial"></i></div>
-            <h3 onclick="openDrugModal('atropine')">Atropine</h3>
+            <h3 onclick="AdultCalc.openDrugModal('atropine')">Atropine</h3>
           </div>
           <div class="cx-card-body">
             <div class="cx-input">
@@ -618,27 +578,3 @@
             </div>
           </div>
         </div>
-      </div>
-    </main>
-  </div>
-
-  <!-- Drug Image Modal -->
-  <div class="cx-modal" id="drugModal" onclick="closeDrugModalOnOverlay(event)">
-    <div class="cx-modal-box">
-      <div class="cx-modal-head cx-modal-head-band">
-        <h2 id="drugModalTitle">Drug Name</h2>
-        <button class="cx-modal-x" onclick="closeDrugModal()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="cx-modal-body" id="drugModalBody">
-        <!-- Image or placeholder will be inserted here -->
-      </div>
-    </div>
-  </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% static 'js/calculator/drug.js' %}"></script>
-{% endblock extra_js %}

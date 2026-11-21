@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Drug Calculator · ANExUS{% endblock %}
+{% block custom_css %}
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="{% static 'css/pages/calculator.css' %}" rel="stylesheet" />
+{% endblock %}
+
+{% block page_content %}
+{# 성인·소아 계산기를 한 화면에: 환자 정보는 함께 쓰고, 위 토글로 약물 카드만 바꿈 (?mode=adult|ped) #}
+<div class="calc" data-mode="{{ mode }}" data-img-base="{% static 'img/drugs/' %}">
+  <div class="cx-layout">
+    <!-- Left Sidebar - Patient Info (성인·소아 공통) -->
+    <aside class="cx-panel" id="calcPatient">
+      <div class="cx-panel-head">
+        <h1><i class="fas fa-calculator"></i> Drug Calculator</h1>
+        <div class="cx-mode" role="tablist" aria-label="환자 구분">
+          <button type="button" role="tab" class="cx-mode-btn" data-mode="adult" aria-selected="{% if mode == 'adult' %}true{% else %}false{% endif %}">
+            <i class="fas fa-user"></i> Adult
+          </button>
+          <button type="button" role="tab" class="cx-mode-btn" data-mode="ped" aria-selected="{% if mode == 'ped' %}true{% else %}false{% endif %}">
+            <i class="fas fa-child"></i> Pediatric
+          </button>
+        </div>
+        <p class="cx-mode-sub" data-show="adult">Adult Anesthesia Dosage</p>
+        <p class="cx-mode-sub" data-show="ped">Pediatric Anesthesia Dosage</p>
+      </div>
+      <form class="cx-form" onsubmit="event.preventDefault(); CalcPage.calculate();">
+        <div class="cx-field">
+          <label for="age">Age (years)</label>
+          <input type="number" id="age" placeholder="Age" step="0.1" min="0" />
+        </div>
+        <div class="cx-field">
+          <label for="height">Height (cm)</label>
+          <input type="number" id="height" placeholder="Height" min="0" />
+        </div>
+        <div class="cx-field">
+          <label for="weight">Weight (kg) *</label>
+          <input type="number" id="weight" placeholder="Weight" step="0.1" min="0" required />
+        </div>
+        <!-- 나이가 어린데 성인 모드면 소아 모드를 권함 -->
+        <button type="button" class="cx-mode-hint" id="modeHint" hidden>
+          <i class="fas fa-child"></i> 소아 나이예요 · Pediatric 로 보기
+        </button>
+        <!-- type=button: 사이트 공통 스크립트가 submit 버튼을 10초간 'Loading...' 으로 바꾸지 않게 (입력하면 자동 계산) -->
+        <button type="button" class="cx-btn-calc" onclick="CalcPage.calculate()">
+          <i class="fas fa-calculator"></i> Calculate
+        </button>
+        <button type="button" class="cx-btn-set" data-show="ped" onclick="PedCalc.openSettings()">
+          <i class="fas fa-cog"></i> Concentrations
+        </button>
+      </form>
+
+      <!-- Airway Info Section (소아) -->
+      <div class="cx-airway" data-show="ped">
+        <div class="cx-airway-head">
+          <i class="fas fa-lungs"></i> Airway Management
+        </div>
+        <div class="cx-airway-item">
+          <span class="cx-airway-label">ETT cuffed</span>
+          <span class="cx-airway-value" id="ett_cuffed">-</span>
+        </div>
+        <div class="cx-airway-item">
+          <span class="cx-airway-label">ETT uncuffed</span>
+          <span class="cx-airway-value" id="ett_uncuffed">-</span>
+        </div>
+        <div class="cx-airway-item">
+          <span class="cx-airway-label">ETT Depth (oral)</span>
+          <span class="cx-airway-value" id="ett_depth">-</span>
+        </div>
+        <div class="cx-airway-item">
+          <span class="cx-airway-label">C-Line (Rt IJ)</span>
+          <span class="cx-airway-value" id="c_line">-</span>
+        </div>
+        <p class="cx-airway-note" id="airway_note"></p>
+      </div>
+    </aside>
+
+    <!-- Main Content - Drug Cards -->
+    <main class="cx-main">
+      <div class="cx-grid" id="adultGrid" data-show="adult">
+{% include 'calculator/_adult_cards.html' %}
+      </div>
+      <!-- 소아 카드는 pediatric.js 의 DRUGS 배열에서 자동 생성 -->
+      <div class="cx-grid" id="drugGrid" data-show="ped"></div>
+    </main>
+  </div>
+
+  <!-- Drug Image Modal (성인) -->
+  <div class="cx-modal" id="drugModal" onclick="AdultCalc.closeDrugModalOnOverlay(event)">
+    <div class="cx-modal-box">
+      <div class="cx-modal-head cx-modal-head-band">
+        <h2 id="drugModalTitle">Drug Name</h2>
+        <button type="button" class="cx-modal-x" onclick="AdultCalc.closeDrugModal()" aria-label="닫기">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="cx-modal-body" id="drugModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Concentration Settings Modal (소아) -->
+  <div id="settingsModal" class="cx-modal">
+    <div class="cx-modal-box">
+      <div class="cx-modal-head">
+        <h2 class="cx-modal-title">Drug Concentrations</h2>
+        <button type="button" class="cx-modal-x" onclick="PedCalc.closeSettings()" aria-label="닫기">&times;</button>
+      </div>
+      <div id="concentrationSettings"></div>
+      <button type="button" class="cx-modal-save" onclick="PedCalc.saveSettings()">
+        <i class="fas fa-save"></i> Save & Recalculate
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/calculator/drug.js' %}"></script>
+<script src="{% static 'js/calculator/pediatric.js' %}"></script>
+<script src="{% static 'js/calculator/calculator.js' %}"></script>
+{% endblock extra_js %}

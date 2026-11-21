@@ -1,4 +1,6 @@
 // 소아 마취 계산기 (예전 escapebaek.github.io/pediatric-anesthesia-calculator 에서 옮김)
+// 성인 계산기(drug.js)와 한 페이지에 함께 올라가므로 함수는 감싸 두고 window.PedCalc 로만 내보냄.
+(function () {
 // ===== Drug configurations =====
 //  cu    : 용량·농도의 질량 단위 (mg / mcg) — 농도 입력칸은 cu/ml
 //  conc  : 기본 농도 (조제 후 주사기 농도)
@@ -238,6 +240,9 @@ const DRUGS = [
       std: "원액 4mg/2ml = 2mg/ml (희석 없음)" }
   }
 ];
+
+// 성인 카드와 요소 id 가 겹치지 않게 (예: atropine_conc) 소아 카드 id 앞에 p_ 를 붙임
+DRUGS.forEach((drug) => { drug.id = "p_" + drug.id; });
 
 const ICON_CLASS = {
   induction: "c-induction", muscle: "c-muscle", analgesic: "c-analgesic",
@@ -536,7 +541,7 @@ document.addEventListener("DOMContentLoaded", function () {
   renderCards();
   let calculationTimeout;
 
-  document.querySelectorAll(".cx-panel input, .cx-grid input").forEach((input) => {
+  document.querySelectorAll("#calcPatient input, #drugGrid input").forEach((input) => {
     input.addEventListener("input", () => {
       updateMixes();
       clearTimeout(calculationTimeout);
@@ -555,3 +560,6 @@ window.addEventListener("click", function (event) {
 document.addEventListener("keydown", function (event) {
   if (event.key === "Escape") closeSettings();
 });
+
+window.PedCalc = { calculateAll, openSettings, closeSettings, saveSettings };
+})();

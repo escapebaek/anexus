@@ -45,7 +45,7 @@ def home(request):
     sections = [
         {
             'id': 'anexus',
-            'cols': 3,  # 넓은 화면에서 한 줄 카드 수 (6장 = 3장씩 두 줄)
+            'cols': 5,  # 넓은 화면에서 한 줄 카드 수 (5장 한 줄)
             'title': 'ANExUS',
             'subtitle': 'Built-in tools for daily practice and study.',
             'cards': [
@@ -59,12 +59,11 @@ def home(request):
         },
         {
             'id': 'tools',
-            'cols': 3,  # 넓은 화면에서 한 줄 카드 수 (6장 = 3장씩 두 줄)
+            'cols': 5,  # 넓은 화면에서 한 줄 카드 수 (5장 한 줄)
             'title': 'Calculators & Simulators',
             'subtitle': 'Quick calculations and hands-on learning.',
             'cards': [
-                _card('Drug Calculator', 'Accurate drug dosage calculations.', reverse('calculator_drug'), 'fas fa-calculator'),
-                _card('Pediatric Calculator', 'Accurate calculations for pediatric anesthesia.', reverse('calculator_pediatric'), 'fas fa-baby'),
+                _card('Drug Calculator', 'Adult & pediatric dosages on one page.', reverse('calculator'), 'fas fa-calculator'),
                 _card('Coagulation Guideline', 'Find the latest coagulation guidelines.', reverse('coag_index'), 'fas fa-vial'),
                 _card('Drug Dictionary', 'Find the latest drug information.', reverse('drugdictionary:drug_info'), 'fas fa-pills'),
                 _card('Virtual TEE', 'Virtual TEE for education.', 'https://pie.med.utoronto.ca/TEE/TEE_content/TEE_standardViews_intro.html', 'fas fa-heartbeat'),
