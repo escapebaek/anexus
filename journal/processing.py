@@ -218,16 +218,36 @@ def quota_wait(response, now=None):
     return RETRY_UNKNOWN_QUOTA
 
 
+def journal_models():
+    """논문 요약에 쓸 모델 순서: JOURNAL_GEMINI_MODEL(기본 gemini-4-hydrogen) → GEMINI_MODEL → 대체 모델들."""
+    from schedule.gemini_client import model_chain
+
+    chain = []
+    for name in [settings.JOURNAL_GEMINI_MODEL] + model_chain():
+        if name and name not in chain:
+            chain.append(name)
+    return chain
+
+
+def _payload_for(model, payload):
+    """Gemini 3·4 계열에만 생각 수준(thinkingLevel)을 붙임 (2.5 계열은 이 설정을 모름)."""
+    level = settings.JOURNAL_GEMINI_THINKING
+    if not level or not re.match(r"gemini-[34]", model):
+        return payload
+    config = dict(payload.get("generationConfig") or {}, thinkingConfig={"thinkingLevel": level})
+    return dict(payload, generationConfig=config)
+
+
 def _gemini_post(payload):
     """설정한 모델부터 차례로 (모델마다 무료 한도가 따로). 성공한 응답을 돌려주고,
     모두 한도·과부하로 막히면 RetryLater, 키 오류 등은 ProcessingError."""
-    from schedule.gemini_client import GEMINI_ENDPOINT, model_chain
+    from schedule.gemini_client import GEMINI_ENDPOINT
 
     waits, problems = [], []
-    for model in model_chain():
+    for model in journal_models():
         try:
             response = requests.post(GEMINI_ENDPOINT.format(model=model), params={"key": settings.GEMINI_API_KEY},
-                                     json=payload, timeout=GEMINI_TIMEOUT)
+                                     json=_payload_for(model, payload), timeout=GEMINI_TIMEOUT)
         except requests.Timeout:
             problems.append(f"{model}: 시간 초과")
             continue
@@ -242,7 +262,7 @@ def _gemini_post(payload):
             problems.append(f"{model}: 무료 한도 초과")
         elif response.status_code in (500, 502, 503, 504):
             problems.append(f"{model}: 과부하({response.status_code})")
-        elif response.status_code == 404 or (response.status_code == 400 and "model" in text.lower()):
+        elif response.status_code == 404 or (response.status_code == 400 and ("model" in text.lower() or "thinking" in text.lower())):
             problems.append(f"{model}: 사용할 수 없는 모델")
         elif response.status_code in (401, 403) or (response.status_code == 400 and "api key" in text.lower()):
             raise ProcessingError("Gemini API 키가 올바르지 않습니다 (Render 의 GEMINI_API_KEY 확인)")
@@ -273,7 +293,10 @@ def _gemini_summary(pdf_bytes, text):
     }
     response = _gemini_post(payload)
     try:
-        return _parse_summary(response.json()["candidates"][0]["content"]["parts"][0]["text"])
+        # 생각 요약(thought) 조각이 섞여 와도 답 부분만
+        parts = response.json()["candidates"][0]["content"]["parts"]
+        answer = "".join(p.get("text", "") for p in parts if not p.get("thought"))
+        return _parse_summary(answer)
     except (KeyError, IndexError, TypeError, ValueError) as exc:
         # 내용 거부·빈 응답 등: 같은 PDF 로 다시 해도 같을 가능성이 커서 오류로 (화면의 '다시 시도' 로 재요청)
         raise ProcessingError(f"Gemini 응답을 해석하지 못했습니다 ({exc})") from exc

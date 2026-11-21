@@ -219,6 +219,12 @@ SCHEDULE_AI_TIME_BUDGET = config('SCHEDULE_AI_TIME_BUDGET', default=420, cast=in
 GROQ_MODELS = config('GROQ_MODELS', default='llama-3.3-70b-versatile,openai/gpt-oss-120b,openai/gpt-oss-20b')
 OPENROUTER_MODELS = config('OPENROUTER_MODELS', default='meta-llama/llama-3.3-70b-instruct:free,deepseek/deepseek-chat-v3-0324:free')
 
+# 논문 요약(journal)에 먼저 쓸 Gemini 모델. 무료 한도에 걸리면 GEMINI_MODEL → GEMINI_FALLBACK_MODELS 순으로 넘어감
+# (모델마다 무료 한도가 따로라 하루에 요약할 수 있는 편수가 늘어남). Gemini 4 Hydrogen 은 무료 플랜에서도 사용 가능.
+JOURNAL_GEMINI_MODEL = config('JOURNAL_GEMINI_MODEL', default='gemini-4-hydrogen').strip()
+# Gemini 3·4 계열의 생각 수준 (low · medium · high · xhigh). 요약은 low 로도 충분하고 빠름 - 비우면 모델 기본값
+JOURNAL_GEMINI_THINKING = config('JOURNAL_GEMINI_THINKING', default='low').strip()
+
 # 논문 요약 대기열 깨우기: GitHub Actions(.github/workflows/journal-tick.yml)가 30분마다
 # /journal/process-tick/ 을 부를 때 함께 보내는 비밀 값. GitHub 저장소 Secrets 의 JOURNAL_CRON_TOKEN 과 같게.
 # 비어 있으면 깨우기 주소는 꺼짐 (404).

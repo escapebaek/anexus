@@ -157,6 +157,8 @@ class ProcessingTests(JournalTestBase):
         paper.refresh_from_db()
         payload = post.call_args.kwargs["json"]
         self.assertEqual(post.call_args.kwargs["params"], {"key": "test-key"})
+        self.assertIn("gemini-4-hydrogen", post.call_args.args[0])              # 논문 요약은 Hydrogen 먼저
+        self.assertEqual(payload["generationConfig"]["thinkingConfig"], {"thinkingLevel": "low"})
         self.assertEqual(payload["contents"][0]["parts"][0]["inline_data"]["mime_type"], "application/pdf")
         self.assertEqual((paper.title, paper.authors, paper.doi), ("AI read title", "AI Author", ""))
         self.assertIn("AI 가 PDF", paper.processing_message)
@@ -209,7 +211,7 @@ class ProcessingTests(JournalTestBase):
         self.assertEqual(processing.quota_wait(resp([{"retryDelay": "90s"}]), now), timedelta(seconds=105))
         self.assertEqual(processing.quota_wait(resp([]), now), timedelta(hours=3))      # 알 수 없음 → 3시간
 
-    @override_settings(GEMINI_MODEL="model-a", GEMINI_FALLBACK_MODELS="model-b")
+    @override_settings(JOURNAL_GEMINI_MODEL="model-a", GEMINI_MODEL="model-b", GEMINI_FALLBACK_MODELS="")
     def test_next_model_on_quota_and_retry_when_all_limited(self):
         limited = mock.Mock(status_code=429, text="quota")
         limited.json.return_value = {"error": {"details": [{"violations": [{"quotaId": "PerMinute"}]}, {"retryDelay": "20s"}]}}
@@ -225,6 +227,15 @@ class ProcessingTests(JournalTestBase):
         with mock.patch("journal.processing.requests.post", return_value=bad_key):
             with self.assertRaisesMessage(processing.ProcessingError, "GEMINI_API_KEY"):
                 processing._gemini_post({})
+
+    def test_model_order_and_thinking_only_for_new_models(self):
+        with override_settings(JOURNAL_GEMINI_MODEL="gemini-4-hydrogen", GEMINI_MODEL="gemini-3.1-flash-lite",
+                               GEMINI_FALLBACK_MODELS="gemini-2.5-flash,gemini-4-hydrogen"):
+            self.assertEqual(processing.journal_models(), ["gemini-4-hydrogen", "gemini-3.1-flash-lite", "gemini-2.5-flash"])
+        base = {"generationConfig": {"temperature": 0.2}}
+        self.assertIn("thinkingConfig", processing._payload_for("gemini-3.1-flash-lite", base)["generationConfig"])
+        self.assertEqual(processing._payload_for("gemini-2.5-flash", base), base)     # 2.5 는 thinkingLevel 을 모름
+        self.assertEqual(base, {"generationConfig": {"temperature": 0.2}})            # 원본은 그대로
 
     def test_no_key_is_clear_error(self):
         with override_settings(GEMINI_API_KEY=""):
