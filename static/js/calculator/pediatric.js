@@ -7,7 +7,7 @@
 //  doses : 1회 용량. d = 체중당 용량, max = 1회 상한(cu),
 //          pick(w, age) 가 있으면 체중·나이에 따라 { d | fixed, l } 을 고름,
 //          over = 분 단위 주입 시간 (loading 속도 ml/hr 표시)
-//  inf   : 지속주입 (Rate 입력 → ml/hr). conc 가 있으면 별도 주사기 농도
+//  inf   : 지속주입 (Rate 입력 → ml/hr). conc 가 있으면 별도 주사기 농도, range = 권장 속도(벗어나면 경고)
 //  mix   : 조제 방법 (아래 mixText 참고)
 //  ageWarn : [{ lt: 나이(세), msg }] — 해당 나이 미만이면 카드에 경고 표시
 //  용량·조제 기준: anesthesia-manual 소아 탭(부서 기준) + 일반 소아 참고값
@@ -22,15 +22,6 @@ const DRUGS = [
     mix: { neat: true, std: "원액 사용 — 1% 10mg/ml (2% 20mg/ml) · 희석하지 않음" }
   },
   {
-    id: "tpt", name: "Thiopental (TPT)", icon: "fa-syringe", cat: "induction",
-    cu: "mg", conc: 25,
-    doses: [{ l: "5 mg/kg", d: 5 }, { l: "6 mg/kg", d: 6 }],
-    info: "Induction 5–6 mg/kg · 신생아 3–4 mg/kg",
-    caution: "신생아·영아는 단백결합 ↓·분포용적 ↑ → <b>신생아 3–4, 영아 5–8 mg/kg</b>. 급속 주입 시 저혈압·무호흡. 혈관외 유출 시 조직 괴사.",
-    mix: { amt: 500, unit: "mg", vol: 0, n: 1, cu: "mg", label: "500mg 분말", dil: "증류수",
-      std: "1ⓥ(500mg) + 증류수 20ml = 25mg/ml" }
-  },
-  {
     id: "ketamine", name: "Ketamine", icon: "fa-syringe", cat: "induction",
     cu: "mg", conc: 50,
     doses: [{ l: "1 mg/kg", d: 1 }, { l: "2 mg/kg", d: 2 }],
@@ -40,48 +31,13 @@ const DRUGS = [
       std: "원액 50mg/ml · 소아 희석 원액 1ml + NS 4ml = 10mg/ml" }
   },
   {
-    id: "roc", name: "Rocuronium (ROC)", icon: "fa-capsules", cat: "muscle",
-    cu: "mg", conc: 10,
-    doses: [{ l: "0.6 mg/kg", d: 0.6 }, { l: "0.2 mg/kg (유지)", d: 0.2 }],
-    info: "Intubation 0.6 mg/kg · RSI 1–1.2 mg/kg",
-    caution: "<b>신생아 포함 전 연령</b> 사용. 영아는 발현이 빠르고 지속시간이 길어짐. Sugammadex 로 역전.",
-    mix: { amt: 50, unit: "mg", vol: 5, n: 1, cu: "mg", label: "50mg/5ml",
-      dil: "NS", std: "원액 50mg/5ml = 10mg/ml (희석 없음)" }
-  },
-  {
-    id: "vecuronium", name: "Vecuronium", icon: "fa-capsules", cat: "muscle",
-    cu: "mg", conc: 1,
-    doses: [{ l: "0.1 mg/kg", d: 0.1 }, { l: "0.12 mg/kg", d: 0.12 }],
-    info: "Intubation 0.1 mg/kg (부서 0.12) · 발현 ~3분",
-    caution: "<b>생후 7주 미만 자료 부족.</b> 7주–1세는 더 민감하고 회복이 ~1.5배 느림. 간기능 저하 시 회복 지연.",
-    mix: { amt: 4, unit: "mg", vol: 0, n: 1, cu: "mg", label: "4mg 분말", dil: "증류수",
-      std: "1ⓥ(4mg) + 증류수 4ml = 1mg/ml (10mg ⓥ 이면 10ml)" }
-  },
-  {
-    id: "succinylcholine", name: "Succinylcholine (SCC)", icon: "fa-capsules", cat: "muscle",
-    cu: "mg", conc: 20,
-    doses: [{
-      pick: (w, age) => (age < 1 ? { d: 2, l: "2 mg/kg (영아)" } : { d: 1.5, l: "1.5 mg/kg" }),
-      max: 150
-    }],
-    info: "IV: 영아(<1세) 2 mg/kg · 소아 1–2 mg/kg · IM 4 mg/kg",
-    caution: "<b>소아 routine 사용 지양</b> — 미진단 근이영양증에서 고칼륨혈증성 심정지 (FDA boxed warning). 응급 기도·후두경련에 사용. 서맥 → Atropine 전처치 고려. MH 유발.",
-    mix: { amt: 100, unit: "mg", vol: 5, n: 1, cu: "mg", label: "100mg/5ml",
-      dil: "NS", std: "원액 20mg/ml (희석 없음)" }
-  },
-  {
-    id: "sugammadex", name: "Sugammadex (Bridion)", icon: "fa-capsules", cat: "muscle",
-    cu: "mg", conc: 100,
-    doses: [
-      { l: "2 mg/kg (TOF ≥2)", d: 2 },
-      { l: "4 mg/kg (PTC 1–2)", d: 4 },
-      { l: "16 mg/kg (즉시)", d: 16 }
-    ],
-    info: "근이완 감시 결과(TOF/PTC)로 용량 선택",
-    caution: "허가 연령 <b>만 2세 이상</b>. 초경 이후 여아: 경구피임약 효과 7일간 감소 안내.",
-    ageWarn: [{ lt: 2, msg: "⚠ 2세 미만 — 자료 부족 (허가 외)" }],
-    mix: { amt: 200, unit: "mg", vol: 2, n: 1, cu: "mg", label: "200mg/2ml", dil: "NS", syr: 10,
-      std: "원액 100mg/ml · 소량이면 1ml + NS 9ml = 10mg/ml" }
+    id: "tpt", name: "Thiopental (TPT)", icon: "fa-syringe", cat: "induction",
+    cu: "mg", conc: 25,
+    doses: [{ l: "5 mg/kg", d: 5 }, { l: "6 mg/kg", d: 6 }],
+    info: "Induction 5–6 mg/kg · 신생아 3–4 mg/kg",
+    caution: "신생아·영아는 단백결합 ↓·분포용적 ↑ → <b>신생아 3–4, 영아 5–8 mg/kg</b>. 급속 주입 시 저혈압·무호흡. 혈관외 유출 시 조직 괴사.",
+    mix: { amt: 500, unit: "mg", vol: 0, n: 1, cu: "mg", label: "500mg 분말", dil: "증류수",
+      std: "1ⓥ(500mg) + 증류수 20ml = 25mg/ml" }
   },
   {
     id: "fentanyl", name: "Fentanyl (FTN)", icon: "fa-band-aid", cat: "analgesic",
@@ -97,7 +53,7 @@ const DRUGS = [
     id: "remifentanil", name: "Remifentanil (RFTN)", icon: "fa-band-aid", cat: "analgesic",
     cu: "mcg", conc: 20,
     doses: [{ l: "Bolus 0.5 mcg/kg", d: 0.5 }],
-    inf: { l: "Rate (mcg/kg/min)", def: 0.2, step: 0.01, perMin: true },
+    inf: { l: "Rate (mcg/kg/min)", def: 0.2, step: 0.01, perMin: true, range: [0.05, 0.5] },
     info: "C.I. 0.05–0.5 mcg/kg/min (부서 시작 0.2) · Bolus 0.5–1 mcg/kg 30–60초",
     caution: "<b>신생아부터</b> 사용. 에스터 분해 — 축적 없음. Minto 모델은 성인 전용 → 15세 미만은 dose rate 로 설정. 중단 시 진통이 급격히 사라지므로 다른 진통제를 미리 준비.",
     mix: { amt: 1, unit: "mg", vol: 0, n: 1, cu: "mcg", label: "1mg 분말", dil: "NS", syr: 50,
@@ -108,7 +64,7 @@ const DRUGS = [
     cu: "mcg", conc: 5,
     doses: [{ l: "0.1 mcg/kg (짧은 수술)", d: 0.1 }, { l: "0.2 mcg/kg (기본)", d: 0.2 }],
     inf: {
-      l: "Rate (mcg/kg/hr)", def: 0.3, step: 0.05, perMin: false, conc: 1,
+      l: "Rate (mcg/kg/hr)", def: 0.3, step: 0.05, perMin: false, conc: 1, range: [0.1, 1.5],
       mix: { amt: 50, unit: "mcg", vol: 1, n: 1, cu: "mcg", label: "50mcg/1ml", dil: "NS", title: "C.I.",
         std: "30kg 미만 50mcg/1ml + NS 49ml = 1mcg/ml · 30kg 이상 250mcg/5ml + NS 45ml = 5mcg/ml" }
     },
@@ -171,12 +127,56 @@ const DRUGS = [
     id: "dexmedetomidine", name: "Dexmedetomidine (DEX)", icon: "fa-moon", cat: "sedation",
     cu: "mcg", conc: 4,
     doses: [{ l: "Loading 1 mcg/kg", d: 1, over: 10 }],
-    inf: { l: "Rate (mcg/kg/hr)", def: 0.5, step: 0.1, perMin: false },
+    inf: { l: "Rate (mcg/kg/hr)", def: 0.5, step: 0.1, perMin: false, range: [0.2, 1] },
     info: "Loading 0.5–1 mcg/kg <b>10분</b> → 유지 0.2–1 mcg/kg/hr",
     caution: "허가: 비삽관 소아 1개월–18세 비침습 시술 진정 — 전신마취 보조는 허가 외. <b>서맥·저혈압</b>: 급속 bolus 금지. 원액(100mcg/ml)을 그대로 쓰지 말 것.",
     ageWarn: [{ lt: 1 / 12, msg: "⚠ 1개월 미만 — 허가 외" }],
     mix: { amt: 200, unit: "mcg", vol: 2, n: 1, cu: "mcg", label: "200mcg/2ml", dil: "NS", syr: 50,
       std: "200mcg/2ml + NS 48ml = 4mcg/ml · 저체중아 1mcg/ml" }
+  },
+  {
+    id: "roc", name: "Rocuronium (ROC)", icon: "fa-capsules", cat: "muscle",
+    cu: "mg", conc: 10,
+    doses: [{ l: "0.6 mg/kg", d: 0.6 }, { l: "0.2 mg/kg (유지)", d: 0.2 }],
+    info: "Intubation 0.6 mg/kg · RSI 1–1.2 mg/kg",
+    caution: "<b>신생아 포함 전 연령</b> 사용. 영아는 발현이 빠르고 지속시간이 길어짐. Sugammadex 로 역전.",
+    mix: { amt: 50, unit: "mg", vol: 5, n: 1, cu: "mg", label: "50mg/5ml",
+      dil: "NS", std: "원액 50mg/5ml = 10mg/ml (희석 없음)" }
+  },
+  {
+    id: "sugammadex", name: "Sugammadex (Bridion)", icon: "fa-capsules", cat: "muscle",
+    cu: "mg", conc: 100,
+    doses: [
+      { l: "2 mg/kg (TOF ≥2)", d: 2 },
+      { l: "4 mg/kg (PTC 1–2)", d: 4 },
+      { l: "16 mg/kg (즉시)", d: 16 }
+    ],
+    info: "근이완 감시 결과(TOF/PTC)로 용량 선택",
+    caution: "허가 연령 <b>만 2세 이상</b>. 초경 이후 여아: 경구피임약 효과 7일간 감소 안내.",
+    ageWarn: [{ lt: 2, msg: "⚠ 2세 미만 — 자료 부족 (허가 외)" }],
+    mix: { amt: 200, unit: "mg", vol: 2, n: 1, cu: "mg", label: "200mg/2ml", dil: "NS", syr: 10,
+      std: "원액 100mg/ml · 소량이면 1ml + NS 9ml = 10mg/ml" }
+  },
+  {
+    id: "vecuronium", name: "Vecuronium", icon: "fa-capsules", cat: "muscle",
+    cu: "mg", conc: 1,
+    doses: [{ l: "0.1 mg/kg", d: 0.1 }, { l: "0.12 mg/kg", d: 0.12 }],
+    info: "Intubation 0.1 mg/kg (부서 0.12) · 발현 ~3분",
+    caution: "<b>생후 7주 미만 자료 부족.</b> 7주–1세는 더 민감하고 회복이 ~1.5배 느림. 간기능 저하 시 회복 지연.",
+    mix: { amt: 4, unit: "mg", vol: 0, n: 1, cu: "mg", label: "4mg 분말", dil: "증류수",
+      std: "1ⓥ(4mg) + 증류수 4ml = 1mg/ml (10mg ⓥ 이면 10ml)" }
+  },
+  {
+    id: "succinylcholine", name: "Succinylcholine (SCC)", icon: "fa-capsules", cat: "muscle",
+    cu: "mg", conc: 20,
+    doses: [{
+      pick: (w, age) => (age < 1 ? { d: 2, l: "2 mg/kg (영아)" } : { d: 1.5, l: "1.5 mg/kg" }),
+      max: 150
+    }],
+    info: "IV: 영아(<1세) 2 mg/kg · 소아 1–2 mg/kg · IM 4 mg/kg",
+    caution: "<b>소아 routine 사용 지양</b> — 미진단 근이영양증에서 고칼륨혈증성 심정지 (FDA boxed warning). 응급 기도·후두경련에 사용. 서맥 → Atropine 전처치 고려. MH 유발.",
+    mix: { amt: 100, unit: "mg", vol: 5, n: 1, cu: "mg", label: "100mg/5ml",
+      dil: "NS", std: "원액 20mg/ml (희석 없음)" }
   },
   {
     id: "atropine", name: "Atropine", icon: "fa-heartbeat", cat: "emergency",
@@ -289,7 +289,7 @@ function cardHtml(drug) {
         ${inf.conc ? concInputHtml(drug.id + "_inf_conc", inf.conc, drug.cu) : ""}
         <div class="cx-input">
           <label>${inf.l}</label>
-          <input type="number" id="${drug.id}_inf_rate" value="${inf.def}" step="${inf.step}" min="0" />
+          <input type="number" id="${drug.id}_inf_rate" value="${inf.def}" step="${inf.step}" min="0"${inf.range ? ` data-range="${inf.range.join(",")}"` : ""} />
         </div>
       </div>
       ${inf.mix ? mixBoxHtml(drug.id + "_inf_conc", inf.mix) : ""}`;
@@ -317,8 +317,27 @@ function cardHtml(drug) {
     </div>`;
 }
 
+// 종류별 묶음 (위 칩으로 바로 이동). 성인 카드(_adult_cards.html)와 같은 순서·이름·아이콘
+// (승압·강심 → 강압·항부정맥 → 유도·마취제 → 진통제 → 진정제 → 근이완·역전 → 전해질·지혈 → 응급·기타,
+//  소아에 없는 묶음은 건너뜀). 순서는 calculator/tests.py 가 확인함
+const GROUPS = [
+  { cat: "induction", ko: "유도·마취제", en: "Induction · Hypnotics", icon: "fa-syringe" },
+  { cat: "analgesic", ko: "진통제", en: "Analgesics", icon: "fa-band-aid" },
+  { cat: "sedation", ko: "진정제", en: "Sedation", icon: "fa-moon" },
+  { cat: "muscle", ko: "근이완·역전", en: "Neuromuscular block · Reversal", icon: "fa-capsules" },
+  { cat: "emergency", ko: "응급·기타", en: "Emergency · Others", icon: "fa-exclamation-triangle" },
+];
+
 function renderCards() {
-  document.getElementById("drugGrid").innerHTML = DRUGS.map(cardHtml).join("");
+  document.getElementById("drugGrid").innerHTML = GROUPS.map((g) => {
+    const cards = DRUGS.filter((d) => d.cat === g.cat);
+    if (!cards.length) return "";
+    return `
+    <section class="cx-group" id="ped-${g.cat}" data-cat="${g.cat}" data-label="${g.ko}">
+      <h2 class="cx-group-title"><i class="fas ${g.icon}"></i> ${g.ko} <small>${g.en}</small></h2>
+      <div class="cx-grid">${cards.map(cardHtml).join("")}</div>
+    </section>`;
+  }).join("");
 }
 
 // ===== MIX (조제 방법) — 성인 계산기와 같은 방식 =====
@@ -529,7 +548,11 @@ function closeSettings() {
 function saveSettings() {
   document.querySelectorAll(".cx-modal .cx-conc-input").forEach((input) => {
     const value = parseFloat(input.value);
-    if (value > 0) document.getElementById(input.dataset.target).value = value;
+    const target = document.getElementById(input.dataset.target);
+    if (value > 0 && String(value) !== target.value) {
+      target.value = value;
+      target.dispatchEvent(new Event("change", { bubbles: true }));   // calculator.js 가 '내 농도'로 기억
+    }
   });
   closeSettings();
   updateMixes();
@@ -561,5 +584,5 @@ document.addEventListener("keydown", function (event) {
   if (event.key === "Escape") closeSettings();
 });
 
-window.PedCalc = { calculateAll, openSettings, closeSettings, saveSettings };
+window.PedCalc = { calculateAll, updateMixes, openSettings, closeSettings, saveSettings };
 })();

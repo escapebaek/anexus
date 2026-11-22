@@ -49,6 +49,11 @@
         <button type="button" class="cx-btn-set" data-show="ped" onclick="PedCalc.openSettings()">
           <i class="fas fa-cog"></i> Concentrations
         </button>
+        <!-- 바꾼 농도는 이 브라우저에 기억 (calculator.js) -->
+        <div class="cx-conc-note" id="concNote" hidden>
+          <span><i class="fas fa-bookmark"></i> 내 농도 <b id="concCount">0</b>개</span>
+          <button type="button" id="concReset">기본값으로</button>
+        </div>
       </form>
 
       <!-- Airway Info Section (소아) -->
@@ -78,11 +83,13 @@
 
     <!-- Main Content - Drug Cards -->
     <main class="cx-main">
-      <div class="cx-grid" id="adultGrid" data-show="adult">
+      <!-- 약물 종류 칩: 누르면 그 묶음으로 이동 (calculator.js 가 지금 모드의 묶음으로 채움) -->
+      <nav class="cx-chips" id="calcChips" aria-label="약물 종류"></nav>
+      <div class="cx-groups" id="adultGrid" data-show="adult">
 {% include 'calculator/_adult_cards.html' %}
       </div>
       <!-- 소아 카드는 pediatric.js 의 DRUGS 배열에서 자동 생성 -->
-      <div class="cx-grid" id="drugGrid" data-show="ped"></div>
+      <div class="cx-groups" id="drugGrid" data-show="ped"></div>
     </main>
   </div>
 

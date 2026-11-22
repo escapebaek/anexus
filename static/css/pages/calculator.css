@@ -380,3 +380,117 @@
 }
 .cx-mode-hint[hidden] { display: none; }
 .cx-mode-hint:hover { background: rgba(255, 255, 255, 0.22); }
+
+/* ===== 약물 종류별 묶음 + 칩 ===== */
+.cx-groups { display: flex; flex-direction: column; gap: 1rem; }
+.cx-group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0 0 0.5rem !important;
+  padding: 0 0.15rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--cx-dark);
+}
+.cx-group-title i { font-size: 0.8rem; color: var(--cx-cat, var(--cx-dark)); }
+.cx-group-title small { font-size: 0.68rem; font-weight: 600; color: var(--cx-muted); letter-spacing: 0.02em; }
+
+/* 묶음마다 아이콘 색 (성인·소아 같은 묶음은 같은 색) */
+.cx-group { --cx-cat: var(--cx-dark); }
+.cx-group[data-cat="pressor"] { --cx-cat: #c0392b; }
+.cx-group[data-cat="vasodil"] { --cx-cat: #1d6fa5; }
+.cx-group[data-cat="induction"] { --cx-cat: #2b5876; }
+.cx-group[data-cat="analgesic"] { --cx-cat: #0f766e; }
+.cx-group[data-cat="sedation"] { --cx-cat: #6d4aa6; }
+.cx-group[data-cat="muscle"] { --cx-cat: #4e4376; }
+.cx-group[data-cat="lytes"] { --cx-cat: #2f855a; }
+.cx-group[data-cat="emergency"] { --cx-cat: #b7791f; }
+.cx-group .cx-icon { background: var(--cx-cat); }
+
+.cx-chips {
+  position: sticky;
+  top: var(--navbar-height, 70px);
+  z-index: 5;
+  display: flex;
+  gap: 0.35rem;
+  margin: -0.75rem -0.75rem 0.75rem;
+  padding: 0.55rem 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: rgba(240, 244, 249, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(43, 88, 118, 0.1);
+}
+.cx-chips::-webkit-scrollbar { display: none; }
+.cx-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgba(43, 88, 118, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cx-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cx-chip small {
+  min-width: 1.3rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--cx-alpha);
+  color: var(--cx-muted);
+  font-size: 0.66rem;
+  text-align: center;
+}
+.cx-chip:hover { border-color: var(--cx-dark); }
+.cx-chip.is-active { background: var(--cx-dark); border-color: var(--cx-dark); color: #fff; }
+.cx-chip.is-active small { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.cx-chip:focus-visible { outline: 2px solid var(--cx-dark); outline-offset: 2px; }
+
+/* ===== 내 농도 · 범위 경고 ===== */
+.cx-input.is-custom input { border-color: #3b82f6; background: #eff6ff; }
+.cx-input.is-custom label::after { content: " · 내 농도"; color: #2563eb; font-weight: 700; }
+.cx-input.is-warn input { border-color: #d97706; background: #fffbeb; }
+.cx-input.is-danger input { border-color: #dc2626; background: #fef2f2; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15); }
+.cx-warn {
+  margin: 0.15rem 0 0.1rem !important;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.cx-warn.is-warn { color: #b45309; }
+.cx-warn.is-danger { color: #dc2626; }
+
+.cx-conc-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 0.72rem;
+}
+.cx-conc-note[hidden] { display: none; }
+.cx-conc-note button {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cx-conc-note button:hover { background: rgba(255, 255, 255, 0.2); }
+
+@media (max-width: 768px) {
+  .cx-chips { margin: -0.5rem -0.5rem 0.6rem; padding: 0.5rem; }
+  .cx-mode-hint, .cx-conc-note { flex-basis: 100%; }
+}
