@@ -396,17 +396,15 @@
 .cx-group-title i { font-size: 0.8rem; color: var(--cx-cat, var(--cx-dark)); }
 .cx-group-title small { font-size: 0.68rem; font-weight: 600; color: var(--cx-muted); letter-spacing: 0.02em; }
 
-/* 묶음마다 아이콘 색 (성인 묶음 · 소아 묶음) */
+/* 묶음마다 아이콘 색 (성인·소아 같은 묶음은 같은 색) */
 .cx-group { --cx-cat: var(--cx-dark); }
 .cx-group[data-cat="pressor"] { --cx-cat: #c0392b; }
-.cx-group[data-cat="vasodil"] { --cx-cat: #0f766e; }
-.cx-group[data-cat="tiva"] { --cx-cat: #2b5876; }
-.cx-group[data-cat="lytes"] { --cx-cat: #4e4376; }
-.cx-group[data-cat="crisis"] { --cx-cat: #b7791f; }
+.cx-group[data-cat="vasodil"] { --cx-cat: #1d6fa5; }
 .cx-group[data-cat="induction"] { --cx-cat: #2b5876; }
-.cx-group[data-cat="muscle"] { --cx-cat: #4e4376; }
 .cx-group[data-cat="analgesic"] { --cx-cat: #0f766e; }
 .cx-group[data-cat="sedation"] { --cx-cat: #6d4aa6; }
+.cx-group[data-cat="muscle"] { --cx-cat: #4e4376; }
+.cx-group[data-cat="lytes"] { --cx-cat: #2f855a; }
 .cx-group[data-cat="emergency"] { --cx-cat: #b7791f; }
 .cx-group .cx-icon { background: var(--cx-cat); }
 

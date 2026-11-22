@@ -22,15 +22,6 @@ const DRUGS = [
     mix: { neat: true, std: "원액 사용 — 1% 10mg/ml (2% 20mg/ml) · 희석하지 않음" }
   },
   {
-    id: "tpt", name: "Thiopental (TPT)", icon: "fa-syringe", cat: "induction",
-    cu: "mg", conc: 25,
-    doses: [{ l: "5 mg/kg", d: 5 }, { l: "6 mg/kg", d: 6 }],
-    info: "Induction 5–6 mg/kg · 신생아 3–4 mg/kg",
-    caution: "신생아·영아는 단백결합 ↓·분포용적 ↑ → <b>신생아 3–4, 영아 5–8 mg/kg</b>. 급속 주입 시 저혈압·무호흡. 혈관외 유출 시 조직 괴사.",
-    mix: { amt: 500, unit: "mg", vol: 0, n: 1, cu: "mg", label: "500mg 분말", dil: "증류수",
-      std: "1ⓥ(500mg) + 증류수 20ml = 25mg/ml" }
-  },
-  {
     id: "ketamine", name: "Ketamine", icon: "fa-syringe", cat: "induction",
     cu: "mg", conc: 50,
     doses: [{ l: "1 mg/kg", d: 1 }, { l: "2 mg/kg", d: 2 }],
@@ -40,48 +31,13 @@ const DRUGS = [
       std: "원액 50mg/ml · 소아 희석 원액 1ml + NS 4ml = 10mg/ml" }
   },
   {
-    id: "roc", name: "Rocuronium (ROC)", icon: "fa-capsules", cat: "muscle",
-    cu: "mg", conc: 10,
-    doses: [{ l: "0.6 mg/kg", d: 0.6 }, { l: "0.2 mg/kg (유지)", d: 0.2 }],
-    info: "Intubation 0.6 mg/kg · RSI 1–1.2 mg/kg",
-    caution: "<b>신생아 포함 전 연령</b> 사용. 영아는 발현이 빠르고 지속시간이 길어짐. Sugammadex 로 역전.",
-    mix: { amt: 50, unit: "mg", vol: 5, n: 1, cu: "mg", label: "50mg/5ml",
-      dil: "NS", std: "원액 50mg/5ml = 10mg/ml (희석 없음)" }
-  },
-  {
-    id: "vecuronium", name: "Vecuronium", icon: "fa-capsules", cat: "muscle",
-    cu: "mg", conc: 1,
-    doses: [{ l: "0.1 mg/kg", d: 0.1 }, { l: "0.12 mg/kg", d: 0.12 }],
-    info: "Intubation 0.1 mg/kg (부서 0.12) · 발현 ~3분",
-    caution: "<b>생후 7주 미만 자료 부족.</b> 7주–1세는 더 민감하고 회복이 ~1.5배 느림. 간기능 저하 시 회복 지연.",
-    mix: { amt: 4, unit: "mg", vol: 0, n: 1, cu: "mg", label: "4mg 분말", dil: "증류수",
-      std: "1ⓥ(4mg) + 증류수 4ml = 1mg/ml (10mg ⓥ 이면 10ml)" }
-  },
-  {
-    id: "succinylcholine", name: "Succinylcholine (SCC)", icon: "fa-capsules", cat: "muscle",
-    cu: "mg", conc: 20,
-    doses: [{
-      pick: (w, age) => (age < 1 ? { d: 2, l: "2 mg/kg (영아)" } : { d: 1.5, l: "1.5 mg/kg" }),
-      max: 150
-    }],
-    info: "IV: 영아(<1세) 2 mg/kg · 소아 1–2 mg/kg · IM 4 mg/kg",
-    caution: "<b>소아 routine 사용 지양</b> — 미진단 근이영양증에서 고칼륨혈증성 심정지 (FDA boxed warning). 응급 기도·후두경련에 사용. 서맥 → Atropine 전처치 고려. MH 유발.",
-    mix: { amt: 100, unit: "mg", vol: 5, n: 1, cu: "mg", label: "100mg/5ml",
-      dil: "NS", std: "원액 20mg/ml (희석 없음)" }
-  },
-  {
-    id: "sugammadex", name: "Sugammadex (Bridion)", icon: "fa-capsules", cat: "muscle",
-    cu: "mg", conc: 100,
-    doses: [
-      { l: "2 mg/kg (TOF ≥2)", d: 2 },
-      { l: "4 mg/kg (PTC 1–2)", d: 4 },
-      { l: "16 mg/kg (즉시)", d: 16 }
-    ],
-    info: "근이완 감시 결과(TOF/PTC)로 용량 선택",
-    caution: "허가 연령 <b>만 2세 이상</b>. 초경 이후 여아: 경구피임약 효과 7일간 감소 안내.",
-    ageWarn: [{ lt: 2, msg: "⚠ 2세 미만 — 자료 부족 (허가 외)" }],
-    mix: { amt: 200, unit: "mg", vol: 2, n: 1, cu: "mg", label: "200mg/2ml", dil: "NS", syr: 10,
-      std: "원액 100mg/ml · 소량이면 1ml + NS 9ml = 10mg/ml" }
+    id: "tpt", name: "Thiopental (TPT)", icon: "fa-syringe", cat: "induction",
+    cu: "mg", conc: 25,
+    doses: [{ l: "5 mg/kg", d: 5 }, { l: "6 mg/kg", d: 6 }],
+    info: "Induction 5–6 mg/kg · 신생아 3–4 mg/kg",
+    caution: "신생아·영아는 단백결합 ↓·분포용적 ↑ → <b>신생아 3–4, 영아 5–8 mg/kg</b>. 급속 주입 시 저혈압·무호흡. 혈관외 유출 시 조직 괴사.",
+    mix: { amt: 500, unit: "mg", vol: 0, n: 1, cu: "mg", label: "500mg 분말", dil: "증류수",
+      std: "1ⓥ(500mg) + 증류수 20ml = 25mg/ml" }
   },
   {
     id: "fentanyl", name: "Fentanyl (FTN)", icon: "fa-band-aid", cat: "analgesic",
@@ -177,6 +133,50 @@ const DRUGS = [
     ageWarn: [{ lt: 1 / 12, msg: "⚠ 1개월 미만 — 허가 외" }],
     mix: { amt: 200, unit: "mcg", vol: 2, n: 1, cu: "mcg", label: "200mcg/2ml", dil: "NS", syr: 50,
       std: "200mcg/2ml + NS 48ml = 4mcg/ml · 저체중아 1mcg/ml" }
+  },
+  {
+    id: "roc", name: "Rocuronium (ROC)", icon: "fa-capsules", cat: "muscle",
+    cu: "mg", conc: 10,
+    doses: [{ l: "0.6 mg/kg", d: 0.6 }, { l: "0.2 mg/kg (유지)", d: 0.2 }],
+    info: "Intubation 0.6 mg/kg · RSI 1–1.2 mg/kg",
+    caution: "<b>신생아 포함 전 연령</b> 사용. 영아는 발현이 빠르고 지속시간이 길어짐. Sugammadex 로 역전.",
+    mix: { amt: 50, unit: "mg", vol: 5, n: 1, cu: "mg", label: "50mg/5ml",
+      dil: "NS", std: "원액 50mg/5ml = 10mg/ml (희석 없음)" }
+  },
+  {
+    id: "sugammadex", name: "Sugammadex (Bridion)", icon: "fa-capsules", cat: "muscle",
+    cu: "mg", conc: 100,
+    doses: [
+      { l: "2 mg/kg (TOF ≥2)", d: 2 },
+      { l: "4 mg/kg (PTC 1–2)", d: 4 },
+      { l: "16 mg/kg (즉시)", d: 16 }
+    ],
+    info: "근이완 감시 결과(TOF/PTC)로 용량 선택",
+    caution: "허가 연령 <b>만 2세 이상</b>. 초경 이후 여아: 경구피임약 효과 7일간 감소 안내.",
+    ageWarn: [{ lt: 2, msg: "⚠ 2세 미만 — 자료 부족 (허가 외)" }],
+    mix: { amt: 200, unit: "mg", vol: 2, n: 1, cu: "mg", label: "200mg/2ml", dil: "NS", syr: 10,
+      std: "원액 100mg/ml · 소량이면 1ml + NS 9ml = 10mg/ml" }
+  },
+  {
+    id: "vecuronium", name: "Vecuronium", icon: "fa-capsules", cat: "muscle",
+    cu: "mg", conc: 1,
+    doses: [{ l: "0.1 mg/kg", d: 0.1 }, { l: "0.12 mg/kg", d: 0.12 }],
+    info: "Intubation 0.1 mg/kg (부서 0.12) · 발현 ~3분",
+    caution: "<b>생후 7주 미만 자료 부족.</b> 7주–1세는 더 민감하고 회복이 ~1.5배 느림. 간기능 저하 시 회복 지연.",
+    mix: { amt: 4, unit: "mg", vol: 0, n: 1, cu: "mg", label: "4mg 분말", dil: "증류수",
+      std: "1ⓥ(4mg) + 증류수 4ml = 1mg/ml (10mg ⓥ 이면 10ml)" }
+  },
+  {
+    id: "succinylcholine", name: "Succinylcholine (SCC)", icon: "fa-capsules", cat: "muscle",
+    cu: "mg", conc: 20,
+    doses: [{
+      pick: (w, age) => (age < 1 ? { d: 2, l: "2 mg/kg (영아)" } : { d: 1.5, l: "1.5 mg/kg" }),
+      max: 150
+    }],
+    info: "IV: 영아(<1세) 2 mg/kg · 소아 1–2 mg/kg · IM 4 mg/kg",
+    caution: "<b>소아 routine 사용 지양</b> — 미진단 근이영양증에서 고칼륨혈증성 심정지 (FDA boxed warning). 응급 기도·후두경련에 사용. 서맥 → Atropine 전처치 고려. MH 유발.",
+    mix: { amt: 100, unit: "mg", vol: 5, n: 1, cu: "mg", label: "100mg/5ml",
+      dil: "NS", std: "원액 20mg/ml (희석 없음)" }
   },
   {
     id: "atropine", name: "Atropine", icon: "fa-heartbeat", cat: "emergency",
@@ -317,13 +317,15 @@ function cardHtml(drug) {
     </div>`;
 }
 
-// 종류별 묶음 (위 칩으로 바로 이동). 순서 = 화면 순서
+// 종류별 묶음 (위 칩으로 바로 이동). 성인 카드(_adult_cards.html)와 같은 순서·이름·아이콘
+// (승압·강심 → 강압·항부정맥 → 유도·마취제 → 진통제 → 진정제 → 근이완·역전 → 전해질·지혈 → 응급·기타,
+//  소아에 없는 묶음은 건너뜀). 순서는 calculator/tests.py 가 확인함
 const GROUPS = [
-  { cat: "induction", ko: "유도제", en: "Induction", icon: "fa-syringe" },
-  { cat: "muscle", ko: "근이완·역전", en: "Muscle relaxants · Reversal", icon: "fa-capsules" },
+  { cat: "induction", ko: "유도·마취제", en: "Induction · Hypnotics", icon: "fa-syringe" },
   { cat: "analgesic", ko: "진통제", en: "Analgesics", icon: "fa-band-aid" },
   { cat: "sedation", ko: "진정제", en: "Sedation", icon: "fa-moon" },
-  { cat: "emergency", ko: "응급·기타", en: "Emergency · Others", icon: "fa-heartbeat" },
+  { cat: "muscle", ko: "근이완·역전", en: "Neuromuscular block · Reversal", icon: "fa-capsules" },
+  { cat: "emergency", ko: "응급·기타", en: "Emergency · Others", icon: "fa-exclamation-triangle" },
 ];
 
 function renderCards() {
